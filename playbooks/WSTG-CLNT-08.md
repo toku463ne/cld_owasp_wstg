@@ -1,5 +1,8 @@
 # WSTG-CLNT-08 — Testing for Cross Site Flashing
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 残存する Flash コンテンツに情報漏えい・XSS の余地がないかを確認する。

@@ -1,5 +1,8 @@
 # WSTG-INFO-04 — Enumerate Applications on Webserver
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 同一ホスト・同一 IP 上に、対象アプリ以外のアプリや管理系インスタンスが同居していないかを洗い出す。

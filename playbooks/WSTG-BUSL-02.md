@@ -1,5 +1,8 @@
 # WSTG-BUSL-02 — Test Ability to Forge Requests
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 画面が出さない値やパラメータを自作リクエストで送り込めないかを確認する。

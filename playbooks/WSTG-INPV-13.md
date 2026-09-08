@@ -1,5 +1,8 @@
 # WSTG-INPV-13 — Testing for Format String Injection
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 入力が書式文字列としてそのまま処理されないかを確認する。

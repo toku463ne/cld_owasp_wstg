@@ -1,5 +1,8 @@
 # WSTG-ATHN-01 — Testing for Credentials Transported over an Encrypted Channel
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 資格情報が暗号化された経路でのみ送信されているかを確認する。

@@ -1,5 +1,8 @@
 # WSTG-ATHZ-04 — Testing for Insecure Direct Object References
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 識別子を差し替えて他人のデータにアクセスできないか（IDOR）を確認する。

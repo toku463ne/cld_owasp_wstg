@@ -1,5 +1,8 @@
 # WSTG-INPV-07 — Testing for XML Injection
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 XML 入力の解析で構造改変や外部実体参照（XXE）が起きないかを確認する。

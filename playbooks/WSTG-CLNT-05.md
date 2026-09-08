@@ -1,5 +1,8 @@
 # WSTG-CLNT-05 — Testing for CSS Injection
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 入力が CSS として解釈され、情報の抜き出しや表示改変ができないかを確認する。

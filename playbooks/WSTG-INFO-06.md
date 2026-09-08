@@ -1,5 +1,8 @@
 # WSTG-INFO-06 — Identify Application Entry Points
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 アプリが受け付ける入力点（URL・パラメータ・ヘッダ・Cookie・ファイル）を漏れなく列挙し、以降のテストの土台にする。

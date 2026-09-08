@@ -1,5 +1,8 @@
 # WSTG-CONF-05 — Enumerate Infrastructure and Application Admin Interfaces
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 管理インタフェース（インフラ・アプリ両方）の露出と保護状況を確認する。

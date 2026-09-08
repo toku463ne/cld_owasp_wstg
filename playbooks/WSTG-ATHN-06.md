@@ -1,5 +1,8 @@
 # WSTG-ATHN-06 — Testing for Browser Cache Weaknesses
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 認証済み画面がブラウザキャッシュに残り、後から閲覧されないかを確認する。

@@ -1,5 +1,8 @@
 # WSTG-IDNT-01 — Test Role Definitions
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 ロール定義が文書化され、実装と一致しているかを確認する。

@@ -1,5 +1,8 @@
 # WSTG-BUSL-04 — Test for Process Timing
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 処理時間・順序の隙を突けないか（レースを含む）を確認する。

@@ -1,5 +1,8 @@
 # WSTG-ERRH-02 — Testing for Stack Traces
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 > **v4.2 で統合済み**: このテストは「Testing for Improper Error Handling」に統合された。単独では実施せず、
 > 統合先のカードに従うこと。チェックリスト上は `na` で構わない。
 

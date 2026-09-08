@@ -1,5 +1,8 @@
 # WSTG-BUSL-05 — Test Number of Times a Function Can Be Used Limits
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 回数制限のある機能が実際に制限されているかを確認する。

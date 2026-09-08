@@ -1,5 +1,8 @@
 # WSTG-INPV-16 — Testing for HTTP Incoming Requests
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 リバースプロキシ等が受け取るリクエストの扱いに、迂回や露出がないかを確認する。

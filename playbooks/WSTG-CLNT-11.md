@@ -1,5 +1,8 @@
 # WSTG-CLNT-11 — Testing Web Messaging
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 postMessage による画面間通信が安全かを確認する。

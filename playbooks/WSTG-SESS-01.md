@@ -1,5 +1,8 @@
 # WSTG-SESS-01 — Testing for Session Management Schema
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 セッション管理方式（トークンの生成・保管・検証）が健全かを確認する。

@@ -1,5 +1,8 @@
 # WSTG-IDNT-03 — Test Account Provisioning Process
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 アカウント払い出し・停止・削除の運用が適切かを確認する。

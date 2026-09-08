@@ -1,5 +1,8 @@
 # WSTG-ATHZ-02 — Testing for Bypassing Authorization Schema
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 認可チェックを回避して他ロールの機能・データにアクセスできないかを確認する。

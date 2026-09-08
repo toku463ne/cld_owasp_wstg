@@ -1,5 +1,8 @@
 # WSTG-SESS-08 — Testing for Session Puzzling
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 同一のセッション変数が複数用途で使い回され、状態を取り違えないかを確認する。

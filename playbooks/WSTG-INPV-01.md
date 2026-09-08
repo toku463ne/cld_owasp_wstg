@@ -1,5 +1,8 @@
 # WSTG-INPV-01 — Testing for Reflected Cross Site Scripting
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 URL・フォームの入力がそのまま応答に反映され、スクリプトが実行されないかを確認する。

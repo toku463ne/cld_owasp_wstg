@@ -1,5 +1,8 @@
 # WSTG-INPV-04 — Testing for HTTP Parameter Pollution
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 同名パラメータを複数送ったときの解釈揺れを悪用できないかを確認する。

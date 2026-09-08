@@ -1,5 +1,8 @@
 # WSTG-CONF-03 — Test File Extensions Handling for Sensitive Information
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 拡張子の扱いによって、ソースや設定ファイルの中身が露出しないかを確認する。

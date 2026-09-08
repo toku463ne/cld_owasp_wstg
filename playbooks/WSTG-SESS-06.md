@@ -1,5 +1,8 @@
 # WSTG-SESS-06 — Testing for Logout Functionality
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 ログアウトでセッションが確実に破棄されるかを確認する。

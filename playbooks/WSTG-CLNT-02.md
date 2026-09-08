@@ -1,5 +1,8 @@
 # WSTG-CLNT-02 — Testing for JavaScript Execution
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 入力が JS の実行文脈に入り込まないかを確認する。

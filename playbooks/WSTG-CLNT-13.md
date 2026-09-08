@@ -1,5 +1,8 @@
 # WSTG-CLNT-13 — Testing for Cross Site Script Inclusion
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 認証済みの JS/JSON を外部サイトから読み込ませて情報を抜けないか（XSSI）を確認する。

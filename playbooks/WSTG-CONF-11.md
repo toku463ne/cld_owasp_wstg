@@ -1,5 +1,8 @@
 # WSTG-CONF-11 — Test Cloud Storage
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 クラウドストレージの公開設定が過剰でないかを確認する。

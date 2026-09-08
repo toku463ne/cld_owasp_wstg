@@ -1,5 +1,8 @@
 # WSTG-INFO-10 — Map Application Architecture
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 WAF・LB・リバースプロキシ・API GW・DB など、経路上の構成要素を推定する。

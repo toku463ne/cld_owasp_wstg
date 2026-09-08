@@ -1,5 +1,8 @@
 # WSTG-CLNT-01 — Testing for DOM-Based Cross Site Scripting
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 クライアント側 JS のシンクで XSS が成立しないかを確認する。

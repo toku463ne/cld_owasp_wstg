@@ -1,5 +1,8 @@
 # WSTG-ATHN-02 — Testing for Default Credentials
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 既定の資格情報や推測しやすいアカウントが残っていないかを確認する。

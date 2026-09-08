@@ -1,5 +1,8 @@
 # WSTG-ATHZ-01 — Testing Directory Traversal File Include
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 パス・ファイル名を扱う機能で、意図しないファイルを読めないかを確認する。

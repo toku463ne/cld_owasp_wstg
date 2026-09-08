@@ -1,5 +1,8 @@
 # WSTG-CRYP-01 — Testing for Weak Transport Layer Security
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 TLS の構成（プロトコル・暗号スイート・証明書）が現行水準を満たすかを確認する。

@@ -1,5 +1,8 @@
 # WSTG-ATHN-05 — Testing for Vulnerable Remember Password
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 ログイン保持機能が資格情報を危険な形で保存・送信していないかを確認する。

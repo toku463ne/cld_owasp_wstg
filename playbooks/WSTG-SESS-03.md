@@ -1,5 +1,8 @@
 # WSTG-SESS-03 — Testing for Session Fixation
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 ログイン前のセッション ID が継続利用されないか（セッション固定）を確認する。

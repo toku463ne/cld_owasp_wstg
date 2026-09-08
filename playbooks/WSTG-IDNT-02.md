@@ -1,5 +1,8 @@
 # WSTG-IDNT-02 — Test User Registration Process
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 利用者登録プロセスに、なりすましや権限の不正取得の余地がないかを確認する。

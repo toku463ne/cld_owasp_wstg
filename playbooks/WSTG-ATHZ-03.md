@@ -1,5 +1,8 @@
 # WSTG-ATHZ-03 — Testing for Privilege Escalation
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 自分より高い権限へ昇格できないかを確認する。

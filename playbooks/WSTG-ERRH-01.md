@@ -1,5 +1,8 @@
 # WSTG-ERRH-01 — Testing for Improper Error Handling
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 エラー応答が内部情報を漏らしていないかを確認する（スタックトレースを含む）。

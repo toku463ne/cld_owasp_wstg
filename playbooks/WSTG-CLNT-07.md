@@ -1,5 +1,8 @@
 # WSTG-CLNT-07 — Testing Cross Origin Resource Sharing
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 CORS 設定が過剰に緩くないかを確認する。

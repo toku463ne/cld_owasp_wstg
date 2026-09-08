@@ -1,5 +1,8 @@
 # WSTG-CONF-02 — Test Application Platform Configuration
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 Web サーバ・アプリサーバの既定構成が残っていないかを確認する。

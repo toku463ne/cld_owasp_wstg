@@ -1,5 +1,8 @@
 # WSTG-BUSL-01 — Test Business Logic Data Validation
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 業務上ありえない値をサーバ側で拒否できているかを確認する。

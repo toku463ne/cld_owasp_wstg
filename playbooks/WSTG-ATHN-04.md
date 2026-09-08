@@ -1,5 +1,8 @@
 # WSTG-ATHN-04 — Testing for Bypassing Authentication Schema
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 認証を経ずに保護対象へ到達できる経路がないかを確認する。

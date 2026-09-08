@@ -1,5 +1,8 @@
 # WSTG-INPV-02 — Testing for Stored Cross Site Scripting
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 保存された入力が、他の利用者の画面でスクリプトとして実行されないかを確認する。

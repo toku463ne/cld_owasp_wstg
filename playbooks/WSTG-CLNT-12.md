@@ -1,5 +1,8 @@
 # WSTG-CLNT-12 — Testing Browser Storage
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 ブラウザストレージに機微情報が残っていないかを確認する。

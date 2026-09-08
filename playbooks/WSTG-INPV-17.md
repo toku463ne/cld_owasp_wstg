@@ -1,5 +1,8 @@
 # WSTG-INPV-17 — Testing for Host Header Injection
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 Host ヘッダの値を信用した処理がないかを確認する。

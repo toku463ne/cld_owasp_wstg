@@ -1,5 +1,8 @@
 # WSTG-INPV-19 — Testing for Server-Side Request Forgery
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 サーバに任意の宛先へリクエストさせられないかを確認する。

@@ -1,5 +1,8 @@
 # WSTG-INFO-01 — Conduct Search Engine Discovery Reconnaissance for Information Leakage
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 検索エンジンや公開アーカイブに、対象組織が意図せず晒した情報が残っていないかを確認する。

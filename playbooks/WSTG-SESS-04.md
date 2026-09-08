@@ -1,5 +1,8 @@
 # WSTG-SESS-04 — Testing for Exposed Session Variables
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 セッショントークンが漏れやすい場所に出ていないかを確認する。

@@ -1,5 +1,8 @@
 # WSTG-IDNT-04 — Testing for Account Enumeration and Guessable User Account
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 ログイン・登録・リセットの応答差から、有効なユーザ名を推測できないかを確認する。

@@ -1,5 +1,8 @@
 # WSTG-CLNT-10 — Testing WebSockets
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 WebSocket の接続・認可・暗号化が適切かを確認する。

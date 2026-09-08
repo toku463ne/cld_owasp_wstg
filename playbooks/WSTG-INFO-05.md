@@ -1,5 +1,8 @@
 # WSTG-INFO-05 — Review Webpage Content for Information Leakage
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 HTML コメント・JS・メタデータに、開発時の情報が残っていないかを確認する。

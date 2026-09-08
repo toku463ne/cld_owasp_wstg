@@ -1,5 +1,8 @@
 # WSTG-INPV-08 — Testing for SSI Injection
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 SSI（Server Side Includes）ディレクティブが入力経由で実行されないかを確認する。

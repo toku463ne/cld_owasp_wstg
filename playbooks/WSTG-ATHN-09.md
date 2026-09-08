@@ -1,5 +1,8 @@
 # WSTG-ATHN-09 — Testing for Weak Password Change or Reset Functionalities
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 パスワード変更・リセット機能に、他人のパスワードを変更できる欠陥がないかを確認する。

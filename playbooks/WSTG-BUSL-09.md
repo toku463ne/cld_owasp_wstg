@@ -1,5 +1,8 @@
 # WSTG-BUSL-09 — Test Upload of Malicious Files
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 悪意あるファイルの投入と実行が防がれているかを確認する。

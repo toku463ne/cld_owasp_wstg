@@ -1,5 +1,8 @@
 # WSTG-ATHN-07 — Testing for Weak Password Policy
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 パスワードポリシーが十分な強度を要求しているかを確認する。

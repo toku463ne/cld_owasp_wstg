@@ -1,5 +1,8 @@
 # WSTG-ATHN-03 — Testing for Weak Lock Out Mechanism
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 総当たり攻撃に対するロックアウト等の抑止が機能しているかを確認する。

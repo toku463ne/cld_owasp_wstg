@@ -1,5 +1,8 @@
 # WSTG-CONF-06 — Test HTTP Methods
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 サーバが受け付ける HTTP メソッドを列挙し、危険なメソッドや迂回の余地がないかを確認する。

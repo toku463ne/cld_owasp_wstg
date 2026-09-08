@@ -1,5 +1,8 @@
 # WSTG-BUSL-03 — Test Integrity Checks
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 データの整合性チェック（改ざん検知）が機能しているかを確認する。

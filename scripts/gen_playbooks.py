@@ -124,6 +124,9 @@ def render_card(test, criteria: dict, activities: list, act_defs: dict) -> str:
     w = out.append
     w(f"# {test.id} — {test.title}")
     w("")
+    w("<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。")
+    w("     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->")
+    w("")
 
     if test.deprecated:
         w(f"> **v4.2 で統合済み**: このテストは「{test.merged_into}」に統合された。単独では実施せず、")

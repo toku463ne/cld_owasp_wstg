@@ -1,5 +1,8 @@
 # WSTG-CONF-01 — Test Network Infrastructure Configuration
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 ネットワーク構成として、公開すべきでないサービス・ポート・管理経路が外部に出ていないかを確認する。

@@ -1,5 +1,8 @@
 # WSTG-CONF-04 — Review Old Backup and Unreferenced Files for Sensitive Information
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 公開ディレクトリに残った旧版・バックアップ・未参照ファイルを探す。

@@ -1,5 +1,8 @@
 # WSTG-CONF-08 — Test RIA Cross Domain Policy
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 crossdomain.xml / clientaccesspolicy.xml による過剰なクロスドメイン許可がないかを確認する。

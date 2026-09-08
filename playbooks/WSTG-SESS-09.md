@@ -1,5 +1,8 @@
 # WSTG-SESS-09 — Testing for Session Hijacking
 
+<!-- 自動生成: scripts/gen_playbooks.py — このファイルを直接編集しない。
+     判定基準は matrix/criteria.yaml、アクティビティは matrix/coverage.yaml を直す。 -->
+
 ## 目的
 
 取得したトークンが別環境から再利用できないか（ハイジャック成立性）を確認する。
