@@ -1,0 +1,15 @@
+# 機密：ペネトレーションテストの生エビデンス。社内PCのローカルのみ。
+/evidence/*
+!/evidence/.gitkeep
+
+# WSTG 原文（公開情報・大容量）。fetch_wstg.sh で再取得できるため追跡しない。
+/docs/owasp/*
+!/docs/owasp/FETCH.md
+
+# 生成される集約CSV（レビュー用の一時物）
+/checklist_export.csv
+
+# 一般
+__pycache__/
+*.pyc
+.venv/

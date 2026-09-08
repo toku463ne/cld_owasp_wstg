@@ -1,0 +1,48 @@
+# WSTG-CRYP-02 — Testing for Padding Oracle
+
+## 目的
+
+暗号文の改変に対する応答差から平文を復元できないか（パディングオラクル）を確認する。
+
+WSTG の Test Objectives:
+
+- Identify encrypted messages that rely on padding.
+- Attempt to break the padding of the encrypted messages and analyze the returned error messages for further analysis.
+
+## 前提 / スコープ
+
+- 対象: 検査スコープ内のホスト・アプリ
+- 権限: 必要な認証済みアカウント（ロールごとに1つ）
+- 準備: プロキシ設定・スコープ制限（対象外ホストへ飛ばさない）
+
+## 手順
+
+1. **Black-Box Testing** — First the possible input points for padding oracles must be identified
+2. **Gray-Box Testing** — Verify that all places where encrypted data from the client, that should only be known by the server, is decrypted
+
+## 使用ツール
+
+- Bletchley
+- PadBuster
+- Padding Oracle Exploitation Tool (POET)
+- Poracle
+- python-paddingoracle
+
+## 判定基準（pass / fail の見分け）
+
+- **pass**: 復号失敗時の応答が一様で、パディング誤りと内容誤りを区別できない。
+- **fail**: 応答内容・ステータス・時間差で復号可否が判別でき、平文を復元できる。
+- 補足: 対象は Cookie・ViewState・URL 中の暗号化トークン。実行前に負荷と件数を合意する。
+
+## 記録すべき成果物（run.yaml へ）
+
+- `commands:` — `scripts/run_cmd.py` 経由で実行したコマンドは自動で残る
+- `steps:` — GUI（Burp 等）の操作は手記録
+- `artifacts:` — `artifacts/crypto-review.md`, `cmd/padbuster.txt`
+- `covers:` — `{id: WSTG-CRYP-02, verdict: pass|fail|info|na, finding: 要約, evidence: パス}`
+
+## カバーするアクティビティ
+
+- `crypto-review` — 暗号利用のレビュー（パディングオラクル・弱い暗号・平文送出）
+
+原文: https://owasp.org/www-project-web-security-testing-guide/stable/4-Web_Application_Security_Testing/09-Testing_for_Weak_Cryptography/02-Testing_for_Padding_Oracle

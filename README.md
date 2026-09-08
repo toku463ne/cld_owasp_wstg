@@ -1,0 +1,140 @@
+# WSTG 実施支援システム
+
+OWASP Web Security Testing Guide (WSTG) **v4.2** を、**収集アクティビティ単位**で
+回すための方法論とツール一式。
+
+- WSTG 項目を1件ずつ潰すのではなく、1回の収集（例: 「認証済みクロール」）で
+  該当する複数の WSTG-ID にまとめてチェックを入れる。
+- チェックリスト（`checklist_export.csv`）は **概要のみ**。詳細は各エビデンス
+  フォルダを見れば分かる、という前提で運用する。
+- 実エビデンスはこのリポジトリに入れない（`evidence/` は `.gitignore` 済み）。
+
+## 全体像
+
+```
+WSTG 原文 ──▶ matrix/wstg_tests.yaml ──┐
+(公開情報)                              ├─▶ playbooks/WSTG-*.md（実施カード）
+matrix/criteria.yaml（判定基準・手書き）─┘
+                                        
+matrix/coverage.yaml（アクティビティ定義）
+   │ new_activity.py
+   ▼
+evidence/<activity>-<date>/run.yaml ──▶ export_checklist.py ──▶ checklist_export.csv
+   ▲                                                                   │
+   └ run_cmd.py（コマンド実行ログを自動追記）                目視レビュー ▼
+                                                              Google Sheets
+```
+
+## セットアップ
+
+```bash
+pip install -r requirements.txt   # PyYAML のみ
+./scripts/fetch_wstg.sh           # WSTG v4.2 原文を docs/owasp/ へ（追跡されない）
+```
+
+原文が無くても、`matrix/wstg_tests.yaml` と `playbooks/` は生成済みなので
+日々の運用（アクティビティ作成〜CSV 出力）は動く。原文が要るのは再生成のときだけ。
+
+## 日々の流れ
+
+### 1. アクティビティを開始する
+
+```bash
+python scripts/new_activity.py burp-crawl-authn
+# -> evidence/burp-crawl-authn-20260908/{run.yaml,cmd/,artifacts/,notes.md}
+```
+
+`run.yaml` の `covers:` には、そのアクティビティがカバーする WSTG-ID が
+`matrix/coverage.yaml` から自動で入る（`verdict: todo`）。
+
+対応するプレイブックカード（`playbooks/WSTG-*.md`）を開きながら進める。
+一覧は `playbooks/INDEX.md`、どのアクティビティが何を満たすかは `matrix/coverage.md`。
+
+### 2. CLI はロガー経由で実行する
+
+```bash
+python scripts/run_cmd.py evidence/burp-crawl-authn-20260908 -- nmap -sV -p- target.example
+python scripts/run_cmd.py evidence/tls-scan-20260908 --note "本番のみ" -- testssl.sh --quiet target.example
+```
+
+- 出力は `cmd/<slug>.txt` に保存され、画面にもそのまま流れる。
+- `run.yaml` の `commands:` に、実行したコマンド行・出力先・開始時刻・終了コード・所要秒が追記される。
+- **GUI ツール（Burp / ZAP など）は対象外**。何をしたかを `run.yaml` の `steps:` に手記録する。
+  ここが再現メモになるので、スコープ設定・使った機能・エクスポート先まで書く。
+
+### 3. 判定を書く
+
+`run.yaml` の `covers:` を埋める。
+
+```yaml
+covers:
+  - id: WSTG-INFO-06
+    verdict: pass          # pass | fail | info | na | todo
+    finding: "エントリポイントを列挙。認証必須の管理系2件を確認（生値は artifacts 参照）"
+    evidence: artifacts/entry-points.txt
+```
+
+`finding` は **要約のみ**。生トークン・資格情報・生ホスト名は書かず、`evidence:` の
+パスで実物を参照させる。
+
+### 4. チェックリストを出力する
+
+```bash
+python scripts/export_checklist.py --summary
+# -> checklist_export.csv（全 97 項目。未実施は todo のまま）
+```
+
+集約ステータスは `fail > todo > info > pass > na` の優先度。同じ WSTG-ID を複数の
+アクティビティが触っていれば、最も注意すべきものが採用される。
+
+出力後は **目視レビュー** し、Google Sheets で
+「ファイル → インポート → アップロード → 現在のシートを置換」で取り込む。
+
+（任意）`--push --sheet-id <ID>` でシートへ直接反映もできる。既定は CSV 出力のみ。
+機密が混じっていないか自分で確認してから使うこと。
+
+## リポジトリ構成
+
+| パス | 中身 | 追跡 |
+|------|------|------|
+| `scripts/` | 取得・生成・実行ログ・集約のスクリプト | ✅ |
+| `matrix/coverage.yaml` | アクティビティ定義（**手編集**）＋自動生成の双方向インデックス | ✅ |
+| `matrix/coverage.md` | 同・人間可読（自動生成） | ✅ |
+| `matrix/criteria.yaml` | pass/fail の判定基準（**手編集**・育てる） | ✅ |
+| `matrix/wstg_tests.yaml` | WSTG v4.2 のテスト一覧（自動生成） | ✅ |
+| `playbooks/` | 1テスト=1枚のカード（自動生成） | ✅ |
+| `templates/run.yaml` | run.yaml のスキーマ兼雛形 | ✅ |
+| `docs/owasp/` | WSTG 原文（`FETCH.md` 以外は追跡しない） | ❌ |
+| `evidence/` | 生エビデンス（社内PCのローカルのみ） | ❌ |
+| `checklist_export.csv` | 集約 CSV（レビュー用の一時物） | ❌ |
+
+## 生成物を作り直すとき
+
+```bash
+python scripts/build_wstg_index.py    # 原文 -> matrix/wstg_tests.yaml
+python scripts/build_coverage.py      # coverage.yaml の activities -> 索引 + coverage.md
+python scripts/gen_playbooks.py       # 原文 + criteria.yaml -> playbooks/
+```
+
+`--check` を付けると（前二者）書き換えずに差分の有無だけ確認できる。
+
+### アクティビティを増やす
+
+1. `matrix/coverage.yaml` の `activities:` に追記（`covers:` の `role` は
+   `primary`＝単独で判定できる / `secondary`＝入力・補強）。
+2. `python scripts/build_coverage.py` で索引と `coverage.md` を再生成。
+3. `python scripts/gen_playbooks.py` でカード側の「カバーするアクティビティ」も更新。
+
+### 判定基準を育てる
+
+現場で「ここが分かれ目だった」と思ったら `matrix/criteria.yaml` の該当 ID に
+`pass` / `fail` / `note` を書き足し、`gen_playbooks.py` を再実行する。
+カードがそのまま新人への説明台本になる。
+
+## 機密境界
+
+- `evidence/**` は社内PCのローカルのみ。コミットしない。AI にも渡さない。
+- 会社PC では repo を pull → スクリプト実行 → 生成物とカードを参照、で回す。
+- 実データの分析はローカル手作業または社内 Gemini。カードは「データと一緒に貼る
+  前提の説明文」として使える粒度で作ってある。
+- 詳細は `CLAUDE.md`（AI 向けの恒久ルール）を参照。

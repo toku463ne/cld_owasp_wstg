@@ -1,0 +1,49 @@
+# run.yaml — 収集アクティビティ1回分のメタデータ
+#
+# 置き場所: evidence/<activity_id>-<yyyymmdd>/run.yaml
+#   cmd/        CLI の生 stdout/stderr（scripts/run_cmd.py が保存）
+#   artifacts/  Burp エクスポート・スクショ・スキャンレポート
+#   notes.md    自由記述
+#
+# 機密の扱い:
+#   finding には「要約」だけを書く。生トークン・資格情報・生ホスト名などは書かず、
+#   evidence: のパスで実物を参照させる。
+
+activity_id: burp-crawl-authn
+title: 認証済みクロールとエントリポイント洗い出し
+date: 2026-09-08
+tester: TOKU
+target_scope: "（対象の識別子。生ホスト名を書きたくなければエイリアスで可）"
+
+tools:
+  - name: Burp Suite
+    version: "2025.x"
+    type: gui                 # cli | gui
+  - name: nmap
+    version: "7.9x"
+    type: cli
+
+# CLI：scripts/run_cmd.py が自動追記（exact なコマンド行＋出力先）
+commands:
+  - cmd: "nmap -sV -p- <target>"
+    output: cmd/nmap-full.txt
+    started_at: "2026-09-08T10:12:03+09:00"
+    exit_code: 0
+
+# GUI（Burp 等）：何をしたかを手記録。ここが「操作の再現メモ」
+steps:
+  - "Proxy でログイン POST /api/login を捕捉"
+  - "認証済みセッションから Spider を実行（scope=アプリのホストのみ）"
+  - "発見したエントリポイント一覧を artifacts/entry-points.txt にエクスポート"
+
+# カバレッジと判定（チェックリストの元データ）
+# verdict: pass | fail | info | na | todo
+covers:
+  - id: WSTG-INFO-06
+    verdict: pass
+    finding: "エントリポイントを列挙。認証必須の管理系2件を確認（生値は artifacts 参照）"
+    evidence: artifacts/entry-points.txt
+  - id: WSTG-INFO-07
+    verdict: info
+    finding: "実行パスをマッピング。詳細は Burp プロジェクト参照"
+    evidence: artifacts/burp-crawl.burp

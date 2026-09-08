@@ -1,0 +1,49 @@
+# WSTG-INPV-15 — Testing for HTTP Splitting Smuggling
+
+## 目的
+
+リクエスト/レスポンスの境界解釈のずれを悪用できないかを確認する。
+
+WSTG の Test Objectives:
+
+- Assess if the application is vulnerable to splitting, identifying what possible attacks are achievable.
+- Assess if the chain of communication is vulnerable to smuggling, identifying what possible attacks are achievable.
+
+## 前提 / スコープ
+
+- 対象: 検査スコープ内のホスト・アプリ
+- 権限: 必要な認証済みアカウント（ロールごとに1つ）
+- 準備: プロキシ設定・スコープ制限（対象外ホストへ飛ばさない）
+
+## 手順
+
+1. **Black-Box Testing**
+2. **HTTP Splitting** — Some web applications use part of the user input to generate the values of some headers of their responses
+3. **Gray-Box Testing**
+4. **HTTP Splitting** — Some web applications use part of the user input to generate the values of some headers of their responses
+5. **HTTP Smuggling** — As mentioned in the introduction, HTTP Smuggling leverages the different ways that a particularly crafted HTTP message can be parsed and int …
+
+## 使用ツール
+
+- Burp Suite
+- Burp HTTP Request Smuggler
+- curl
+
+## 判定基準（pass / fail の見分け）
+
+- **pass**: CR/LF がヘッダに注入できず、Content-Length と Transfer-Encoding の扱いが経路全体で一貫している。
+- **fail**: ヘッダ分割、またはフロントとバックの解釈差でリクエストを密輸できる。
+- 補足: スマグリング検証は他利用者に影響し得る。実施前に必ず合意と時間帯調整を行う。
+
+## 記録すべき成果物（run.yaml へ）
+
+- `commands:` — `scripts/run_cmd.py` 経由で実行したコマンドは自動で残る
+- `steps:` — GUI（Burp 等）の操作は手記録
+- `artifacts:` — `artifacts/request-tamper.md`, `cmd/curl-hosthdr.txt`
+- `covers:` — `{id: WSTG-INPV-15, verdict: pass|fail|info|na, finding: 要約, evidence: パス}`
+
+## カバーするアクティビティ
+
+- `http-request-tamper` — HTTP リクエスト改変系の検証
+
+原文: https://owasp.org/www-project-web-security-testing-guide/stable/4-Web_Application_Security_Testing/07-Input_Validation_Testing/15-Testing_for_HTTP_Splitting_Smuggling

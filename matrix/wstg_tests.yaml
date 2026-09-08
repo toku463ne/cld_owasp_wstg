@@ -1,0 +1,400 @@
+# 自動生成ファイル — 手で編集しない。
+# 生成元: scripts/build_wstg_index.py（docs/owasp の WSTG 原文を解析）
+# 生成日: 2026-09-08
+wstg_version: "4.2"
+count: 97
+tests:
+  - id: WSTG-INFO-01
+    category: INFO
+    category_name: "Information Gathering"
+    title: "Conduct Search Engine Discovery Reconnaissance for Information Leakage"
+  - id: WSTG-INFO-02
+    category: INFO
+    category_name: "Information Gathering"
+    title: "Fingerprint Web Server"
+  - id: WSTG-INFO-03
+    category: INFO
+    category_name: "Information Gathering"
+    title: "Review Webserver Metafiles for Information Leakage"
+  - id: WSTG-INFO-04
+    category: INFO
+    category_name: "Information Gathering"
+    title: "Enumerate Applications on Webserver"
+  - id: WSTG-INFO-05
+    category: INFO
+    category_name: "Information Gathering"
+    title: "Review Webpage Content for Information Leakage"
+  - id: WSTG-INFO-06
+    category: INFO
+    category_name: "Information Gathering"
+    title: "Identify Application Entry Points"
+  - id: WSTG-INFO-07
+    category: INFO
+    category_name: "Information Gathering"
+    title: "Map Execution Paths Through Application"
+  - id: WSTG-INFO-08
+    category: INFO
+    category_name: "Information Gathering"
+    title: "Fingerprint Web Application Framework"
+  - id: WSTG-INFO-09
+    category: INFO
+    category_name: "Information Gathering"
+    title: "Fingerprint Web Application"
+    deprecated: true
+    merged_into: "Fingerprint Web Application Framework"
+  - id: WSTG-INFO-10
+    category: INFO
+    category_name: "Information Gathering"
+    title: "Map Application Architecture"
+  - id: WSTG-CONF-01
+    category: CONF
+    category_name: "Configuration and Deployment Management"
+    title: "Test Network Infrastructure Configuration"
+  - id: WSTG-CONF-02
+    category: CONF
+    category_name: "Configuration and Deployment Management"
+    title: "Test Application Platform Configuration"
+  - id: WSTG-CONF-03
+    category: CONF
+    category_name: "Configuration and Deployment Management"
+    title: "Test File Extensions Handling for Sensitive Information"
+  - id: WSTG-CONF-04
+    category: CONF
+    category_name: "Configuration and Deployment Management"
+    title: "Review Old Backup and Unreferenced Files for Sensitive Information"
+  - id: WSTG-CONF-05
+    category: CONF
+    category_name: "Configuration and Deployment Management"
+    title: "Enumerate Infrastructure and Application Admin Interfaces"
+  - id: WSTG-CONF-06
+    category: CONF
+    category_name: "Configuration and Deployment Management"
+    title: "Test HTTP Methods"
+  - id: WSTG-CONF-07
+    category: CONF
+    category_name: "Configuration and Deployment Management"
+    title: "Test HTTP Strict Transport Security"
+  - id: WSTG-CONF-08
+    category: CONF
+    category_name: "Configuration and Deployment Management"
+    title: "Test RIA Cross Domain Policy"
+  - id: WSTG-CONF-09
+    category: CONF
+    category_name: "Configuration and Deployment Management"
+    title: "Test File Permission"
+  - id: WSTG-CONF-10
+    category: CONF
+    category_name: "Configuration and Deployment Management"
+    title: "Test for Subdomain Takeover"
+  - id: WSTG-CONF-11
+    category: CONF
+    category_name: "Configuration and Deployment Management"
+    title: "Test Cloud Storage"
+  - id: WSTG-IDNT-01
+    category: IDNT
+    category_name: "Identity Management"
+    title: "Test Role Definitions"
+  - id: WSTG-IDNT-02
+    category: IDNT
+    category_name: "Identity Management"
+    title: "Test User Registration Process"
+  - id: WSTG-IDNT-03
+    category: IDNT
+    category_name: "Identity Management"
+    title: "Test Account Provisioning Process"
+  - id: WSTG-IDNT-04
+    category: IDNT
+    category_name: "Identity Management"
+    title: "Testing for Account Enumeration and Guessable User Account"
+  - id: WSTG-IDNT-05
+    category: IDNT
+    category_name: "Identity Management"
+    title: "Testing for Weak or Unenforced Username Policy"
+  - id: WSTG-ATHN-01
+    category: ATHN
+    category_name: "Authentication"
+    title: "Testing for Credentials Transported over an Encrypted Channel"
+  - id: WSTG-ATHN-02
+    category: ATHN
+    category_name: "Authentication"
+    title: "Testing for Default Credentials"
+  - id: WSTG-ATHN-03
+    category: ATHN
+    category_name: "Authentication"
+    title: "Testing for Weak Lock Out Mechanism"
+  - id: WSTG-ATHN-04
+    category: ATHN
+    category_name: "Authentication"
+    title: "Testing for Bypassing Authentication Schema"
+  - id: WSTG-ATHN-05
+    category: ATHN
+    category_name: "Authentication"
+    title: "Testing for Vulnerable Remember Password"
+  - id: WSTG-ATHN-06
+    category: ATHN
+    category_name: "Authentication"
+    title: "Testing for Browser Cache Weaknesses"
+  - id: WSTG-ATHN-07
+    category: ATHN
+    category_name: "Authentication"
+    title: "Testing for Weak Password Policy"
+  - id: WSTG-ATHN-08
+    category: ATHN
+    category_name: "Authentication"
+    title: "Testing for Weak Security Question Answer"
+  - id: WSTG-ATHN-09
+    category: ATHN
+    category_name: "Authentication"
+    title: "Testing for Weak Password Change or Reset Functionalities"
+  - id: WSTG-ATHN-10
+    category: ATHN
+    category_name: "Authentication"
+    title: "Testing for Weaker Authentication in Alternative Channel"
+  - id: WSTG-ATHZ-01
+    category: ATHZ
+    category_name: "Authorization"
+    title: "Testing Directory Traversal File Include"
+  - id: WSTG-ATHZ-02
+    category: ATHZ
+    category_name: "Authorization"
+    title: "Testing for Bypassing Authorization Schema"
+  - id: WSTG-ATHZ-03
+    category: ATHZ
+    category_name: "Authorization"
+    title: "Testing for Privilege Escalation"
+  - id: WSTG-ATHZ-04
+    category: ATHZ
+    category_name: "Authorization"
+    title: "Testing for Insecure Direct Object References"
+  - id: WSTG-SESS-01
+    category: SESS
+    category_name: "Session Management"
+    title: "Testing for Session Management Schema"
+  - id: WSTG-SESS-02
+    category: SESS
+    category_name: "Session Management"
+    title: "Testing for Cookies Attributes"
+  - id: WSTG-SESS-03
+    category: SESS
+    category_name: "Session Management"
+    title: "Testing for Session Fixation"
+  - id: WSTG-SESS-04
+    category: SESS
+    category_name: "Session Management"
+    title: "Testing for Exposed Session Variables"
+  - id: WSTG-SESS-05
+    category: SESS
+    category_name: "Session Management"
+    title: "Testing for Cross Site Request Forgery"
+  - id: WSTG-SESS-06
+    category: SESS
+    category_name: "Session Management"
+    title: "Testing for Logout Functionality"
+  - id: WSTG-SESS-07
+    category: SESS
+    category_name: "Session Management"
+    title: "Testing Session Timeout"
+  - id: WSTG-SESS-08
+    category: SESS
+    category_name: "Session Management"
+    title: "Testing for Session Puzzling"
+  - id: WSTG-SESS-09
+    category: SESS
+    category_name: "Session Management"
+    title: "Testing for Session Hijacking"
+  - id: WSTG-INPV-01
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for Reflected Cross Site Scripting"
+  - id: WSTG-INPV-02
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for Stored Cross Site Scripting"
+  - id: WSTG-INPV-03
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for HTTP Verb Tampering"
+    deprecated: true
+    merged_into: "Test HTTP Methods"
+  - id: WSTG-INPV-04
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for HTTP Parameter Pollution"
+  - id: WSTG-INPV-05
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for SQL Injection"
+  - id: WSTG-INPV-06
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for LDAP Injection"
+  - id: WSTG-INPV-07
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for XML Injection"
+  - id: WSTG-INPV-08
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for SSI Injection"
+  - id: WSTG-INPV-09
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for XPath Injection"
+  - id: WSTG-INPV-10
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for IMAP SMTP Injection"
+  - id: WSTG-INPV-11
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for Code Injection"
+  - id: WSTG-INPV-12
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for Command Injection"
+  - id: WSTG-INPV-13
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for Format String Injection"
+  - id: WSTG-INPV-14
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for Incubated Vulnerability"
+  - id: WSTG-INPV-15
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for HTTP Splitting Smuggling"
+  - id: WSTG-INPV-16
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for HTTP Incoming Requests"
+  - id: WSTG-INPV-17
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for Host Header Injection"
+  - id: WSTG-INPV-18
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for Server-side Template Injection"
+  - id: WSTG-INPV-19
+    category: INPV
+    category_name: "Input Validation"
+    title: "Testing for Server-Side Request Forgery"
+  - id: WSTG-ERRH-01
+    category: ERRH
+    category_name: "Error Handling"
+    title: "Testing for Improper Error Handling"
+  - id: WSTG-ERRH-02
+    category: ERRH
+    category_name: "Error Handling"
+    title: "Testing for Stack Traces"
+    deprecated: true
+    merged_into: "Testing for Improper Error Handling"
+  - id: WSTG-CRYP-01
+    category: CRYP
+    category_name: "Weak Cryptography"
+    title: "Testing for Weak Transport Layer Security"
+  - id: WSTG-CRYP-02
+    category: CRYP
+    category_name: "Weak Cryptography"
+    title: "Testing for Padding Oracle"
+  - id: WSTG-CRYP-03
+    category: CRYP
+    category_name: "Weak Cryptography"
+    title: "Testing for Sensitive Information Sent via Unencrypted Channels"
+  - id: WSTG-CRYP-04
+    category: CRYP
+    category_name: "Weak Cryptography"
+    title: "Testing for Weak Encryption"
+  - id: WSTG-BUSL-01
+    category: BUSL
+    category_name: "Business Logic"
+    title: "Test Business Logic Data Validation"
+  - id: WSTG-BUSL-02
+    category: BUSL
+    category_name: "Business Logic"
+    title: "Test Ability to Forge Requests"
+  - id: WSTG-BUSL-03
+    category: BUSL
+    category_name: "Business Logic"
+    title: "Test Integrity Checks"
+  - id: WSTG-BUSL-04
+    category: BUSL
+    category_name: "Business Logic"
+    title: "Test for Process Timing"
+  - id: WSTG-BUSL-05
+    category: BUSL
+    category_name: "Business Logic"
+    title: "Test Number of Times a Function Can Be Used Limits"
+  - id: WSTG-BUSL-06
+    category: BUSL
+    category_name: "Business Logic"
+    title: "Testing for the Circumvention of Work Flows"
+  - id: WSTG-BUSL-07
+    category: BUSL
+    category_name: "Business Logic"
+    title: "Test Defenses Against Application Misuse"
+  - id: WSTG-BUSL-08
+    category: BUSL
+    category_name: "Business Logic"
+    title: "Test Upload of Unexpected File Types"
+  - id: WSTG-BUSL-09
+    category: BUSL
+    category_name: "Business Logic"
+    title: "Test Upload of Malicious Files"
+  - id: WSTG-CLNT-01
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing for DOM-Based Cross Site Scripting"
+  - id: WSTG-CLNT-02
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing for JavaScript Execution"
+  - id: WSTG-CLNT-03
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing for HTML Injection"
+  - id: WSTG-CLNT-04
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing for Client-side URL Redirect"
+  - id: WSTG-CLNT-05
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing for CSS Injection"
+  - id: WSTG-CLNT-06
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing for Client-side Resource Manipulation"
+  - id: WSTG-CLNT-07
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing Cross Origin Resource Sharing"
+  - id: WSTG-CLNT-08
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing for Cross Site Flashing"
+  - id: WSTG-CLNT-09
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing for Clickjacking"
+  - id: WSTG-CLNT-10
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing WebSockets"
+  - id: WSTG-CLNT-11
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing Web Messaging"
+  - id: WSTG-CLNT-12
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing Browser Storage"
+  - id: WSTG-CLNT-13
+    category: CLNT
+    category_name: "Client-side"
+    title: "Testing for Cross Site Script Inclusion"
+  - id: WSTG-APIT-01
+    category: APIT
+    category_name: "API Testing"
+    title: "Testing GraphQL"

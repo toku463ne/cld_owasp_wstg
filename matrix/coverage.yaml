@@ -1,0 +1,744 @@
+# アクティビティ → WSTG-ID 対応表（機械可読）
+#
+# 設計思想: WSTG 項目を1件ずつ潰すのではなく、「1回の収集アクティビティ」で
+# 複数の WSTG-ID に一括でチェックを入れる。1つの WSTG-ID を複数アクティビティが
+# カバーしてよい（role: primary / secondary で主従を示す）。
+#
+# ここ（activities:）が唯一の手編集ポイント。
+# 末尾の by_activity / by_wstg と matrix/coverage.md は
+#   python scripts/build_coverage.py
+# で再生成される。
+#
+# role:
+#   primary   … このアクティビティ単独で当該 WSTG-ID の判定まで到達できる
+#   secondary … 入力・補強にはなるが、単独では判定を確定させない
+
+activities:
+  - id: recon-osint
+    title: 外部 OSINT・公開情報の収集
+    summary: 検索エンジン・証明書透明性ログ・whois から、対象の公開露出面とサブドメインを洗い出す。
+    tools: [theHarvester, "crt.sh", whois, "Google/Bing dorking", amass]
+    outputs: [artifacts/subdomains.txt, artifacts/dorking-hits.md, cmd/whois.txt]
+    covers:
+      - {id: WSTG-INFO-01, role: primary, note: "検索エンジンに残った情報漏えいの有無"}
+      - {id: WSTG-CONF-10, role: secondary, note: "サブドメイン列挙が乗っ取り判定の入力"}
+
+  - id: fingerprint-stack
+    title: サーバ・フレームワークのフィンガープリント
+    summary: ポート/サービス/ヘッダ/既知の指紋から、OS・Web サーバ・ミドルウェア・アプリ基盤を特定する。
+    tools: ["nmap -sV", whatweb, Wappalyzer, httpx]
+    outputs: [cmd/nmap-sv.txt, cmd/whatweb.txt, artifacts/stack-summary.md]
+    covers:
+      - {id: WSTG-INFO-02, role: primary}
+      - {id: WSTG-INFO-08, role: primary}
+      - {id: WSTG-CONF-01, role: secondary, note: "露出サービス一覧がネットワーク構成レビューの入力"}
+      - {id: WSTG-CONF-02, role: secondary, note: "既知の既定構成・バージョンの手掛かり"}
+
+  - id: tls-scan
+    title: TLS 設定スキャン
+    summary: 対象の全 TLS ポートに対して暗号スイート・プロトコル・証明書・HSTS を一括検査する。
+    tools: ["testssl.sh", sslyze, "nmap --script ssl-enum-ciphers"]
+    outputs: [cmd/testssl.txt, artifacts/tls-summary.md]
+    covers:
+      - {id: WSTG-CRYP-01, role: primary}
+      - {id: WSTG-CONF-07, role: primary, note: "HSTS ヘッダの有無・max-age・includeSubDomains"}
+      - {id: WSTG-CONF-01, role: secondary, note: "TLS を終端する構成要素の把握"}
+
+  - id: http-methods
+    title: HTTP メソッドの列挙と検証
+    summary: OPTIONS 応答を鵜呑みにせず、実際に各メソッドを投げて許可状況と挙動差を確認する。
+    tools: [curl, "nmap http-methods NSE", ncat, Burp Repeater]
+    outputs: [cmd/curl-options.txt, cmd/nmap-http-methods.txt]
+    covers:
+      - {id: WSTG-CONF-06, role: primary}
+      - {id: WSTG-INPV-03, role: secondary, note: "v4.2 では CONF-06 に統合（HTTP verb tampering）"}
+
+  - id: headers-review
+    title: レスポンスヘッダ一括精査（匿名 + 認証済み）
+    summary: 代表エンドポイントについて匿名・認証済みの応答を1セット取得し、セキュリティ関連ヘッダを横断レビューする。
+    tools: [curl, Burp Suite, "securityheaders.io 相当の手動チェック"]
+    outputs: [cmd/curl-headers-anon.txt, cmd/curl-headers-authn.txt, artifacts/headers-matrix.md]
+    covers:
+      - {id: WSTG-SESS-02, role: primary, note: "Set-Cookie の Secure/HttpOnly/SameSite/Domain/Path/prefix"}
+      - {id: WSTG-CONF-07, role: primary, note: "Strict-Transport-Security"}
+      - {id: WSTG-CLNT-09, role: primary, note: "X-Frame-Options / CSP frame-ancestors"}
+      - {id: WSTG-ATHN-06, role: primary, note: "Cache-Control / Pragma（認証済み画面のブラウザキャッシュ）"}
+      - {id: WSTG-CLNT-07, role: primary, note: "Access-Control-Allow-Origin 等の CORS ヘッダ（旧指示の CONF-12 に相当）"}
+      - {id: WSTG-CRYP-03, role: secondary, note: "平文チャネルでの機微情報送出の兆候"}
+
+  - id: metafiles-crawl
+    title: メタファイル・公開コンテンツの収集
+    summary: robots.txt・sitemap・.well-known・security.txt・HTML コメント・JS ソースを機械収集して読み込む。
+    tools: [curl, wget, "grep/ripgrep", Burp Suite]
+    outputs: [cmd/curl-robots.txt, cmd/curl-wellknown.txt, artifacts/comments-grep.txt]
+    covers:
+      - {id: WSTG-INFO-03, role: primary}
+      - {id: WSTG-INFO-05, role: primary, note: "HTML コメント・JS 内の情報漏えい"}
+      - {id: WSTG-CONF-05, role: secondary, note: "robots.txt の Disallow が管理画面の入力になる"}
+
+  - id: enum-apps
+    title: 仮想ホスト・パスの列挙
+    summary: DNS/vhost と URL パスをファジングし、同一ホスト上の別アプリ・別インスタンスを洗い出す。
+    tools: [ffuf, dirsearch, gobuster, "nmap -p-"]
+    outputs: [cmd/ffuf-paths.txt, cmd/ffuf-vhost.txt, artifacts/app-inventory.md]
+    covers:
+      - {id: WSTG-INFO-04, role: primary}
+      - {id: WSTG-INFO-06, role: secondary, note: "発見したパスがエントリポイント洗い出しの入力"}
+
+  - id: burp-crawl-authn
+    title: 認証済みクロールとエントリポイント洗い出し
+    summary: 認証済みセッションでアプリ全体をクロールし、エントリポイント・実行パス・アーキテクチャを把握する。
+    tools: [Burp Suite, OWASP ZAP]
+    outputs: [artifacts/entry-points.txt, artifacts/sitemap.xml, notes.md]
+    covers:
+      - {id: WSTG-INFO-06, role: primary}
+      - {id: WSTG-INFO-07, role: primary}
+      - {id: WSTG-INFO-10, role: primary, note: "経路上の WAF・LB・API GW の推定"}
+      - {id: WSTG-CONF-05, role: primary, note: "管理インタフェースの実在確認"}
+
+  - id: session-capture
+    title: セッション取得とログイン/ログアウト解析
+    summary: ログイン〜操作〜ログアウトを1本のトレースとして取得し、トークンの生成・維持・破棄を追う。
+    tools: [Burp Suite, "Burp Sequencer", curl]
+    outputs: [artifacts/session-trace.burp, artifacts/token-samples.txt, notes.md]
+    covers:
+      - {id: WSTG-SESS-01, role: primary}
+      - {id: WSTG-SESS-02, role: primary}
+      - {id: WSTG-SESS-03, role: primary, note: "ログイン前後でトークンが再発行されるか"}
+      - {id: WSTG-SESS-06, role: primary}
+      - {id: WSTG-SESS-07, role: primary}
+      - {id: WSTG-SESS-09, role: secondary, note: "取得したトークンの再利用可否の入力"}
+
+  - id: backup-unref
+    title: 旧・バックアップ・未参照ファイルの探索
+    summary: 拡張子とファイル名のバリエーションを総当たりし、公開されている残骸ファイルを探す。
+    tools: [ffuf, dirsearch, nikto]
+    outputs: [cmd/ffuf-backup.txt, artifacts/found-files.md]
+    covers:
+      - {id: WSTG-CONF-03, role: primary}
+      - {id: WSTG-CONF-04, role: primary}
+
+  # --- 以下、初期10アクティビティで未カバーだった WSTG 項目を埋めるために追加 ---
+
+  - id: server-config-review
+    title: サーバ／プラットフォーム構成レビュー
+    summary: 構成ファイル・配置・権限・不要機能を（可能なら読み取り権限を得て）レビューする。ホスト側の情報提供が前提。
+    tools: [手動レビュー, "ls -l / icacls", nikto, "CIS Benchmark チェックリスト"]
+    outputs: [artifacts/config-review.md, notes.md]
+    covers:
+      - {id: WSTG-CONF-01, role: primary}
+      - {id: WSTG-CONF-02, role: primary}
+      - {id: WSTG-CONF-09, role: primary, note: "ファイル・ディレクトリのパーミッション"}
+
+  - id: cloud-and-takeover
+    title: クラウドストレージ・サブドメイン乗っ取りの確認
+    summary: 公開バケット等のストレージ露出と、宙に浮いた DNS レコードによる乗っ取り可能性を確認する。
+    tools: [curl, "aws cli", subjack, dnsx]
+    outputs: [cmd/curl-bucket.txt, artifacts/dangling-dns.md]
+    covers:
+      - {id: WSTG-CONF-11, role: primary}
+      - {id: WSTG-CONF-10, role: primary}
+
+  - id: ria-legacy-check
+    title: RIA クロスドメインポリシーとレガシー Flash の確認
+    summary: crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight コンテンツを確認する。
+    tools: [curl, 手動レビュー]
+    outputs: [cmd/curl-crossdomain.txt, artifacts/ria-findings.md]
+    covers:
+      - {id: WSTG-CONF-08, role: primary}
+      - {id: WSTG-CLNT-08, role: primary}
+
+  - id: identity-model-review
+    title: ロール定義・登録・払い出しプロセスのレビュー
+    summary: ドキュメントとヒアリング＋実機で、ロール定義・アカウント登録・払い出し・ユーザ名ポリシーを確認する。
+    tools: [手動レビュー, ヒアリング, Burp Suite]
+    outputs: [artifacts/role-matrix.md, notes.md]
+    covers:
+      - {id: WSTG-IDNT-01, role: primary}
+      - {id: WSTG-IDNT-02, role: primary}
+      - {id: WSTG-IDNT-03, role: primary}
+      - {id: WSTG-IDNT-05, role: primary}
+
+  - id: account-enum-probe
+    title: アカウント列挙とロックアウトの検証
+    summary: ログイン・登録・パスワードリセットの応答差（本文・ステータス・応答時間）を比較し、ロックアウト挙動も測る。
+    tools: [Burp Intruder, ffuf, curl]
+    outputs: [cmd/enum-responses.txt, artifacts/response-diff.md]
+    covers:
+      - {id: WSTG-IDNT-04, role: primary}
+      - {id: WSTG-ATHN-03, role: primary, note: "試行回数と解除条件"}
+      - {id: WSTG-IDNT-05, role: secondary}
+
+  - id: authn-flow-review
+    title: 認証フロー一括レビュー
+    summary: 認証の入口をひと通り触り、経路暗号化・既定資格情報・スキーマ迂回・記憶機能・パスワードポリシー・代替チャネルをまとめて確認する。
+    tools: [Burp Suite, curl, ブラウザ開発者ツール]
+    outputs: [artifacts/authn-notes.md, cmd/curl-login.txt]
+    covers:
+      - {id: WSTG-ATHN-01, role: primary}
+      - {id: WSTG-ATHN-02, role: primary}
+      - {id: WSTG-ATHN-04, role: primary}
+      - {id: WSTG-ATHN-05, role: primary}
+      - {id: WSTG-ATHN-06, role: secondary}
+      - {id: WSTG-ATHN-07, role: primary}
+      - {id: WSTG-ATHN-10, role: primary, note: "モバイル・API・SSO 等の代替入口"}
+      - {id: WSTG-CRYP-03, role: primary, note: "資格情報・機微情報が平文チャネルに出ていないか"}
+
+  - id: password-reset-review
+    title: パスワード変更・リセット機能のレビュー
+    summary: リセットトークンの強度・有効期限・所有確認、秘密の質問の強度を通しで確認する。
+    tools: [Burp Suite, メールクライアント, 手動レビュー]
+    outputs: [artifacts/reset-flow.md, notes.md]
+    covers:
+      - {id: WSTG-ATHN-08, role: primary}
+      - {id: WSTG-ATHN-09, role: primary}
+
+  - id: authz-matrix
+    title: 権限マトリクス試験（ロール横断リクエスト再送）
+    summary: 各ロールで採取した代表リクエストを、他ロール・未認証で再送して差分を見る。IDOR は識別子を差し替えて確認。
+    tools: [Burp Suite, "Autorize / AuthMatrix", curl]
+    outputs: [artifacts/authz-matrix.csv, notes.md]
+    covers:
+      - {id: WSTG-ATHZ-02, role: primary}
+      - {id: WSTG-ATHZ-03, role: primary}
+      - {id: WSTG-ATHZ-04, role: primary}
+      - {id: WSTG-SESS-08, role: secondary, note: "権限が別ロールへ引き継がれる挙動の兆候"}
+
+  - id: traversal-probe
+    title: ディレクトリトラバーサル・ファイルインクルードの検証
+    summary: パス・ファイル名を扱うパラメータを洗い出し、トラバーサルと LFI/RFI を確認する。
+    tools: [Burp Suite, ffuf, 手動 payload]
+    outputs: [cmd/traversal.txt, artifacts/traversal-findings.md]
+    covers:
+      - {id: WSTG-ATHZ-01, role: primary}
+      - {id: WSTG-CONF-03, role: secondary, note: "拡張子の扱いが入力になる"}
+
+  - id: session-abuse-tests
+    title: セッションの悪用系テスト（露出・CSRF・パズリング・ハイジャック）
+    summary: 取得済みセッションを使って、トークンの露出経路・CSRF 防御・状態の取り違え・再利用可否を検証する。
+    tools: [Burp Suite, curl, ブラウザ2枚]
+    outputs: [artifacts/csrf-poc.html, artifacts/session-abuse.md]
+    covers:
+      - {id: WSTG-SESS-04, role: primary, note: "URL・ログ・Referer へのトークン露出"}
+      - {id: WSTG-SESS-05, role: primary}
+      - {id: WSTG-SESS-08, role: primary}
+      - {id: WSTG-SESS-09, role: primary}
+
+  - id: xss-probe
+    title: XSS・HTML インジェクションの検証
+    summary: 反射・保存・DOM の各経路について、代表入力点にペイロードを流して出力エンコーディングを確認する。
+    tools: [Burp Suite, "DOM Invader", 手動 payload]
+    outputs: [artifacts/xss-findings.md, artifacts/payloads.txt]
+    covers:
+      - {id: WSTG-INPV-01, role: primary}
+      - {id: WSTG-INPV-02, role: primary}
+      - {id: WSTG-CLNT-01, role: primary}
+      - {id: WSTG-CLNT-03, role: primary}
+
+  - id: clientside-js-review
+    title: クライアントサイド JS のシンク・ストレージレビュー
+    summary: JS のソース/シンクを追い、URL リダイレクト・CSS/リソース操作・postMessage・ブラウザストレージ・XSSI をまとめて確認する。
+    tools: ["ブラウザ開発者ツール", "DOM Invader", "Retire.js", Burp Suite]
+    outputs: [artifacts/js-sinks.md, artifacts/storage-dump.md]
+    covers:
+      - {id: WSTG-CLNT-02, role: primary}
+      - {id: WSTG-CLNT-04, role: primary}
+      - {id: WSTG-CLNT-05, role: primary}
+      - {id: WSTG-CLNT-06, role: primary}
+      - {id: WSTG-CLNT-11, role: primary, note: "postMessage の origin 検証"}
+      - {id: WSTG-CLNT-12, role: primary, note: "localStorage / sessionStorage / IndexedDB"}
+      - {id: WSTG-CLNT-13, role: primary, note: "XSSI（JSON/JS の外部読み込み）"}
+
+  - id: cors-websocket-check
+    title: CORS と WebSocket の検証
+    summary: Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可・暗号化を確認する。
+    tools: [curl, Burp Suite, "wscat"]
+    outputs: [cmd/curl-cors.txt, artifacts/ws-trace.md]
+    covers:
+      - {id: WSTG-CLNT-07, role: primary}
+      - {id: WSTG-CLNT-10, role: primary}
+
+  - id: injection-fuzz-server
+    title: サーバサイド・インジェクション系の一括ファジング
+    summary: 収集済みエントリポイントに対し、SQL/LDAP/XML/SSI/XPath/IMAP-SMTP/コード/コマンド/書式文字列/SSTI を横断的に試す。
+    tools: [Burp Intruder, sqlmap, tplmap, 手動 payload]
+    outputs: [cmd/sqlmap.txt, artifacts/injection-findings.md]
+    covers:
+      - {id: WSTG-INPV-05, role: primary}
+      - {id: WSTG-INPV-06, role: primary}
+      - {id: WSTG-INPV-07, role: primary}
+      - {id: WSTG-INPV-08, role: primary}
+      - {id: WSTG-INPV-09, role: primary}
+      - {id: WSTG-INPV-10, role: primary}
+      - {id: WSTG-INPV-11, role: primary}
+      - {id: WSTG-INPV-12, role: primary}
+      - {id: WSTG-INPV-13, role: primary}
+      - {id: WSTG-INPV-18, role: primary}
+      - {id: WSTG-ERRH-01, role: secondary, note: "エラー応答の差分が副産物として得られる"}
+
+  - id: http-request-tamper
+    title: HTTP リクエスト改変系の検証
+    summary: パラメータ汚染・ヘッダ分割/スマグリング・Host ヘッダ・受信リクエストの扱いをまとめて検証する。
+    tools: [Burp Suite, "Burp HTTP Request Smuggler", curl]
+    outputs: [artifacts/request-tamper.md, cmd/curl-hosthdr.txt]
+    covers:
+      - {id: WSTG-INPV-04, role: primary}
+      - {id: WSTG-INPV-15, role: primary}
+      - {id: WSTG-INPV-16, role: primary}
+      - {id: WSTG-INPV-17, role: primary}
+
+  - id: ssrf-probe
+    title: SSRF の検証
+    summary: URL・ホスト名・ファイル参照を受けるパラメータを列挙し、外向き/内向きの到達性を確認する。
+    tools: [Burp Collaborator, "interactsh", curl]
+    outputs: [artifacts/ssrf-findings.md, cmd/ssrf-probe.txt]
+    covers:
+      - {id: WSTG-INPV-19, role: primary}
+
+  - id: error-handling-review
+    title: エラーハンドリングのレビュー
+    summary: 異常系を意図的に起こし、返る情報量（スタックトレース・SQL エラー・内部パス）を確認する。
+    tools: [Burp Suite, curl, 手動]
+    outputs: [artifacts/error-samples.md, cmd/curl-errors.txt]
+    covers:
+      - {id: WSTG-ERRH-01, role: primary}
+      - {id: WSTG-ERRH-02, role: secondary, note: "v4.2 では ERRH-01 に統合（スタックトレース）"}
+      - {id: WSTG-INFO-05, role: secondary}
+
+  - id: crypto-review
+    title: 暗号利用のレビュー（パディングオラクル・弱い暗号・平文送出）
+    summary: 暗号化された値の改変応答差、暗号アルゴリズム・鍵管理、平文チャネルでの機微情報送出を確認する。
+    tools: [padbuster, "testssl.sh", Burp Suite, 手動レビュー]
+    outputs: [artifacts/crypto-review.md, cmd/padbuster.txt]
+    covers:
+      - {id: WSTG-CRYP-02, role: primary}
+      - {id: WSTG-CRYP-03, role: primary}
+      - {id: WSTG-CRYP-04, role: primary}
+
+  - id: business-logic-walkthrough
+    title: 業務ロジックの通し検証
+    summary: 業務フローを正常系→逸脱系で通し、データ妥当性・リクエスト偽造・整合性・時間・回数制限・順序・誤用防御を確認する。
+    tools: [Burp Suite, 手動操作, 業務仕様書]
+    outputs: [artifacts/logic-scenarios.md, notes.md]
+    covers:
+      - {id: WSTG-BUSL-01, role: primary}
+      - {id: WSTG-BUSL-02, role: primary}
+      - {id: WSTG-BUSL-03, role: primary}
+      - {id: WSTG-BUSL-04, role: primary}
+      - {id: WSTG-BUSL-05, role: primary}
+      - {id: WSTG-BUSL-06, role: primary}
+      - {id: WSTG-BUSL-07, role: primary}
+      - {id: WSTG-INPV-14, role: primary, note: "潜伏型（保存された値が後で発火する）シナリオ"}
+
+  - id: file-upload-tests
+    title: ファイルアップロードの検証
+    summary: 想定外の拡張子・MIME・内容のファイルを投入し、保存先・実行可否・スキャンの有無を確認する。
+    tools: [Burp Suite, "EICAR テストファイル", 手動]
+    outputs: [artifacts/upload-matrix.md, notes.md]
+    covers:
+      - {id: WSTG-BUSL-08, role: primary}
+      - {id: WSTG-BUSL-09, role: primary}
+      - {id: WSTG-CONF-03, role: secondary, note: "保存されたファイルの拡張子の扱い"}
+
+  - id: api-graphql-test
+    title: API / GraphQL の検証
+    summary: スキーマ内省・バッチクエリ・深い入れ子・認可のかかり方を確認する。REST API も同じ枠で扱う。
+    tools: [Burp Suite, "GraphQL Voyager", "InQL", curl]
+    outputs: [artifacts/graphql-schema.json, artifacts/api-findings.md]
+    covers:
+      - {id: WSTG-APIT-01, role: primary}
+      - {id: WSTG-ATHZ-02, role: secondary, note: "API 側の認可漏れ"}
+
+# === ここから下は scripts/build_coverage.py が自動生成（手で編集しない） ===
+
+by_activity:
+  recon-osint:
+    primary: [WSTG-INFO-01]
+    secondary: [WSTG-CONF-10]
+  fingerprint-stack:
+    primary: [WSTG-INFO-02, WSTG-INFO-08]
+    secondary: [WSTG-CONF-01, WSTG-CONF-02]
+  tls-scan:
+    primary: [WSTG-CRYP-01, WSTG-CONF-07]
+    secondary: [WSTG-CONF-01]
+  http-methods:
+    primary: [WSTG-CONF-06]
+    secondary: [WSTG-INPV-03]
+  headers-review:
+    primary: [WSTG-SESS-02, WSTG-CONF-07, WSTG-CLNT-09, WSTG-ATHN-06, WSTG-CLNT-07]
+    secondary: [WSTG-CRYP-03]
+  metafiles-crawl:
+    primary: [WSTG-INFO-03, WSTG-INFO-05]
+    secondary: [WSTG-CONF-05]
+  enum-apps:
+    primary: [WSTG-INFO-04]
+    secondary: [WSTG-INFO-06]
+  burp-crawl-authn:
+    primary: [WSTG-INFO-06, WSTG-INFO-07, WSTG-INFO-10, WSTG-CONF-05]
+    secondary: []
+  session-capture:
+    primary: [WSTG-SESS-01, WSTG-SESS-02, WSTG-SESS-03, WSTG-SESS-06, WSTG-SESS-07]
+    secondary: [WSTG-SESS-09]
+  backup-unref:
+    primary: [WSTG-CONF-03, WSTG-CONF-04]
+    secondary: []
+  server-config-review:
+    primary: [WSTG-CONF-01, WSTG-CONF-02, WSTG-CONF-09]
+    secondary: []
+  cloud-and-takeover:
+    primary: [WSTG-CONF-11, WSTG-CONF-10]
+    secondary: []
+  ria-legacy-check:
+    primary: [WSTG-CONF-08, WSTG-CLNT-08]
+    secondary: []
+  identity-model-review:
+    primary: [WSTG-IDNT-01, WSTG-IDNT-02, WSTG-IDNT-03, WSTG-IDNT-05]
+    secondary: []
+  account-enum-probe:
+    primary: [WSTG-IDNT-04, WSTG-ATHN-03]
+    secondary: [WSTG-IDNT-05]
+  authn-flow-review:
+    primary: [WSTG-ATHN-01, WSTG-ATHN-02, WSTG-ATHN-04, WSTG-ATHN-05, WSTG-ATHN-07, WSTG-ATHN-10, WSTG-CRYP-03]
+    secondary: [WSTG-ATHN-06]
+  password-reset-review:
+    primary: [WSTG-ATHN-08, WSTG-ATHN-09]
+    secondary: []
+  authz-matrix:
+    primary: [WSTG-ATHZ-02, WSTG-ATHZ-03, WSTG-ATHZ-04]
+    secondary: [WSTG-SESS-08]
+  traversal-probe:
+    primary: [WSTG-ATHZ-01]
+    secondary: [WSTG-CONF-03]
+  session-abuse-tests:
+    primary: [WSTG-SESS-04, WSTG-SESS-05, WSTG-SESS-08, WSTG-SESS-09]
+    secondary: []
+  xss-probe:
+    primary: [WSTG-INPV-01, WSTG-INPV-02, WSTG-CLNT-01, WSTG-CLNT-03]
+    secondary: []
+  clientside-js-review:
+    primary: [WSTG-CLNT-02, WSTG-CLNT-04, WSTG-CLNT-05, WSTG-CLNT-06, WSTG-CLNT-11, WSTG-CLNT-12, WSTG-CLNT-13]
+    secondary: []
+  cors-websocket-check:
+    primary: [WSTG-CLNT-07, WSTG-CLNT-10]
+    secondary: []
+  injection-fuzz-server:
+    primary: [WSTG-INPV-05, WSTG-INPV-06, WSTG-INPV-07, WSTG-INPV-08, WSTG-INPV-09, WSTG-INPV-10, WSTG-INPV-11, WSTG-INPV-12, WSTG-INPV-13, WSTG-INPV-18]
+    secondary: [WSTG-ERRH-01]
+  http-request-tamper:
+    primary: [WSTG-INPV-04, WSTG-INPV-15, WSTG-INPV-16, WSTG-INPV-17]
+    secondary: []
+  ssrf-probe:
+    primary: [WSTG-INPV-19]
+    secondary: []
+  error-handling-review:
+    primary: [WSTG-ERRH-01]
+    secondary: [WSTG-ERRH-02, WSTG-INFO-05]
+  crypto-review:
+    primary: [WSTG-CRYP-02, WSTG-CRYP-03, WSTG-CRYP-04]
+    secondary: []
+  business-logic-walkthrough:
+    primary: [WSTG-BUSL-01, WSTG-BUSL-02, WSTG-BUSL-03, WSTG-BUSL-04, WSTG-BUSL-05, WSTG-BUSL-06, WSTG-BUSL-07, WSTG-INPV-14]
+    secondary: []
+  file-upload-tests:
+    primary: [WSTG-BUSL-08, WSTG-BUSL-09]
+    secondary: [WSTG-CONF-03]
+  api-graphql-test:
+    primary: [WSTG-APIT-01]
+    secondary: [WSTG-ATHZ-02]
+
+by_wstg:
+  WSTG-INFO-01:
+    primary: [recon-osint]
+    secondary: []
+  WSTG-INFO-02:
+    primary: [fingerprint-stack]
+    secondary: []
+  WSTG-INFO-03:
+    primary: [metafiles-crawl]
+    secondary: []
+  WSTG-INFO-04:
+    primary: [enum-apps]
+    secondary: []
+  WSTG-INFO-05:
+    primary: [metafiles-crawl]
+    secondary: [error-handling-review]
+  WSTG-INFO-06:
+    primary: [burp-crawl-authn]
+    secondary: [enum-apps]
+  WSTG-INFO-07:
+    primary: [burp-crawl-authn]
+    secondary: []
+  WSTG-INFO-08:
+    primary: [fingerprint-stack]
+    secondary: []
+  WSTG-INFO-10:
+    primary: [burp-crawl-authn]
+    secondary: []
+  WSTG-CONF-01:
+    primary: [server-config-review]
+    secondary: [fingerprint-stack, tls-scan]
+  WSTG-CONF-02:
+    primary: [server-config-review]
+    secondary: [fingerprint-stack]
+  WSTG-CONF-03:
+    primary: [backup-unref]
+    secondary: [traversal-probe, file-upload-tests]
+  WSTG-CONF-04:
+    primary: [backup-unref]
+    secondary: []
+  WSTG-CONF-05:
+    primary: [burp-crawl-authn]
+    secondary: [metafiles-crawl]
+  WSTG-CONF-06:
+    primary: [http-methods]
+    secondary: []
+  WSTG-CONF-07:
+    primary: [tls-scan, headers-review]
+    secondary: []
+  WSTG-CONF-08:
+    primary: [ria-legacy-check]
+    secondary: []
+  WSTG-CONF-09:
+    primary: [server-config-review]
+    secondary: []
+  WSTG-CONF-10:
+    primary: [cloud-and-takeover]
+    secondary: [recon-osint]
+  WSTG-CONF-11:
+    primary: [cloud-and-takeover]
+    secondary: []
+  WSTG-IDNT-01:
+    primary: [identity-model-review]
+    secondary: []
+  WSTG-IDNT-02:
+    primary: [identity-model-review]
+    secondary: []
+  WSTG-IDNT-03:
+    primary: [identity-model-review]
+    secondary: []
+  WSTG-IDNT-04:
+    primary: [account-enum-probe]
+    secondary: []
+  WSTG-IDNT-05:
+    primary: [identity-model-review]
+    secondary: [account-enum-probe]
+  WSTG-ATHN-01:
+    primary: [authn-flow-review]
+    secondary: []
+  WSTG-ATHN-02:
+    primary: [authn-flow-review]
+    secondary: []
+  WSTG-ATHN-03:
+    primary: [account-enum-probe]
+    secondary: []
+  WSTG-ATHN-04:
+    primary: [authn-flow-review]
+    secondary: []
+  WSTG-ATHN-05:
+    primary: [authn-flow-review]
+    secondary: []
+  WSTG-ATHN-06:
+    primary: [headers-review]
+    secondary: [authn-flow-review]
+  WSTG-ATHN-07:
+    primary: [authn-flow-review]
+    secondary: []
+  WSTG-ATHN-08:
+    primary: [password-reset-review]
+    secondary: []
+  WSTG-ATHN-09:
+    primary: [password-reset-review]
+    secondary: []
+  WSTG-ATHN-10:
+    primary: [authn-flow-review]
+    secondary: []
+  WSTG-ATHZ-01:
+    primary: [traversal-probe]
+    secondary: []
+  WSTG-ATHZ-02:
+    primary: [authz-matrix]
+    secondary: [api-graphql-test]
+  WSTG-ATHZ-03:
+    primary: [authz-matrix]
+    secondary: []
+  WSTG-ATHZ-04:
+    primary: [authz-matrix]
+    secondary: []
+  WSTG-SESS-01:
+    primary: [session-capture]
+    secondary: []
+  WSTG-SESS-02:
+    primary: [headers-review, session-capture]
+    secondary: []
+  WSTG-SESS-03:
+    primary: [session-capture]
+    secondary: []
+  WSTG-SESS-04:
+    primary: [session-abuse-tests]
+    secondary: []
+  WSTG-SESS-05:
+    primary: [session-abuse-tests]
+    secondary: []
+  WSTG-SESS-06:
+    primary: [session-capture]
+    secondary: []
+  WSTG-SESS-07:
+    primary: [session-capture]
+    secondary: []
+  WSTG-SESS-08:
+    primary: [session-abuse-tests]
+    secondary: [authz-matrix]
+  WSTG-SESS-09:
+    primary: [session-abuse-tests]
+    secondary: [session-capture]
+  WSTG-INPV-01:
+    primary: [xss-probe]
+    secondary: []
+  WSTG-INPV-02:
+    primary: [xss-probe]
+    secondary: []
+  WSTG-INPV-03:
+    primary: []
+    secondary: [http-methods]
+  WSTG-INPV-04:
+    primary: [http-request-tamper]
+    secondary: []
+  WSTG-INPV-05:
+    primary: [injection-fuzz-server]
+    secondary: []
+  WSTG-INPV-06:
+    primary: [injection-fuzz-server]
+    secondary: []
+  WSTG-INPV-07:
+    primary: [injection-fuzz-server]
+    secondary: []
+  WSTG-INPV-08:
+    primary: [injection-fuzz-server]
+    secondary: []
+  WSTG-INPV-09:
+    primary: [injection-fuzz-server]
+    secondary: []
+  WSTG-INPV-10:
+    primary: [injection-fuzz-server]
+    secondary: []
+  WSTG-INPV-11:
+    primary: [injection-fuzz-server]
+    secondary: []
+  WSTG-INPV-12:
+    primary: [injection-fuzz-server]
+    secondary: []
+  WSTG-INPV-13:
+    primary: [injection-fuzz-server]
+    secondary: []
+  WSTG-INPV-14:
+    primary: [business-logic-walkthrough]
+    secondary: []
+  WSTG-INPV-15:
+    primary: [http-request-tamper]
+    secondary: []
+  WSTG-INPV-16:
+    primary: [http-request-tamper]
+    secondary: []
+  WSTG-INPV-17:
+    primary: [http-request-tamper]
+    secondary: []
+  WSTG-INPV-18:
+    primary: [injection-fuzz-server]
+    secondary: []
+  WSTG-INPV-19:
+    primary: [ssrf-probe]
+    secondary: []
+  WSTG-ERRH-01:
+    primary: [error-handling-review]
+    secondary: [injection-fuzz-server]
+  WSTG-ERRH-02:
+    primary: []
+    secondary: [error-handling-review]
+  WSTG-CRYP-01:
+    primary: [tls-scan]
+    secondary: []
+  WSTG-CRYP-02:
+    primary: [crypto-review]
+    secondary: []
+  WSTG-CRYP-03:
+    primary: [authn-flow-review, crypto-review]
+    secondary: [headers-review]
+  WSTG-CRYP-04:
+    primary: [crypto-review]
+    secondary: []
+  WSTG-BUSL-01:
+    primary: [business-logic-walkthrough]
+    secondary: []
+  WSTG-BUSL-02:
+    primary: [business-logic-walkthrough]
+    secondary: []
+  WSTG-BUSL-03:
+    primary: [business-logic-walkthrough]
+    secondary: []
+  WSTG-BUSL-04:
+    primary: [business-logic-walkthrough]
+    secondary: []
+  WSTG-BUSL-05:
+    primary: [business-logic-walkthrough]
+    secondary: []
+  WSTG-BUSL-06:
+    primary: [business-logic-walkthrough]
+    secondary: []
+  WSTG-BUSL-07:
+    primary: [business-logic-walkthrough]
+    secondary: []
+  WSTG-BUSL-08:
+    primary: [file-upload-tests]
+    secondary: []
+  WSTG-BUSL-09:
+    primary: [file-upload-tests]
+    secondary: []
+  WSTG-CLNT-01:
+    primary: [xss-probe]
+    secondary: []
+  WSTG-CLNT-02:
+    primary: [clientside-js-review]
+    secondary: []
+  WSTG-CLNT-03:
+    primary: [xss-probe]
+    secondary: []
+  WSTG-CLNT-04:
+    primary: [clientside-js-review]
+    secondary: []
+  WSTG-CLNT-05:
+    primary: [clientside-js-review]
+    secondary: []
+  WSTG-CLNT-06:
+    primary: [clientside-js-review]
+    secondary: []
+  WSTG-CLNT-07:
+    primary: [headers-review, cors-websocket-check]
+    secondary: []
+  WSTG-CLNT-08:
+    primary: [ria-legacy-check]
+    secondary: []
+  WSTG-CLNT-09:
+    primary: [headers-review]
+    secondary: []
+  WSTG-CLNT-10:
+    primary: [cors-websocket-check]
+    secondary: []
+  WSTG-CLNT-11:
+    primary: [clientside-js-review]
+    secondary: []
+  WSTG-CLNT-12:
+    primary: [clientside-js-review]
+    secondary: []
+  WSTG-CLNT-13:
+    primary: [clientside-js-review]
+    secondary: []
+  WSTG-APIT-01:
+    primary: [api-graphql-test]
+    secondary: []
+
+# どのアクティビティにも割り当てられていない WSTG-ID
+unassigned: [WSTG-INFO-09]
+# secondary でしか触れられていない＝単独では判定を確定できない WSTG-ID
+no_primary: [WSTG-INPV-03, WSTG-ERRH-02]
+# v4.2 で他項目に統合された WSTG-ID（単独では実施しない）
+deprecated: [WSTG-INFO-09, WSTG-INPV-03, WSTG-ERRH-02]

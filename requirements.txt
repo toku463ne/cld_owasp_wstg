@@ -1,0 +1,6 @@
+# WSTG 実施支援システムの依存。標準ライブラリ中心・YAML のみ外部。
+PyYAML>=6.0
+
+# 任意：export_checklist.py --push（Google Sheets 直接反映）を使う場合のみ
+# gspread>=6.0
+# google-auth>=2.0
