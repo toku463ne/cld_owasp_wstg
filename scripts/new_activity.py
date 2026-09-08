@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """収集アクティビティ用のエビデンスフォルダと run.yaml 雛形を作る。
 
-    python scripts/new_activity.py burp-crawl-authn
-    python scripts/new_activity.py tls-scan --date 20260910 --tester TOKU
+    uv run scripts/new_activity.py burp-crawl-authn
+    uv run scripts/new_activity.py tls-scan --date 20260910 --tester TOKU
 
 生成物:
     evidence/<activity_id>-<yyyymmdd>/
@@ -150,7 +150,7 @@ def main() -> int:
     covered = ", ".join(c["id"] for c in activity.get("covers", []))
     print(f"作成: {target}")
     print(f"  covers ({len(activity.get('covers', []))} 件): {covered}")
-    print(f"  次: python scripts/run_cmd.py {target} -- <コマンド>")
+    print(f"  次: uv run scripts/run_cmd.py {target} -- <コマンド>")
     return 0
 
 

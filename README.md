@@ -9,6 +9,9 @@ OWASP Web Security Testing Guide (WSTG) **v4.2** を、**収集アクティビ�
   フォルダを見れば分かる、という前提で運用する。
 - 実エビデンスはこのリポジトリに入れない（`evidence/` は `.gitignore` 済み）。
 
+**まず `TASKS.md` を開く。** 実施順に並んだチェックリストがそこにある。
+今どこまで進んだかは `uv run scripts/tasks.py`。
+
 ## 全体像
 
 ```
@@ -16,31 +19,43 @@ WSTG 原文 ──▶ matrix/wstg_tests.yaml ──┐
 (公開情報)                              ├─▶ playbooks/WSTG-*.md（実施カード）
 matrix/criteria.yaml（判定基準・手書き）─┘
                                         
-matrix/coverage.yaml（アクティビティ定義）
+matrix/coverage.yaml（アクティビティ定義・実施順）
+   │ tasks.py --write ─▶ TASKS.md（実施順チェックリスト）
    │ new_activity.py
    ▼
-evidence/<activity>-<date>/run.yaml ──▶ export_checklist.py ──▶ checklist_export.csv
-   ▲                                                                   │
-   └ run_cmd.py（コマンド実行ログを自動追記）                目視レビュー ▼
+evidence/<activity>-<date>/run.yaml ─┬─▶ export_checklist.py ─▶ checklist_export.csv
+   ▲                                  │                                │
+   └ run_cmd.py（実行ログを自動追記）  └─▶ tasks.py（進捗表示）  目視レビュー ▼
                                                               Google Sheets
 ```
 
 ## セットアップ
 
+Python は [uv](https://docs.astral.sh/uv/) で管理する（`pyproject.toml` + `uv.lock` +
+`.python-version`。Python 3.12・PyYAML のみ）。
+
 ```bash
-pip install -r requirements.txt   # PyYAML のみ
-./scripts/fetch_wstg.sh           # WSTG v4.2 原文を docs/owasp/ へ（追跡されない）
+uv sync                 # .venv を作って依存を入れる（Python も uv が用意する）
+./scripts/selftest.sh   # ツールが動くことを確認
+./scripts/fetch_wstg.sh # WSTG v4.2 原文を docs/owasp/ へ（任意・追跡されない）
 ```
+
+以降スクリプトは `uv run scripts/xxx.py` で実行する（仮想環境の有効化は不要）。
+uv を入れられない会社PC では `pip install pyyaml` して `python scripts/xxx.py` でも動く
+（依存は PyYAML のみ、Python 3.10 以上）。
 
 原文が無くても、`matrix/wstg_tests.yaml` と `playbooks/` は生成済みなので
 日々の運用（アクティビティ作成〜CSV 出力）は動く。原文が要るのは再生成のときだけ。
 
 ## 日々の流れ
 
+`TASKS.md` を上から消化していく。1本のアクティビティで踏むのは 1〜3、
+区切りのたびに 4〜5 を回す。
+
 ### 1. アクティビティを開始する
 
 ```bash
-python scripts/new_activity.py burp-crawl-authn
+uv run scripts/new_activity.py burp-crawl-authn
 # -> evidence/burp-crawl-authn-20260908/{run.yaml,cmd/,artifacts/,notes.md}
 ```
 
@@ -53,8 +68,8 @@ python scripts/new_activity.py burp-crawl-authn
 ### 2. CLI はロガー経由で実行する
 
 ```bash
-python scripts/run_cmd.py evidence/burp-crawl-authn-20260908 -- nmap -sV -p- target.example
-python scripts/run_cmd.py evidence/tls-scan-20260908 --note "本番のみ" -- testssl.sh --quiet target.example
+uv run scripts/run_cmd.py evidence/burp-crawl-authn-20260908 -- nmap -sV -p- target.example
+uv run scripts/run_cmd.py evidence/tls-scan-20260908 --note "本番のみ" -- testssl.sh --quiet target.example
 ```
 
 - 出力は `cmd/<slug>.txt` に保存され、画面にもそのまま流れる。
@@ -77,10 +92,23 @@ covers:
 `finding` は **要約のみ**。生トークン・資格情報・生ホスト名は書かず、`evidence:` の
 パスで実物を参照させる。
 
-### 4. チェックリストを出力する
+### 4. 進捗を確認する
 
 ```bash
-python scripts/export_checklist.py --summary
+uv run scripts/tasks.py
+#   [x]  1. recon-osint          完了   2/2 判定済み
+#   [~]  2. fingerprint-stack    実施中  2/4 判定済み
+#   [ ]  3. tls-scan             未着手  前提未完: fingerprint-stack
+#   次にやること: 2. fingerprint-stack — …
+```
+
+`evidence/*/run.yaml` の `verdict` を見て、アクティビティ単位の進捗と「次にやること」
+（前提が終わっていて着手できるもの）を出す。
+
+### 5. チェックリストを出力する
+
+```bash
+uv run scripts/export_checklist.py --summary
 # -> checklist_export.csv（全 97 項目。未実施は todo のまま）
 ```
 
@@ -103,7 +131,9 @@ python scripts/export_checklist.py --summary
 | `matrix/criteria.yaml` | pass/fail の判定基準（**手編集**・育てる） | ✅ |
 | `matrix/wstg_tests.yaml` | WSTG v4.2 のテスト一覧（自動生成） | ✅ |
 | `playbooks/` | 1テスト=1枚のカード（自動生成） | ✅ |
+| `TASKS.md` | 実施順のタスクリスト（自動生成） | ✅ |
 | `templates/run.yaml` | run.yaml のスキーマ兼雛形 | ✅ |
+| `pyproject.toml` / `uv.lock` / `.python-version` | uv による環境定義 | ✅ |
 | `docs/owasp/` | WSTG 原文（`FETCH.md` 以外は追跡しない） | ❌ |
 | `evidence/` | 生エビデンス（社内PCのローカルのみ） | ❌ |
 | `checklist_export.csv` | 集約 CSV（レビュー用の一時物） | ❌ |
@@ -111,12 +141,14 @@ python scripts/export_checklist.py --summary
 ## 生成物を作り直すとき
 
 ```bash
-python scripts/build_wstg_index.py    # 原文 -> matrix/wstg_tests.yaml
-python scripts/build_coverage.py      # coverage.yaml の activities -> 索引 + coverage.md
-python scripts/gen_playbooks.py       # 原文 + criteria.yaml -> playbooks/
+uv run scripts/build_wstg_index.py    # 原文 -> matrix/wstg_tests.yaml
+uv run scripts/build_coverage.py      # coverage.yaml の activities -> 索引 + coverage.md
+uv run scripts/gen_playbooks.py       # 原文 + criteria.yaml -> playbooks/
+uv run scripts/tasks.py --write       # coverage.yaml の phase/order -> TASKS.md
 ```
 
-`--check` を付けると（前二者）書き換えずに差分の有無だけ確認できる。
+`--check` を付けると（`gen_playbooks.py` 以外）書き換えずに差分の有無だけ確認できる。
+まとめて確認するなら `./scripts/selftest.sh`。
 
 ### アクティビティを増やす
 

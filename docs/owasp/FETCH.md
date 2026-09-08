@@ -32,8 +32,8 @@ WSTG のテスト本体は `document/4-Web_Application_Security_Testing/` 配下
 取得後、テスト一覧を再生成する場合：
 
 ```bash
-python scripts/build_wstg_index.py     # -> matrix/wstg_tests.yaml
-python scripts/gen_playbooks.py        # -> playbooks/WSTG-*.md
+uv run scripts/build_wstg_index.py     # -> matrix/wstg_tests.yaml
+uv run scripts/gen_playbooks.py        # -> playbooks/WSTG-*.md
 ```
 
 ## 注意

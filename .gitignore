@@ -9,7 +9,8 @@
 # 生成される集約CSV（レビュー用の一時物）
 /checklist_export.csv
 
-# 一般
+# 一般（uv の仮想環境。pyproject.toml と uv.lock はコミットする）
 __pycache__/
 *.pyc
 .venv/
+.uv/

@@ -70,6 +70,6 @@ esac
 cat <<'MSG'
 
 次の手順:
-  python scripts/build_wstg_index.py   # matrix/wstg_tests.yaml を再生成
-  python scripts/gen_playbooks.py      # playbooks/ のカードを再生成
+  uv run scripts/build_wstg_index.py   # matrix/wstg_tests.yaml を再生成
+  uv run scripts/gen_playbooks.py      # playbooks/ のカードを再生成
 MSG

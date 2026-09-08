@@ -1,6 +1,6 @@
 # カバレッジマトリクス（アクティビティ × WSTG）
 
-> 自動生成: `python scripts/build_coverage.py`（元データは `matrix/coverage.yaml` の `activities:`）
+> 自動生成: `uv run scripts/build_coverage.py`（元データは `matrix/coverage.yaml` の `activities:`）
 
 - アクティビティ数: **31**
 - WSTG 実施対象: **94** 件（v4.2 全 97 件 − 統合済み 3 件）

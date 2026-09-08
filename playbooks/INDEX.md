@@ -1,6 +1,6 @@
 # プレイブックカード一覧
 
-> 自動生成: `python scripts/gen_playbooks.py`
+> 自動生成: `uv run scripts/gen_playbooks.py`
 
 1テスト=1枚。社内 Gemini への貼り付け・新人への説明台本にそのまま使える粒度。
 

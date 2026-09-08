@@ -4,7 +4,7 @@
 生成物はコミットするので、原文が手元になくても他のスクリプト
 （export_checklist.py / new_activity.py / build_coverage.py）は動く。
 
-    python scripts/build_wstg_index.py
+    uv run scripts/build_wstg_index.py
 """
 
 from __future__ import annotations
@@ -62,7 +62,7 @@ def main() -> int:
     if args.check:
         current = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
         same = current.split("\n", 3)[3:] == text.split("\n", 3)[3:]  # 生成日の行は無視
-        print("最新です" if same else "差分あり: python scripts/build_wstg_index.py を実行してください")
+        print("最新です" if same else "差分あり: uv run scripts/build_wstg_index.py を実行してください")
         return 0 if same else 1
 
     OUT.parent.mkdir(parents=True, exist_ok=True)

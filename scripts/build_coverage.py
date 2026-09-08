@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """matrix/coverage.yaml の `activities:` から、双方向インデックスと coverage.md を生成する。
 
-    python scripts/build_coverage.py           # 生成
-    python scripts/build_coverage.py --check   # 差分・不整合の確認のみ
+    uv run scripts/build_coverage.py           # 生成
+    uv run scripts/build_coverage.py --check   # 差分・不整合の確認のみ
 
 手で編集するのは coverage.yaml の `activities:` ブロックだけ。
 自動生成マーカー以降（by_activity / by_wstg / unassigned）は毎回書き換わる。
@@ -27,7 +27,7 @@ MARKER = "# === ここから下は scripts/build_coverage.py が自動生成（�
 def load_wstg_tests() -> dict:
     if not WSTG_TESTS.exists():
         raise SystemExit(
-            f"{WSTG_TESTS} がありません。先に python scripts/build_wstg_index.py を実行してください。"
+            f"{WSTG_TESTS} がありません。先に uv run scripts/build_wstg_index.py を実行してください。"
         )
     data = yaml.safe_load(WSTG_TESTS.read_text(encoding="utf-8"))
     return {t["id"]: t for t in data["tests"]}
@@ -47,8 +47,24 @@ def build_indexes(activities: list, tests: dict):
     problems: list[str] = []
 
     seen_ids = set()
+    orders = {a["id"]: a.get("order") for a in activities}
+    phases = set()
     for act in activities:
         aid = act["id"]
+        # 実施順のメタデータ（TASKS.md の元データ）を検証する
+        for key in ("phase", "order", "impact"):
+            if key not in act:
+                problems.append(f"{aid}: {key} がありません")
+        if act.get("impact") not in (None, "low", "medium", "high"):
+            problems.append(f"{aid}: 不正な impact {act['impact']}")
+        for dep in act.get("depends_on") or []:
+            if dep not in orders:
+                problems.append(f"{aid}: 未知の depends_on {dep}")
+            elif orders.get(dep) is not None and act.get("order") is not None and orders[dep] >= act["order"]:
+                problems.append(f"{aid}: depends_on {dep} の order が後ろにある（循環・順序矛盾）")
+        if act.get("order") in phases:
+            problems.append(f"{aid}: order {act['order']} が重複しています")
+        phases.add(act.get("order"))
         if aid in seen_ids:
             problems.append(f"activity id が重複: {aid}")
         seen_ids.add(aid)
@@ -108,7 +124,7 @@ def render_md(activities, by_activity, by_wstg, tests) -> str:
 
     w("# カバレッジマトリクス（アクティビティ × WSTG）")
     w("")
-    w("> 自動生成: `python scripts/build_coverage.py`（元データは `matrix/coverage.yaml` の `activities:`）")
+    w("> 自動生成: `uv run scripts/build_coverage.py`（元データは `matrix/coverage.yaml` の `activities:`）")
     w("")
     active_tests = [t for t in tests.values() if not t.get("deprecated")]
     covered = [w_ for w_, r in by_wstg.items() if r["primary"] and not tests[w_].get("deprecated")]
@@ -224,7 +240,7 @@ def main() -> int:
             or not COVERAGE_MD.exists()
             or COVERAGE_MD.read_text(encoding="utf-8") != new_md
         )
-        print("差分あり: python scripts/build_coverage.py を実行してください" if drift else "最新です")
+        print("差分あり: uv run scripts/build_coverage.py を実行してください" if drift else "最新です")
         return 1 if (drift or problems) else 0
 
     COVERAGE_YAML.write_text(new_yaml, encoding="utf-8")

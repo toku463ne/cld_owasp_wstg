@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """CLI をログ付きで実行し、run.yaml の commands: に追記する。
 
-    python scripts/run_cmd.py <activity_dir> -- <command...>
+    uv run scripts/run_cmd.py <activity_dir> -- <command...>
 
 例:
-    python scripts/run_cmd.py evidence/tls-scan-20260908 -- testssl.sh --quiet example.test
-    python scripts/run_cmd.py evidence/http-methods-20260908 --slug options -- curl -sSI -X OPTIONS https://example.test/
+    uv run scripts/run_cmd.py evidence/tls-scan-20260908 -- testssl.sh --quiet example.test
+    uv run scripts/run_cmd.py evidence/http-methods-20260908 --slug options -- curl -sSI -X OPTIONS https://example.test/
 
 やること:
   1. コマンドを実行し、stdout/stderr を <activity_dir>/cmd/<slug>.txt に保存（画面にもそのまま流す）
@@ -124,7 +124,7 @@ def main() -> int:
     run_yaml = activity_dir / "run.yaml"
     if not run_yaml.exists():
         print(f"run.yaml が見つかりません: {run_yaml}", file=sys.stderr)
-        print("  python scripts/new_activity.py <activity_id> で先に作成してください。", file=sys.stderr)
+        print("  uv run scripts/new_activity.py <activity_id> で先に作成してください。", file=sys.stderr)
         return 2
 
     cmd_dir = activity_dir / "cmd"

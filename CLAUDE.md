@@ -27,7 +27,7 @@
 
 | ファイル | 中身 |
 |---|---|
-| `matrix/coverage.yaml` の `activities:` ブロック | アクティビティ定義（唯一の真実） |
+| `matrix/coverage.yaml` の `phases:` と `activities:` | アクティビティ定義・実施順（唯一の真実） |
 | `matrix/criteria.yaml` | カードの目的・pass/fail 判定基準 |
 | `scripts/*` | ツール本体 |
 | `README.md` / `CLAUDE.md` / `templates/run.yaml` | ドキュメントと雛形 |
@@ -49,7 +49,9 @@
 ```
 docs/owasp（原文） ─▶ wstg_tests.yaml ─┬─▶ coverage.{yaml,md}（+ coverage.yaml の activities）
                                        └─▶ playbooks/（+ criteria.yaml）
-coverage.yaml ─▶ new_activity.py ─▶ evidence/*/run.yaml ─▶ export_checklist.py ─▶ CSV
+coverage.yaml ─┬─▶ TASKS.md（実施順）
+               └─▶ new_activity.py ─▶ evidence/*/run.yaml ─┬─▶ export_checklist.py ─▶ CSV
+                                                           └─▶ tasks.py（進捗表示）
 ```
 
 上流を変えたら下流を必ず再生成し、生成物の差分も一緒にコミットする
@@ -87,9 +89,13 @@ coverage.yaml ─▶ new_activity.py ─▶ evidence/*/run.yaml ─▶ export_ch
 
 ## 5. コードの方針
 
-- 対象は会社PC。**Python 3.10 で動くこと**、依存は **PyYAML のみ**
-  （`gspread` は `--push` を使うときだけの任意依存で、遅延 import する）。
-  新しい依存を足す前に、標準ライブラリで済まないか検討する。
+- **Python 環境は uv で管理する**。`pyproject.toml` が依存の定義、`uv.lock` と
+  `.python-version`（3.12）がピン留め。依存を変えたら `uv lock` の結果も一緒にコミットする。
+  実行は `uv run scripts/xxx.py`。ドキュメントやメッセージでもこの形で案内する。
+- ただし **uv が無い環境でも動くこと**（会社PC のフォールバック）。
+  `requires-python = ">=3.10"`、依存は **PyYAML のみ**（`gspread` は `--push` のときだけの
+  任意依存で遅延 import）。新しい依存を足す前に標準ライブラリで済まないか検討する。
+  3.10 で動かない構文（`match` 以降の新機能など）は使わない。
 - スクリプトは単体で実行でき、`--help` で用途が分かること。破壊的な既定値を持たない
   （既存ファイルは上書きせず、`--force` を要求する）。
 - 出力メッセージは日本語。エラー時は「次に何をすればよいか」を必ず添える。

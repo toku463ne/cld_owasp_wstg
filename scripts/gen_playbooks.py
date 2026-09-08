@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """WSTG 原文 + matrix/criteria.yaml から、1テスト=1枚のプレイブックカードを生成する。
 
-    python scripts/gen_playbooks.py
-    python scripts/gen_playbooks.py --only WSTG-INFO-06
+    uv run scripts/gen_playbooks.py
+    uv run scripts/gen_playbooks.py --only WSTG-INFO-06
 
 カードは自己完結・小サイズ（数百トークン）。社内 Gemini にデータと一緒に貼れること、
 新人への説明台本・報告フォーマットに流用できることを狙う。
@@ -211,7 +211,7 @@ def render_card(test, criteria: dict, activities: list, act_defs: dict) -> str:
 
 def render_index(tests, by_wstg, act_defs) -> str:
     out = ["# プレイブックカード一覧", "",
-           "> 自動生成: `python scripts/gen_playbooks.py`", "",
+           "> 自動生成: `uv run scripts/gen_playbooks.py`", "",
            "1テスト=1枚。社内 Gemini への貼り付け・新人への説明台本にそのまま使える粒度。", ""]
     cat = None
     for t in tests:

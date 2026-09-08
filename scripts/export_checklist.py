@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """全 evidence/*/run.yaml を WSTG-ID 主キーで集約し、checklist_export.csv を出力する。
 
-    python scripts/export_checklist.py
-    python scripts/export_checklist.py --root evidence --out checklist_export.csv --summary
+    uv run scripts/export_checklist.py
+    uv run scripts/export_checklist.py --root evidence --out checklist_export.csv --summary
 
 集約ステータス:
     fail > todo > info > pass > na  の優先度で「最も注意すべきもの」を採用。
@@ -42,7 +42,7 @@ COLUMNS = [
 
 def load_tests() -> dict:
     if not WSTG_TESTS.exists():
-        raise SystemExit(f"{WSTG_TESTS} がありません。python scripts/build_wstg_index.py を実行してください。")
+        raise SystemExit(f"{WSTG_TESTS} がありません。uv run scripts/build_wstg_index.py を実行してください。")
     data = yaml.safe_load(WSTG_TESTS.read_text(encoding="utf-8"))
     return {t["id"]: t for t in data["tests"]}
 
@@ -155,7 +155,7 @@ def push_to_sheets(rows: list[dict], sheet_id: str, worksheet: str, creds: str, 
     try:
         import gspread  # type: ignore
     except ImportError:
-        print("gspread が必要です: pip install gspread google-auth", file=sys.stderr)
+        print("gspread が必要です: uv sync --extra sheets（または pip install gspread google-auth）", file=sys.stderr)
         return 2
 
     print(f"\n{len(rows)} 行を Google Sheets ({sheet_id} / {worksheet}) に上書きします。")

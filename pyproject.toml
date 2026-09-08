@@ -1,0 +1,19 @@
+[project]
+name = "wstg-support"
+version = "0.1.0"
+description = "OWASP WSTG v4.2 を収集アクティビティ単位で回すための方法論とツール"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# export_checklist.py --push（Google Sheets 直接反映）を使うときだけ:
+#   uv sync --extra sheets
+sheets = [
+    "gspread>=6.0",
+    "google-auth>=2.0",
+]
+
+[tool.uv]
+package = false

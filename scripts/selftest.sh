@@ -11,22 +11,27 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "${TMP}"' EXIT
 cd "${REPO_ROOT}"
 
-PY="${PYTHON:-python3}"
+# uv があれば uv run、無ければ system python3（会社PC 用のフォールバック）
+if command -v uv >/dev/null 2>&1; then
+  PY=(uv run --quiet python)
+else
+  PY=(python3)
+fi
 ok() { printf '  ok   %s\n' "$1"; }
 ng() { printf '  NG   %s\n' "$1"; exit 1; }
 
-echo "[1/7] 生成物が最新か（原文がある場合のみ）"
+echo "[1/8] 生成物が最新か（原文がある場合のみ）"
 if compgen -G "docs/owasp/*" > /dev/null; then
-  "${PY}" scripts/build_wstg_index.py --check >/dev/null && ok "matrix/wstg_tests.yaml" \
-    || ng "wstg_tests.yaml が古い: python scripts/build_wstg_index.py"
+  "${PY[@]}" scripts/build_wstg_index.py --check >/dev/null && ok "matrix/wstg_tests.yaml" \
+    || ng "wstg_tests.yaml が古い: uv run scripts/build_wstg_index.py"
 else
   echo "  skip WSTG 原文なし（./scripts/fetch_wstg.sh）"
 fi
-"${PY}" scripts/build_coverage.py --check >/dev/null && ok "matrix/coverage.{yaml,md}" \
-  || ng "coverage が古い: python scripts/build_coverage.py"
+"${PY[@]}" scripts/build_coverage.py --check >/dev/null && ok "matrix/coverage.{yaml,md}" \
+  || ng "coverage が古い: uv run scripts/build_coverage.py"
 
-echo "[2/7] coverage.yaml と criteria.yaml の整合"
-"${PY}" - <<'PYEOF' || ng "matrix/*.yaml の整合が取れていない"
+echo "[2/8] coverage.yaml と criteria.yaml の整合"
+"${PY[@]}" - <<'PYEOF' || ng "matrix/*.yaml の整合が取れていない"
 import sys, yaml
 tests = {t["id"]: t for t in yaml.safe_load(open("matrix/wstg_tests.yaml"))["tests"]}
 cov = yaml.safe_load(open("matrix/coverage.yaml"))
@@ -49,11 +54,11 @@ sys.exit(1 if bad else 0)
 PYEOF
 ok "coverage / criteria の ID がすべて実在"
 
-echo "[3/7] new_activity.py（一時ディレクトリへ）"
-"${PY}" scripts/new_activity.py burp-crawl-authn --root "${TMP}/ev" --date 20260101 >/dev/null
+echo "[3/8] new_activity.py（一時ディレクトリへ）"
+"${PY[@]}" scripts/new_activity.py burp-crawl-authn --root "${TMP}/ev" --date 20260101 >/dev/null
 DIR="${TMP}/ev/burp-crawl-authn-20260101"
 [ -f "${DIR}/run.yaml" ] && [ -d "${DIR}/cmd" ] && [ -d "${DIR}/artifacts" ] || ng "雛形が作られない"
-"${PY}" -c "
+"${PY[@]}" -c "
 import yaml,sys
 d=yaml.safe_load(open('${DIR}/run.yaml'))
 assert d['activity_id']=='burp-crawl-authn', d['activity_id']
@@ -62,32 +67,32 @@ assert all(c['verdict']=='todo' for c in d['covers'])
 " || ng "run.yaml のプリフィルが壊れている"
 ok "run.yaml + cmd/ + artifacts/"
 
-echo "[4/7] run_cmd.py（実行・保存・追記）"
-"${PY}" scripts/run_cmd.py "${DIR}" --slug selftest -- printf 'selftest\n' >/dev/null
+echo "[4/8] run_cmd.py（実行・保存・追記）"
+"${PY[@]}" scripts/run_cmd.py "${DIR}" --slug selftest -- printf 'selftest\n' >/dev/null
 [ -s "${DIR}/cmd/selftest.txt" ] || ng "cmd/ に出力が残らない"
-"${PY}" -c "
+"${PY[@]}" -c "
 import yaml
 c=yaml.safe_load(open('${DIR}/run.yaml'))['commands']
 assert len(c)==1 and c[0]['exit_code']==0 and c[0]['output']=='cmd/selftest.txt', c
 " || ng "commands: への追記が壊れている"
-"${PY}" scripts/run_cmd.py "${DIR}" -- nosuchcommand_selftest >/dev/null 2>&1 || true
-"${PY}" -c "
+"${PY[@]}" scripts/run_cmd.py "${DIR}" -- nosuchcommand_selftest >/dev/null 2>&1 || true
+"${PY[@]}" -c "
 import yaml
 c=yaml.safe_load(open('${DIR}/run.yaml'))['commands']
 assert len(c)==2 and c[1]['exit_code']==127, c
 " || ng "コマンド未検出時に記録されない"
 ok "cmd/ 保存 + commands: 追記（正常系・異常系）"
 
-echo "[5/7] export_checklist.py（集約規則）"
-"${PY}" - <<PYEOF
+echo "[5/8] export_checklist.py（集約規則）"
+"${PY[@]}" - <<PYEOF
 import pathlib, re
 p = pathlib.Path("${DIR}/run.yaml"); s = p.read_text()
 s = s.replace("verdict: todo", "verdict: fail", 1)
 s = re.sub(r"verdict: todo", "verdict: pass", s, count=1)
 p.write_text(s)
 PYEOF
-"${PY}" scripts/export_checklist.py --root "${TMP}/ev" --out "${TMP}/out.csv" >/dev/null
-"${PY}" - <<PYEOF || ng "集約結果がおかしい"
+"${PY[@]}" scripts/export_checklist.py --root "${TMP}/ev" --out "${TMP}/out.csv" >/dev/null
+"${PY[@]}" - <<PYEOF || ng "集約結果がおかしい"
 import csv, sys
 rows = list(csv.DictReader(open("${TMP}/out.csv", encoding="utf-8-sig")))
 assert len(rows) >= 90, len(rows)
@@ -100,20 +105,28 @@ assert cols == expected, f"列の契約が変わっている: {cols}"
 PYEOF
 ok "todo 初期化・fail/pass 集約・列の並び"
 
-echo "[6/7] gen_playbooks.py（一時ディレクトリへ）"
+echo "[6/8] gen_playbooks.py（一時ディレクトリへ）"
 if compgen -G "docs/owasp/*" > /dev/null; then
-  "${PY}" scripts/gen_playbooks.py --out-dir "${TMP}/pb" >/dev/null
+  "${PY[@]}" scripts/gen_playbooks.py --out-dir "${TMP}/pb" >/dev/null
   n=$(ls "${TMP}/pb"/WSTG-*.md | wc -l)
   [ "${n}" -ge 90 ] || ng "カードが ${n} 枚しか生成されない"
   grep -q "判定基準" "${TMP}/pb/WSTG-SESS-02.md" || ng "カードの体裁が壊れている"
   ok "カード ${n} 枚"
   diff -rq playbooks "${TMP}/pb" >/dev/null && ok "コミット済みカードは最新" \
-    || echo "  warn playbooks/ が古い: python scripts/gen_playbooks.py"
+    || echo "  warn playbooks/ が古い: uv run scripts/gen_playbooks.py"
 else
   echo "  skip WSTG 原文なし"
 fi
 
-echo "[7/7] 機密境界"
+echo "[7/8] tasks.py（タスクリストと進捗）"
+"${PY[@]}" scripts/tasks.py --check >/dev/null && ok "TASKS.md は最新" \
+  || ng "TASKS.md が古い: uv run scripts/tasks.py --write"
+"${PY[@]}" scripts/tasks.py --root "${TMP}/ev" > "${TMP}/progress.txt" || ng "進捗表示が落ちる"
+grep -q "次にやること" "${TMP}/progress.txt" || ng "次にやることが出ない"
+grep -q "実施中\|完了" "${TMP}/progress.txt" || ng "進捗が反映されない"
+ok "進捗表示（evidence 走査）"
+
+echo "[8/8] 機密境界"
 git -C "${REPO_ROOT}" ls-files evidence | grep -qv '^evidence/.gitkeep$' && ng "evidence/ が追跡されている" || true
 git -C "${REPO_ROOT}" ls-files docs | grep -qv '^docs/owasp/FETCH.md$' && ng "docs/owasp/ が追跡されている" || true
 ok "evidence/ と docs/owasp/ は未追跡（.gitkeep と FETCH.md のみ）"
