@@ -3,14 +3,21 @@
 
     uv run scripts/new_activity.py burp-crawl-authn
     uv run scripts/new_activity.py tls-scan --date 20260910 --tester TOKU
+    uv run scripts/new_activity.py recon-osint --target example.com   # 複数サイトはこれ
 
 生成物:
-    evidence/<activity_id>-<yyyymmdd>/
-      run.yaml     covers: を matrix/coverage.yaml から自動プリフィル（verdict: todo）
-      cmd/         run_cmd.py の出力先
-      artifacts/   Burp エクスポート・スクショ等。coverage.yaml の outputs にある
-                   .md 成果物は検索しやすい雛形（templates/artifacts/）で自動生成
+    evidence/<activity_id>[-<target>]-<yyyymmdd>/
+      run.yaml       covers: を matrix/coverage.yaml から自動プリフィル（verdict: todo）
+      worksheet.md   カードのコマンドを埋めた収集ワークシート（出力をここに貼る）
+      cmd/           run_cmd.py / capture.py の出力先
+      artifacts/     Burp エクスポート・スクショ等。coverage.yaml の outputs にある
+                     .md 成果物は検索しやすい雛形（templates/artifacts/）で自動生成
       notes.md
+
+収集フロー（貼付方式）:
+    1. worksheet.md の各コマンドを実行し、出力を直後の ```paste ブロックに貼る
+    2. 各 WSTG-ID の @verdict / @finding を記入
+    3. uv run scripts/capture.py <このフォルダ>  で cmd/*.txt と run.yaml を生成
 
 このスクリプトは evidence/ に「書く」だけで、中身を読み返したり要約したりはしない。
 """
@@ -19,15 +26,35 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import re
+import shlex
 from pathlib import Path
 
 import yaml
 
+try:  # スラグ生成は run_cmd.py と共通化する（同じ命名規則にするため）
+    from run_cmd import make_slug
+except ImportError:  # 直接 import できない実行形態のフォールバック
+    def make_slug(command, explicit=None):
+        base = re.sub(r"[^A-Za-z0-9._-]+", "-", Path(command[0]).name).strip("-")
+        return (base or "cmd")[:48]
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 COVERAGE_YAML = REPO_ROOT / "matrix" / "coverage.yaml"
 WSTG_TESTS = REPO_ROOT / "matrix" / "wstg_tests.yaml"
+CRITERIA_YAML = REPO_ROOT / "matrix" / "criteria.yaml"
 # .md 成果物の雛形置き場。<basename> 専用の雛形が無ければ _findings.md を使う。
 ARTIFACT_TEMPLATES = REPO_ROOT / "templates" / "artifacts"
+
+# 手順の `backtick` から「実際に走らせるコマンド」を拾うための CLI バイナリ集合。
+# GUI（Burp 等）は対象外。判定は「先頭語が CLI で、かつ target を参照している」こと
+# （`curl` 単独のような不完全な言及を除くため）。
+CLI_BINARIES = {
+    "whois", "theharvester", "amass", "nmap", "curl", "wget", "ffuf", "gobuster",
+    "sqlmap", "testssl.sh", "sslyze", "nikto", "whatweb", "httpx", "dig", "nslookup",
+    "ncat", "nc", "hydra", "dotdotpwn", "wfuzz", "retire", "git-dumper", "aws",
+    "padbuster",
+}
 
 
 # GUI 主体のツール（run.yaml の type: を埋めるための当たり）
@@ -51,7 +78,87 @@ def iso_date(yyyymmdd: str) -> str:
     return f"{yyyymmdd[:4]}-{yyyymmdd[4:6]}-{yyyymmdd[6:8]}" if len(yyyymmdd) == 8 else yyyymmdd
 
 
-def render_run_yaml(activity: dict, tests: dict, date: str, tester: str) -> str:
+def sub_target(text: str, target: str | None) -> str:
+    """手順・コマンド中の target プレースホルダを実対象に置換する。"""
+    if not target:
+        return text
+    text = text.replace("target.co.jp", target)
+    return re.sub(r"\btarget\b", target, text)
+
+
+def extract_commands(steps: list, target: str | None) -> list:
+    """手順の `backtick` から、実際に走らせる CLI コマンドだけを抜き出す。
+
+    採用条件: 先頭語が CLI_BINARIES に含まれ、かつ target を参照していること
+    （`curl` 単独のような不完全な言及や、dork/ペイロードの backtick を除く）。
+    """
+    cmds = []
+    for step in steps or []:
+        for span in re.findall(r"`([^`]+)`", step):
+            span = span.strip()
+            toks = span.split()
+            if not toks:
+                continue
+            binary = toks[0].split("/")[-1].lower()
+            if binary in CLI_BINARIES and "target" in span.lower():
+                cmds.append(sub_target(span, target))
+    return cmds
+
+
+def render_worksheet(activity: dict, tests: dict, criteria: dict, target: str | None, date: str) -> str:
+    """カードのコマンドを埋めた収集ワークシートを作る（出力をここに貼る）。"""
+    tgt = target or "target"
+    out = [
+        f"# {activity['id']} — {tgt}  収集ワークシート",
+        "#",
+        "# 使い方:",
+        "#   1. 各コマンド（$ 行）を実行し、出力を直後の ```paste ブロックに貼る",
+        "#      （target は置換済み。GUI/手動中心のカードはコマンド行が無い）",
+        "#   2. 各 WSTG-ID の @verdict（pass|fail|info|na|todo）と @finding を記入",
+        f"#   3. uv run scripts/capture.py evidence/{Path(_dir_name(activity, target, date)).name}",
+        "#      で cmd/*.txt と run.yaml（commands / covers）を生成する",
+        "#",
+        f"# activity: {activity['id']}",
+        f"# target:   {tgt}",
+        "",
+    ]
+    seen: set = set()
+    for cov in activity.get("covers", []):
+        wid = cov["id"]
+        title = tests.get(wid, {}).get("title", "")
+        out.append(f"### {wid} | {title}")
+        emitted = False
+        used_paths: set = set()
+        for cmd in extract_commands(criteria.get(wid, {}).get("steps", []), target):
+            if cmd in seen:
+                continue
+            seen.add(cmd)
+            try:
+                slug = make_slug(shlex.split(cmd), None)
+            except ValueError:
+                slug = make_slug([cmd.split()[0]], None)
+            path = f"cmd/{slug}.txt"
+            n = 2
+            while path in used_paths:
+                path = f"cmd/{slug}-{n}.txt"
+                n += 1
+            used_paths.add(path)
+            out += [f"@cmd {slug} | {path}", f"$ {cmd}", "```paste", "```", ""]
+            emitted = True
+        if not emitted:
+            out.append("# （CLI コマンドなし＝GUI/手動中心。artifacts/ に手記録し @finding を記入）")
+        out += ["@verdict todo", "@finding ", ""]
+    return "\n".join(out) + "\n"
+
+
+def _dir_name(activity: dict, target: str | None, date: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "-", target).strip("-") if target else ""
+    stem = f"{activity['id']}-{safe}" if safe else activity["id"]
+    return f"{stem}-{date}"
+
+
+def render_run_yaml(activity: dict, tests: dict, date: str, tester: str, target: str | None = None) -> str:
+    scope = _yaml_str(target) if target else '""'
     lines = [
         f"# {activity['id']} — {activity.get('title', '')}",
         "# finding は要約のみ。生トークン・資格情報・生ホスト名は書かず evidence: で参照する。",
@@ -59,7 +166,7 @@ def render_run_yaml(activity: dict, tests: dict, date: str, tester: str) -> str:
         f"title: {_yaml_str(activity.get('title', ''))}",
         f"date: {iso_date(date)}",
         f"tester: {tester}",
-        'target_scope: ""   # 対象の識別子（エイリアス可）',
+        f"target_scope: {scope}   # 対象の識別子（エイリアス可）",
         "",
         "tools:",
     ]
@@ -169,12 +276,14 @@ def main() -> int:
     ap.add_argument("activity_id", help="matrix/coverage.yaml に定義済みの activity_id")
     ap.add_argument("--date", default=_dt.date.today().strftime("%Y%m%d"), help="yyyymmdd（既定: 今日）")
     ap.add_argument("--tester", default="TOKU")
+    ap.add_argument("--target", help="対象サイト（複数サイト時。フォルダ名とコマンドの target 置換に使う）")
     ap.add_argument("--root", default=str(REPO_ROOT / "evidence"), help="出力先ルート（既定: evidence/）")
     ap.add_argument("--force", action="store_true", help="既存フォルダがあっても run.yaml 以外を作り直す")
     args = ap.parse_args()
 
     coverage = load_yaml(COVERAGE_YAML)
     tests = {t["id"]: t for t in load_yaml(WSTG_TESTS)["tests"]}
+    criteria = load_yaml(CRITERIA_YAML) if CRITERIA_YAML.exists() else {}
     activities = {a["id"]: a for a in coverage["activities"]}
 
     if args.activity_id not in activities:
@@ -185,27 +294,35 @@ def main() -> int:
         return 2
 
     activity = activities[args.activity_id]
-    target = Path(args.root) / f"{args.activity_id}-{args.date}"
-    run_yaml = target / "run.yaml"
+    target_dir = Path(args.root) / _dir_name(activity, args.target, args.date)
+    run_yaml = target_dir / "run.yaml"
 
     if run_yaml.exists() and not args.force:
         print(f"既に存在します: {run_yaml}（上書きしません）")
         return 1
 
     for sub in ("cmd", "artifacts"):
-        (target / sub).mkdir(parents=True, exist_ok=True)
-    run_yaml.write_text(render_run_yaml(activity, tests, args.date, args.tester), encoding="utf-8")
-    notes = target / "notes.md"
+        (target_dir / sub).mkdir(parents=True, exist_ok=True)
+    run_yaml.write_text(
+        render_run_yaml(activity, tests, args.date, args.tester, args.target), encoding="utf-8"
+    )
+    notes = target_dir / "notes.md"
     if not notes.exists():
         notes.write_text(render_notes(activity, args.date), encoding="utf-8")
-    stubs = write_artifact_stubs(activity, target, args.date, args.force)
+    stubs = write_artifact_stubs(activity, target_dir, args.date, args.force)
+    worksheet = target_dir / "worksheet.md"
+    if not worksheet.exists() or args.force:
+        worksheet.write_text(
+            render_worksheet(activity, tests, criteria, args.target, args.date), encoding="utf-8"
+        )
 
     covered = ", ".join(c["id"] for c in activity.get("covers", []))
-    print(f"作成: {target}")
+    print(f"作成: {target_dir}")
     print(f"  covers ({len(activity.get('covers', []))} 件): {covered}")
     if stubs:
         print(f"  成果物の雛形: {', '.join(stubs)}")
-    print(f"  次: uv run scripts/run_cmd.py {target} -- <コマンド>")
+    print(f"  ワークシート: {worksheet}（コマンド出力を貼る）")
+    print(f"  次: worksheet.md に貼付 → uv run scripts/capture.py {target_dir}")
     return 0
 
 

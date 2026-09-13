@@ -50,9 +50,14 @@
 docs/owasp（原文） ─▶ wstg_tests.yaml ─┬─▶ coverage.{yaml,md}（+ coverage.yaml の activities）
                                        └─▶ playbooks/（+ criteria.yaml）
 coverage.yaml ─┬─▶ TASKS.md（実施順）
-               └─▶ new_activity.py ─▶ evidence/*/run.yaml ─┬─▶ export_checklist.py ─▶ CSV
-                                                           └─▶ tasks.py（進捗表示）
+               └─▶ new_activity.py ─▶ evidence/*/{run.yaml, worksheet.md}
+                     worksheet.md ─(貼付)─▶ capture.py ─▶ cmd/*.txt + run.yaml 更新
+                     run.yaml ─┬─▶ export_checklist.py ─▶ CSV
+                               └─▶ tasks.py（進捗表示）
 ```
+
+`new_activity.py` は `criteria.yaml` の手順の `backtick` コマンド（target を参照するもの）を
+拾って `worksheet.md` を作る。`--target` でサイトごとにフォルダとコマンドを量産できる。
 
 上流を変えたら下流を必ず再生成し、生成物の差分も一緒にコミットする
 （原文の再取得後は `playbooks/` が大量に変わり得る。差分に目を通してからコミットする）。
@@ -70,8 +75,10 @@ coverage.yaml ─┬─▶ TASKS.md（実施順）
 
 ## 4. 壊してはいけない不変条件
 
-- **`run_cmd.py` は `run.yaml` をテキストとして追記する**。PyYAML で読み込んで
-  丸ごと書き戻さない（コメント・並び・空行が消え、手記録の意図が失われる）。
+- **`run_cmd.py` と `capture.py` は `run.yaml` をテキストとして追記・部分置換する**。
+  PyYAML で読み込んで丸ごと書き戻さない（コメント・並び・空行が消え、手記録の意図が
+  失われる）。`capture.py` は `commands:` への追記と、`covers:` の該当 id ブロックの
+  `verdict`/`finding`/`evidence` 行の置換だけを行う（ブロック外は触らない）。
 - **`export_checklist.py` の CSV 列は Google Sheets 側の契約**。
   列名・順序（`wstg_id, category, title, status, activities, evidence_paths,
   finding_summary, updated`）を変えるときは、人間に確認してから。

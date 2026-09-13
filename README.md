@@ -56,7 +56,11 @@ uv を入れられない会社PC では `pip install pyyaml` して `python scri
 
 ```bash
 uv run scripts/new_activity.py burp-crawl-authn
-# -> evidence/burp-crawl-authn-20260908/{run.yaml,cmd/,artifacts/,notes.md}
+# -> evidence/burp-crawl-authn-20260908/{run.yaml,worksheet.md,cmd/,artifacts/,notes.md}
+
+# 複数サイトは --target で名前空間を分ける（コマンド中の target も置換される）
+uv run scripts/new_activity.py recon-osint --target example.com
+# -> evidence/recon-osint-example.com-20260913/
 ```
 
 `run.yaml` の `covers:` には、そのアクティビティがカバーする WSTG-ID が
@@ -69,15 +73,28 @@ uv run scripts/new_activity.py burp-crawl-authn
 対応するプレイブックカード（`playbooks/WSTG-*.md`）を開きながら進める。
 一覧は `playbooks/INDEX.md`、どのアクティビティが何を満たすかは `matrix/coverage.md`。
 
-### 2. CLI はロガー経由で実行する
+### 2. コマンドを実行し、出力を集める
+
+やり方は2通り。どちらも `cmd/<slug>.txt` と `run.yaml` の `commands:` に残る。
+
+**(a) 貼付ワークシート方式**（ツールを別環境で回すとき・複数サイトで効率化したいとき）
+
+`worksheet.md` にカードの実コマンドが target 置換済みで並ぶ。各コマンドを実行し、
+出力を直後の ` ```paste ` ブロックに貼り、WSTG-ID ごとに `@verdict` / `@finding` を記入する。
+
+```bash
+# 記入後、まとめて取り込み（コマンドごとに別ファイル＝ツール別フォーマットで残る）
+uv run scripts/capture.py evidence/recon-osint-example.com-20260913
+# -> cmd/whois.txt, cmd/theHarvester-...txt などを生成し、run.yaml の covers も更新
+```
+
+**(b) ロガー経由で直接実行**（このリポジトリ上でそのまま走らせるとき）
 
 ```bash
 uv run scripts/run_cmd.py evidence/burp-crawl-authn-20260908 -- nmap -sV -p- target.example
 uv run scripts/run_cmd.py evidence/tls-scan-20260908 --note "本番のみ" -- testssl.sh --quiet target.example
 ```
 
-- 出力は `cmd/<slug>.txt` に保存され、画面にもそのまま流れる。
-- `run.yaml` の `commands:` に、実行したコマンド行・出力先・開始時刻・終了コード・所要秒が追記される。
 - **GUI ツール（Burp / ZAP など）は対象外**。何をしたかを `run.yaml` の `steps:` に手記録する。
   ここが再現メモになるので、スコープ設定・使った機能・エクスポート先まで書く。
 
