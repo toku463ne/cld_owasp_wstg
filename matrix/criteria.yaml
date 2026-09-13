@@ -104,7 +104,7 @@ WSTG-INFO-08:
   steps:
     - "`whatweb https://target/` と ブラウザ拡張 Wappalyzer でフレームワーク/CMS を推定"
     - "Cookie 名（`JSESSIONID`/`ASP.NET_SessionId`/`laravel_session` 等）・URL パス・ヘッダから基盤を特定"
-    - "フロント JS を `retire --js` / Retire.js で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認"
+    - "取得したフロント JS を `retire --path <JSフォルダ>`（Retire.js）で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認"
     - "特定した製品・バージョンを CVE と照合し、finding にバージョン根拠（どこで判ったか）を添える"
 
 WSTG-INFO-10:
@@ -762,7 +762,7 @@ WSTG-CRYP-01:
   fail: "SSLv3/TLS1.0/1.1 が有効、RC4/3DES/NULL/EXPORT が有効、証明書が期限切れ・自己署名・名前不一致。"
   note: "対象は Web だけでなく、メール・API・管理ポートの TLS も含める。"
   steps:
-    - "`testssl.sh https://target` または `sslyze --regular target` で全 TLS ポートを一括検査"
+    - "`testssl.sh https://target` または `sslyze target:443` で全 TLS ポートを一括検査（sslyze v5 は引数なしで標準スキャン。`--regular` は廃止）"
     - "SSLv3/TLS1.0/1.1・弱い暗号スイート（RC4/3DES/EXPORT）・弱い鍵長が有効でないか確認"
     - "証明書の有効期限・発行者・ホスト名一致、既知脆弱性（Heartbleed/ROBOT 等）を確認"
     - "`nmap --script ssl-enum-ciphers -p443 target` で裏取り。結果は artifacts/tls-summary.md に"

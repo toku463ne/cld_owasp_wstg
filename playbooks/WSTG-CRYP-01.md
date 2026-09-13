@@ -21,7 +21,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `testssl.sh https://target` または `sslyze --regular target` で全 TLS ポートを一括検査
+1. `testssl.sh https://target` または `sslyze target:443` で全 TLS ポートを一括検査（sslyze v5 は引数なしで標準スキャン。`--regular` は廃止）
 2. SSLv3/TLS1.0/1.1・弱い暗号スイート（RC4/3DES/EXPORT）・弱い鍵長が有効でないか確認
 3. 証明書の有効期限・発行者・ホスト名一致、既知脆弱性（Heartbleed/ROBOT 等）を確認
 4. `nmap --script ssl-enum-ciphers -p443 target` で裏取り。結果は artifacts/tls-summary.md に

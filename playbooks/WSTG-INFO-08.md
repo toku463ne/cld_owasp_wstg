@@ -21,7 +21,7 @@ WSTG の Test Objectives:
 
 1. `whatweb https://target/` と ブラウザ拡張 Wappalyzer でフレームワーク/CMS を推定
 2. Cookie 名（`JSESSIONID`/`ASP.NET_SessionId`/`laravel_session` 等）・URL パス・ヘッダから基盤を特定
-3. フロント JS を `retire --js` / Retire.js で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認
+3. 取得したフロント JS を `retire --path <JSフォルダ>`（Retire.js）で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認
 4. 特定した製品・バージョンを CVE と照合し、finding にバージョン根拠（どこで判ったか）を添える
 
 ## 使用ツール
