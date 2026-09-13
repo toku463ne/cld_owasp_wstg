@@ -16,9 +16,15 @@
 - 実施できるアクティビティ ID の一覧: `uv run scripts/new_activity.py`（引数なし）
 - 複数サイトを回すときは各アクティビティで `--target <site>` を付ける
 
+Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の `apt` をまとめてある。
+まず `sudo apt update`。`pipx` / `npm` / `go` を使う個別導入もフェーズ内に記載。
+
 ## フェーズ1 — 受動的収集
 
 対象に触れずに分かることを集め、以降のスコープと入力を確定させる。
+
+**準備（このフェーズで使う Kali ツール。未導入のものだけ）**
+- apt: `sudo apt install -y amass dnsutils theharvester whois`
 
 ### 1. `recon-osint` — 外部 OSINT・公開情報の収集
 
@@ -37,6 +43,11 @@
 ## フェーズ2 — 外形調査・構成
 
 外から見えるサービス・設定・残骸を洗い出す。
+
+**準備（このフェーズで使う Kali ツール。未導入のものだけ）**
+- apt: `sudo apt install -y awscli curl dirsearch dnsutils dnsx ffuf gobuster httpx-toolkit ncat nikto nmap ripgrep sslyze testssl.sh wget whatweb`
+- 個別: `go install github.com/haccer/subjack@latest`
+- Kali 同梱 / Burp 内（導入不要）: Burp Repeater, Burp Suite
 
 ### 2. `fingerprint-stack` — サーバ・フレームワークのフィンガープリント
 
@@ -168,6 +179,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 
 認証済みでアプリ全体を歩き、入力点と構造を地図にする。
 
+**準備（このフェーズで使う Kali ツール。未導入のものだけ）**
+- apt: `sudo apt install -y curl ffuf`
+- Kali 同梱 / Burp 内（導入不要）: Burp Suite, OWASP ZAP
+
 ### 11. `burp-crawl-authn` — 認証済みクロールとエントリポイント洗い出し
 
 認証済みセッションでアプリ全体をクロールし、エントリポイント・実行パス・アーキテクチャを把握する。
@@ -227,6 +242,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 ## フェーズ4 — 認証・セッション
 
 認証まわりとセッションの生成・維持・破棄を検証する。
+
+**準備（このフェーズで使う Kali ツール。未導入のものだけ）**
+- apt: `sudo apt install -y curl ffuf`
+- Kali 同梱 / Burp 内（導入不要）: Burp Intruder, Burp Sequencer, Burp Suite
 
 ### 15. `authn-flow-review` — 認証フロー一括レビュー
 
@@ -302,6 +321,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 
 ロール横断・識別子差し替えで権限制御を検証する。
 
+**準備（このフェーズで使う Kali ツール。未導入のものだけ）**
+- apt: `sudo apt install -y curl ffuf`
+- Kali 同梱 / Burp 内（導入不要）: Autorize / AuthMatrix, Burp Suite
+
 ### 20. `authz-matrix` — 権限マトリクス試験（ロール横断リクエスト再送）
 
 各ロールで採取した代表リクエストを、他ロール・未認証で再送して差分を見る。IDOR は識別子を差し替えて確認。
@@ -333,6 +356,13 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 ## フェーズ6 — 入力検証・クライアントサイド
 
 洗い出した入力点に対して注入系・クライアント側の検証を行う。
+
+**準備（このフェーズで使う Kali ツール。未導入のものだけ）**
+- apt: `sudo apt install -y curl interactsh padbuster sqlmap testssl.sh`
+- 個別: `sudo npm install -g retire`
+- 個別: `sudo npm install -g wscat`
+- 個別: `git clone https://github.com/epinna/tplmap`
+- Kali 同梱 / Burp 内（導入不要）: Burp Collaborator, Burp HTTP Request Smuggler, Burp Intruder, Burp Suite, DOM Invader, InQL
 
 ### 22. `xss-probe` — XSS・HTML インジェクションの検証
 
@@ -463,6 +493,9 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 ## フェーズ7 — 業務ロジック
 
 業務フローの逸脱と誤用を、実装ではなく業務の観点で検証する。
+
+**準備（このフェーズで使う Kali ツール。未導入のものだけ）**
+- Kali 同梱 / Burp 内（導入不要）: Burp Suite
 
 ### 31. `business-logic-walkthrough` — 業務ロジックの通し検証
 

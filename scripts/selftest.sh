@@ -165,6 +165,11 @@ fi
 echo "[7/8] tasks.py（タスクリストと進捗）"
 "${PY[@]}" scripts/tasks.py --check >/dev/null && ok "TASKS.md は最新" \
   || ng "TASKS.md が古い: uv run scripts/tasks.py --write"
+# フェーズ単位の Kali ツール準備（apt 一括）が出ているか
+grep -q "^\*\*準備（このフェーズで使う Kali ツール" TASKS.md \
+  && grep -Eq "apt install -y .*whois" TASKS.md \
+  || ng "フェーズ単位の Kali ツール準備が TASKS.md に出ていない"
+ok "フェーズ単位の Kali ツール準備（apt 一括）"
 "${PY[@]}" scripts/tasks.py --root "${TMP}/ev" > "${TMP}/progress.txt" || ng "進捗表示が落ちる"
 grep -q "次にやること" "${TMP}/progress.txt" || ng "次にやることが出ない"
 grep -q "実施中\|完了" "${TMP}/progress.txt" || ng "進捗が反映されない"

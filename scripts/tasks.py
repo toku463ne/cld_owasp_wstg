@@ -13,19 +13,124 @@ phase / order / depends_on / impact。進捗は evidence/*/run.yaml の verdict 
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
 import yaml
 
+try:  # 手順からコマンド（＝必要ツール）を拾うため new_activity と共有する
+    from new_activity import extract_commands
+except ImportError:
+    def extract_commands(steps, target=None):
+        return []
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 COVERAGE_YAML = REPO_ROOT / "matrix" / "coverage.yaml"
 WSTG_TESTS = REPO_ROOT / "matrix" / "wstg_tests.yaml"
+CRITERIA_YAML = REPO_ROOT / "matrix" / "criteria.yaml"
 TASKS_MD = REPO_ROOT / "TASKS.md"
 DEFAULT_EVIDENCE = REPO_ROOT / "evidence"
 
 IMPACT_LABEL = {"low": "低", "medium": "中", "high": "高（要事前合意）"}
 DONE, DOING, TODO = "完了", "実施中", "未着手"
+
+# ツール名 → Kali でのセットアップ。フェーズ単位で「未導入分の apt」を案内するため。
+#   APT_PKG … `sudo apt install -y <pkg...>` にまとめる
+#   OTHER   … apt 以外（pipx / npm / go / git）。個別コマンドをそのまま出す
+#   BUILTIN … Kali 同梱 or Burp 内（インストール不要。名前だけ挙げる）
+#   MANUAL  … 手動・ブラウザ・ヒアリング等（インストール不要）
+# 分類は「小文字化した完全一致」→「先頭トークン一致」の順で引く。
+APT_PKG = {
+    "whois": "whois", "dig": "dnsutils", "nslookup": "dnsutils",
+    "theharvester": "theharvester", "amass": "amass", "nmap": "nmap",
+    "ncat": "ncat", "nc": "netcat-traditional", "curl": "curl", "wget": "wget",
+    "ffuf": "ffuf", "gobuster": "gobuster", "dirsearch": "dirsearch",
+    "sqlmap": "sqlmap", "nikto": "nikto", "whatweb": "whatweb",
+    "testssl.sh": "testssl.sh", "sslyze": "sslyze", "hydra": "hydra",
+    "dotdotpwn": "dotdotpwn", "wfuzz": "wfuzz", "padbuster": "padbuster",
+    "httpx": "httpx-toolkit", "dnsx": "dnsx", "interactsh": "interactsh",
+    "aws": "awscli", "awscli": "awscli", "grep/ripgrep": "ripgrep",
+}
+OTHER_CMD = {
+    "retire": "sudo npm install -g retire", "retire.js": "sudo npm install -g retire",
+    "git-dumper": "pipx install git-dumper",
+    "subjack": "go install github.com/haccer/subjack@latest",
+    "tplmap": "git clone https://github.com/epinna/tplmap",
+    "wscat": "sudo npm install -g wscat",
+}
+BUILTIN = {
+    "burp suite", "burp collaborator", "burp http request smuggler", "burp intruder",
+    "burp repeater", "burp sequencer", "dom invader", "inql", "autorize / authmatrix",
+    "owasp zap",
+}
+MANUAL = {
+    "google/bing dorking", "crt.sh", "wappalyzer", "graphql voyager",
+    "cis benchmark チェックリスト", "securityheaders.io 相当の手動チェック",
+    "ls -l / icacls", "eicar テストファイル", "ブラウザ2枚", "ブラウザ開発者ツール",
+    "メールクライアント", "ヒアリング", "業務仕様書", "手動", "手動 payload",
+    "手動レビュー", "手動操作",
+}
+
+
+def classify_tool(tool: str):
+    """ツール名を ('apt'|'other'|'builtin'|'manual', 値) に分類する。"""
+    low = tool.strip().lower()
+    if low in BUILTIN:
+        return ("builtin", tool.strip())
+    if low in MANUAL:
+        return ("manual", tool.strip())
+    if low in APT_PKG:
+        return ("apt", APT_PKG[low])
+    if low in OTHER_CMD:
+        return ("other", OTHER_CMD[low])
+    head = re.split(r"[ /（(]", low)[0]
+    if head in APT_PKG:
+        return ("apt", APT_PKG[head])
+    if head in OTHER_CMD:
+        return ("other", OTHER_CMD[head])
+    return ("manual", tool.strip())  # 未知はインストール指示を出さず手動扱い
+
+
+def phase_tool_names(acts_in_phase: list, criteria: dict) -> list:
+    """フェーズで使うツール名を集める（活動の tools + 手順中のコマンドのバイナリ）。"""
+    names: list = []
+    for a in acts_in_phase:
+        for t in a.get("tools", []) or []:
+            names.append(t)
+        for cov in a.get("covers", []):
+            steps = criteria.get(cov["id"], {}).get("steps", [])
+            for cmd in extract_commands(steps, None):
+                names.append(cmd.split()[0].split("/")[-1])  # 先頭バイナリ名
+    return names
+
+
+def render_phase_setup(acts_in_phase: list, criteria: dict) -> list:
+    """フェーズ冒頭に置く『準備（Kali ツール）』の行を作る。"""
+    apt: set = set()
+    other: list = []
+    builtin: set = set()
+    for name in phase_tool_names(acts_in_phase, criteria):
+        kind, val = classify_tool(name)
+        if kind == "apt":
+            apt.add(val)
+        elif kind == "other":
+            if val not in other:
+                other.append(val)
+        elif kind == "builtin":
+            builtin.add(val)
+    out: list = []
+    if not (apt or other or builtin):
+        return out
+    out.append("**準備（このフェーズで使う Kali ツール。未導入のものだけ）**")
+    if apt:
+        out.append(f"- apt: `sudo apt install -y {' '.join(sorted(apt))}`")
+    for cmd in other:
+        out.append(f"- 個別: `{cmd}`")
+    if builtin:
+        out.append(f"- Kali 同梱 / Burp 内（導入不要）: {', '.join(sorted(builtin))}")
+    out.append("")
+    return out
 
 
 def load(path: Path) -> dict:
@@ -65,9 +170,12 @@ def scan_progress(evidence_root: Path, activity_ids: set[str]) -> dict:
     return progress
 
 
-def render_tasks_md(coverage: dict, tests: dict) -> str:
+def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
     phases = coverage.get("phases", {})
     acts = sorted_activities(coverage)
+    by_phase: dict = {}
+    for a in acts:
+        by_phase.setdefault(a["phase"], []).append(a)
     out: list[str] = []
     w = out.append
 
@@ -91,6 +199,9 @@ def render_tasks_md(coverage: dict, tests: dict) -> str:
     w("- 実施できるアクティビティ ID の一覧: `uv run scripts/new_activity.py`（引数なし）")
     w("- 複数サイトを回すときは各アクティビティで `--target <site>` を付ける")
     w("")
+    w("Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の `apt` をまとめてある。")
+    w("まず `sudo apt update`。`pipx` / `npm` / `go` を使う個別導入もフェーズ内に記載。")
+    w("")
 
     current = None
     for a in acts:
@@ -102,6 +213,8 @@ def render_tasks_md(coverage: dict, tests: dict) -> str:
             if ph.get("goal"):
                 w(ph["goal"])
                 w("")
+            for line in render_phase_setup(by_phase[current], criteria):
+                w(line)
         deps = a.get("depends_on") or []
         covers = [c["id"] for c in a.get("covers", [])]
         w(f"### {a['order']}. `{a['id']}` — {a.get('title','')}")
@@ -187,9 +300,10 @@ def main() -> int:
 
     coverage = load(COVERAGE_YAML)
     tests = {t["id"]: t for t in load(WSTG_TESTS)["tests"]}
+    criteria = yaml.safe_load(CRITERIA_YAML.read_text(encoding="utf-8")) if CRITERIA_YAML.exists() else {}
 
     if args.write or args.check:
-        text = render_tasks_md(coverage, tests)
+        text = render_tasks_md(coverage, tests, criteria or {})
         out = Path(args.out)
         if args.check:
             same = out.exists() and out.read_text(encoding="utf-8") == text
