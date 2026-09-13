@@ -88,6 +88,8 @@ def render_tasks_md(coverage: dict, tests: dict) -> str:
     w("- [ ] `uv sync` — Python 環境を用意（uv が無い会社PCでは `pip install pyyaml`）")
     w("- [ ] `./scripts/selftest.sh` — ツールが動くことを確認")
     w("- [ ] （原文を読みたいとき）`./scripts/fetch_wstg.sh`")
+    w("- 実施できるアクティビティ ID の一覧: `uv run scripts/new_activity.py`（引数なし）")
+    w("- 複数サイトを回すときは各アクティビティで `--target <site>` を付ける")
     w("")
 
     current = None
@@ -110,11 +112,13 @@ def render_tasks_md(coverage: dict, tests: dict) -> str:
           + (f" / 前提: {', '.join(f'`{d}`' for d in deps)}" if deps else " / 前提: なし"))
         w(f"- カード: {', '.join(f'[{c}](playbooks/{c}.md)' for c in covers)}")
         w("")
-        w(f"- [ ] `uv run scripts/new_activity.py {a['id']}` でフォルダと run.yaml を作る")
+        w(f"- [ ] `uv run scripts/new_activity.py {a['id']}` でフォルダと run.yaml・worksheet を作る"
+          "（複数サイトは `--target <site>`）")
         w(f"- [ ] カードを開いて手順と判定基準を確認する（{len(covers)} 項目）")
         tools = ", ".join(a.get("tools", []))
         w(f"- [ ] 収集を実行する（{tools}）")
-        w(f"      - CLI: `uv run scripts/run_cmd.py evidence/{a['id']}-<yyyymmdd> -- <コマンド>`")
+        w(f"      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/{a['id']}-<yyyymmdd>`")
+        w(f"      - CLI 直実行: `uv run scripts/run_cmd.py evidence/{a['id']}-<yyyymmdd> -- <コマンド>`")
         w("      - GUI: 操作内容を `run.yaml` の `steps:` に手記録")
         w("- [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する")
         w("")

@@ -63,6 +63,9 @@ uv run scripts/new_activity.py recon-osint --target example.com
 # -> evidence/recon-osint-example.com-20260913/
 ```
 
+`burp-crawl-authn` は `matrix/coverage.yaml` に定義された収集アクティビティ ID の一例
+（一覧は `uv run scripts/new_activity.py`〈引数なし〉または `matrix/coverage.md`）。
+
 `run.yaml` の `covers:` には、そのアクティビティがカバーする WSTG-ID が
 `matrix/coverage.yaml` から自動で入る（`verdict: todo`）。
 `artifacts/` には、`coverage.yaml` の `outputs:` にある `.md` 成果物の雛形が

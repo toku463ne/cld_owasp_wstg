@@ -13,6 +13,8 @@
 - [ ] `uv sync` — Python 環境を用意（uv が無い会社PCでは `pip install pyyaml`）
 - [ ] `./scripts/selftest.sh` — ツールが動くことを確認
 - [ ] （原文を読みたいとき）`./scripts/fetch_wstg.sh`
+- 実施できるアクティビティ ID の一覧: `uv run scripts/new_activity.py`（引数なし）
+- 複数サイトを回すときは各アクティビティで `--target <site>` を付ける
 
 ## フェーズ1 — 受動的収集
 
@@ -25,10 +27,11 @@
 - 影響度: 低 / 前提: なし
 - カード: [WSTG-INFO-01](playbooks/WSTG-INFO-01.md), [WSTG-CONF-10](playbooks/WSTG-CONF-10.md)
 
-- [ ] `uv run scripts/new_activity.py recon-osint` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py recon-osint` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（2 項目）
 - [ ] 収集を実行する（theHarvester, crt.sh, whois, Google/Bing dorking, amass）
-      - CLI: `uv run scripts/run_cmd.py evidence/recon-osint-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/recon-osint-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/recon-osint-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -43,10 +46,11 @@
 - 影響度: 低 / 前提: `recon-osint`
 - カード: [WSTG-INFO-02](playbooks/WSTG-INFO-02.md), [WSTG-INFO-08](playbooks/WSTG-INFO-08.md), [WSTG-CONF-01](playbooks/WSTG-CONF-01.md), [WSTG-CONF-02](playbooks/WSTG-CONF-02.md)
 
-- [ ] `uv run scripts/new_activity.py fingerprint-stack` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py fingerprint-stack` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（4 項目）
 - [ ] 収集を実行する（nmap -sV, whatweb, Wappalyzer, httpx）
-      - CLI: `uv run scripts/run_cmd.py evidence/fingerprint-stack-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/fingerprint-stack-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/fingerprint-stack-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -57,10 +61,11 @@
 - 影響度: 低 / 前提: `fingerprint-stack`
 - カード: [WSTG-CRYP-01](playbooks/WSTG-CRYP-01.md), [WSTG-CONF-07](playbooks/WSTG-CONF-07.md), [WSTG-CONF-01](playbooks/WSTG-CONF-01.md)
 
-- [ ] `uv run scripts/new_activity.py tls-scan` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py tls-scan` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（3 項目）
 - [ ] 収集を実行する（testssl.sh, sslyze, nmap --script ssl-enum-ciphers）
-      - CLI: `uv run scripts/run_cmd.py evidence/tls-scan-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/tls-scan-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/tls-scan-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -71,10 +76,11 @@ OPTIONS 応答を鵜呑みにせず、実際に各メソッドを投げて許可
 - 影響度: 中 / 前提: `fingerprint-stack`
 - カード: [WSTG-CONF-06](playbooks/WSTG-CONF-06.md), [WSTG-INPV-03](playbooks/WSTG-INPV-03.md)
 
-- [ ] `uv run scripts/new_activity.py http-methods` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py http-methods` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（2 項目）
 - [ ] 収集を実行する（curl, nmap http-methods NSE, ncat, Burp Repeater）
-      - CLI: `uv run scripts/run_cmd.py evidence/http-methods-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/http-methods-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/http-methods-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -85,10 +91,11 @@ robots.txt・sitemap・.well-known・security.txt・HTML コメント・JS ソ�
 - 影響度: 低 / 前提: なし
 - カード: [WSTG-INFO-03](playbooks/WSTG-INFO-03.md), [WSTG-INFO-05](playbooks/WSTG-INFO-05.md), [WSTG-CONF-05](playbooks/WSTG-CONF-05.md)
 
-- [ ] `uv run scripts/new_activity.py metafiles-crawl` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py metafiles-crawl` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（3 項目）
 - [ ] 収集を実行する（curl, wget, grep/ripgrep, Burp Suite）
-      - CLI: `uv run scripts/run_cmd.py evidence/metafiles-crawl-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/metafiles-crawl-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/metafiles-crawl-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -99,10 +106,11 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 - 影響度: 中 / 前提: `recon-osint`, `fingerprint-stack`
 - カード: [WSTG-INFO-04](playbooks/WSTG-INFO-04.md), [WSTG-INFO-06](playbooks/WSTG-INFO-06.md)
 
-- [ ] `uv run scripts/new_activity.py enum-apps` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py enum-apps` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（2 項目）
 - [ ] 収集を実行する（ffuf, dirsearch, gobuster, nmap -p-）
-      - CLI: `uv run scripts/run_cmd.py evidence/enum-apps-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/enum-apps-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/enum-apps-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -113,10 +121,11 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 - 影響度: 中 / 前提: `enum-apps`
 - カード: [WSTG-CONF-03](playbooks/WSTG-CONF-03.md), [WSTG-CONF-04](playbooks/WSTG-CONF-04.md)
 
-- [ ] `uv run scripts/new_activity.py backup-unref` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py backup-unref` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（2 項目）
 - [ ] 収集を実行する（ffuf, dirsearch, nikto）
-      - CLI: `uv run scripts/run_cmd.py evidence/backup-unref-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/backup-unref-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/backup-unref-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -127,10 +136,11 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 - 影響度: 中 / 前提: `recon-osint`
 - カード: [WSTG-CONF-11](playbooks/WSTG-CONF-11.md), [WSTG-CONF-10](playbooks/WSTG-CONF-10.md)
 
-- [ ] `uv run scripts/new_activity.py cloud-and-takeover` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py cloud-and-takeover` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（2 項目）
 - [ ] 収集を実行する（curl, aws cli, subjack, dnsx）
-      - CLI: `uv run scripts/run_cmd.py evidence/cloud-and-takeover-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/cloud-and-takeover-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/cloud-and-takeover-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -141,10 +151,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 低 / 前提: `metafiles-crawl`
 - カード: [WSTG-CONF-08](playbooks/WSTG-CONF-08.md), [WSTG-CLNT-08](playbooks/WSTG-CLNT-08.md)
 
-- [ ] `uv run scripts/new_activity.py ria-legacy-check` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py ria-legacy-check` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（2 項目）
 - [ ] 収集を実行する（curl, 手動レビュー）
-      - CLI: `uv run scripts/run_cmd.py evidence/ria-legacy-check-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/ria-legacy-check-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/ria-legacy-check-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -155,10 +166,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 低 / 前提: `fingerprint-stack`
 - カード: [WSTG-CONF-01](playbooks/WSTG-CONF-01.md), [WSTG-CONF-02](playbooks/WSTG-CONF-02.md), [WSTG-CONF-09](playbooks/WSTG-CONF-09.md)
 
-- [ ] `uv run scripts/new_activity.py server-config-review` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py server-config-review` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（3 項目）
 - [ ] 収集を実行する（手動レビュー, ls -l / icacls, nikto, CIS Benchmark チェックリスト）
-      - CLI: `uv run scripts/run_cmd.py evidence/server-config-review-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/server-config-review-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/server-config-review-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -173,10 +185,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `enum-apps`
 - カード: [WSTG-INFO-06](playbooks/WSTG-INFO-06.md), [WSTG-INFO-07](playbooks/WSTG-INFO-07.md), [WSTG-INFO-10](playbooks/WSTG-INFO-10.md), [WSTG-CONF-05](playbooks/WSTG-CONF-05.md)
 
-- [ ] `uv run scripts/new_activity.py burp-crawl-authn` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py burp-crawl-authn` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（4 項目）
 - [ ] 収集を実行する（Burp Suite, OWASP ZAP）
-      - CLI: `uv run scripts/run_cmd.py evidence/burp-crawl-authn-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/burp-crawl-authn-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/burp-crawl-authn-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -187,10 +200,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 低 / 前提: `burp-crawl-authn`
 - カード: [WSTG-SESS-02](playbooks/WSTG-SESS-02.md), [WSTG-CONF-07](playbooks/WSTG-CONF-07.md), [WSTG-CLNT-09](playbooks/WSTG-CLNT-09.md), [WSTG-ATHN-06](playbooks/WSTG-ATHN-06.md), [WSTG-CLNT-07](playbooks/WSTG-CLNT-07.md), [WSTG-CRYP-03](playbooks/WSTG-CRYP-03.md)
 
-- [ ] `uv run scripts/new_activity.py headers-review` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py headers-review` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（6 項目）
 - [ ] 収集を実行する（curl, Burp Suite, securityheaders.io 相当の手動チェック）
-      - CLI: `uv run scripts/run_cmd.py evidence/headers-review-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/headers-review-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/headers-review-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -201,10 +215,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 低 / 前提: `burp-crawl-authn`
 - カード: [WSTG-ERRH-01](playbooks/WSTG-ERRH-01.md), [WSTG-ERRH-02](playbooks/WSTG-ERRH-02.md), [WSTG-INFO-05](playbooks/WSTG-INFO-05.md)
 
-- [ ] `uv run scripts/new_activity.py error-handling-review` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py error-handling-review` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（3 項目）
 - [ ] 収集を実行する（Burp Suite, curl, 手動）
-      - CLI: `uv run scripts/run_cmd.py evidence/error-handling-review-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/error-handling-review-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/error-handling-review-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -215,10 +230,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 低 / 前提: なし
 - カード: [WSTG-IDNT-01](playbooks/WSTG-IDNT-01.md), [WSTG-IDNT-02](playbooks/WSTG-IDNT-02.md), [WSTG-IDNT-03](playbooks/WSTG-IDNT-03.md), [WSTG-IDNT-05](playbooks/WSTG-IDNT-05.md)
 
-- [ ] `uv run scripts/new_activity.py identity-model-review` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py identity-model-review` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（4 項目）
 - [ ] 収集を実行する（手動レビュー, ヒアリング, Burp Suite）
-      - CLI: `uv run scripts/run_cmd.py evidence/identity-model-review-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/identity-model-review-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/identity-model-review-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -233,10 +249,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `burp-crawl-authn`, `identity-model-review`
 - カード: [WSTG-ATHN-01](playbooks/WSTG-ATHN-01.md), [WSTG-ATHN-02](playbooks/WSTG-ATHN-02.md), [WSTG-ATHN-04](playbooks/WSTG-ATHN-04.md), [WSTG-ATHN-05](playbooks/WSTG-ATHN-05.md), [WSTG-ATHN-06](playbooks/WSTG-ATHN-06.md), [WSTG-ATHN-07](playbooks/WSTG-ATHN-07.md), [WSTG-ATHN-10](playbooks/WSTG-ATHN-10.md), [WSTG-CRYP-03](playbooks/WSTG-CRYP-03.md)
 
-- [ ] `uv run scripts/new_activity.py authn-flow-review` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py authn-flow-review` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（8 項目）
 - [ ] 収集を実行する（Burp Suite, curl, ブラウザ開発者ツール）
-      - CLI: `uv run scripts/run_cmd.py evidence/authn-flow-review-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/authn-flow-review-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/authn-flow-review-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -247,10 +264,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 高（要事前合意） / 前提: `authn-flow-review`
 - カード: [WSTG-IDNT-04](playbooks/WSTG-IDNT-04.md), [WSTG-ATHN-03](playbooks/WSTG-ATHN-03.md), [WSTG-IDNT-05](playbooks/WSTG-IDNT-05.md)
 
-- [ ] `uv run scripts/new_activity.py account-enum-probe` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py account-enum-probe` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（3 項目）
 - [ ] 収集を実行する（Burp Intruder, ffuf, curl）
-      - CLI: `uv run scripts/run_cmd.py evidence/account-enum-probe-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/account-enum-probe-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/account-enum-probe-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -261,10 +279,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `authn-flow-review`
 - カード: [WSTG-ATHN-08](playbooks/WSTG-ATHN-08.md), [WSTG-ATHN-09](playbooks/WSTG-ATHN-09.md)
 
-- [ ] `uv run scripts/new_activity.py password-reset-review` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py password-reset-review` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（2 項目）
 - [ ] 収集を実行する（Burp Suite, メールクライアント, 手動レビュー）
-      - CLI: `uv run scripts/run_cmd.py evidence/password-reset-review-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/password-reset-review-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/password-reset-review-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -275,10 +294,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 低 / 前提: `authn-flow-review`
 - カード: [WSTG-SESS-01](playbooks/WSTG-SESS-01.md), [WSTG-SESS-02](playbooks/WSTG-SESS-02.md), [WSTG-SESS-03](playbooks/WSTG-SESS-03.md), [WSTG-SESS-06](playbooks/WSTG-SESS-06.md), [WSTG-SESS-07](playbooks/WSTG-SESS-07.md), [WSTG-SESS-09](playbooks/WSTG-SESS-09.md)
 
-- [ ] `uv run scripts/new_activity.py session-capture` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py session-capture` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（6 項目）
 - [ ] 収集を実行する（Burp Suite, Burp Sequencer, curl）
-      - CLI: `uv run scripts/run_cmd.py evidence/session-capture-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/session-capture-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/session-capture-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -289,10 +309,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `session-capture`
 - カード: [WSTG-SESS-04](playbooks/WSTG-SESS-04.md), [WSTG-SESS-05](playbooks/WSTG-SESS-05.md), [WSTG-SESS-08](playbooks/WSTG-SESS-08.md), [WSTG-SESS-09](playbooks/WSTG-SESS-09.md)
 
-- [ ] `uv run scripts/new_activity.py session-abuse-tests` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py session-abuse-tests` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（4 項目）
 - [ ] 収集を実行する（Burp Suite, curl, ブラウザ2枚）
-      - CLI: `uv run scripts/run_cmd.py evidence/session-abuse-tests-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/session-abuse-tests-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/session-abuse-tests-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -307,10 +328,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `session-capture`, `identity-model-review`
 - カード: [WSTG-ATHZ-02](playbooks/WSTG-ATHZ-02.md), [WSTG-ATHZ-03](playbooks/WSTG-ATHZ-03.md), [WSTG-ATHZ-04](playbooks/WSTG-ATHZ-04.md), [WSTG-SESS-08](playbooks/WSTG-SESS-08.md)
 
-- [ ] `uv run scripts/new_activity.py authz-matrix` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py authz-matrix` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（4 項目）
 - [ ] 収集を実行する（Burp Suite, Autorize / AuthMatrix, curl）
-      - CLI: `uv run scripts/run_cmd.py evidence/authz-matrix-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/authz-matrix-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/authz-matrix-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -321,10 +343,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `burp-crawl-authn`
 - カード: [WSTG-ATHZ-01](playbooks/WSTG-ATHZ-01.md), [WSTG-CONF-03](playbooks/WSTG-CONF-03.md)
 
-- [ ] `uv run scripts/new_activity.py traversal-probe` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py traversal-probe` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（2 項目）
 - [ ] 収集を実行する（Burp Suite, ffuf, 手動 payload）
-      - CLI: `uv run scripts/run_cmd.py evidence/traversal-probe-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/traversal-probe-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/traversal-probe-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -339,10 +362,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `burp-crawl-authn`
 - カード: [WSTG-INPV-01](playbooks/WSTG-INPV-01.md), [WSTG-INPV-02](playbooks/WSTG-INPV-02.md), [WSTG-CLNT-01](playbooks/WSTG-CLNT-01.md), [WSTG-CLNT-03](playbooks/WSTG-CLNT-03.md)
 
-- [ ] `uv run scripts/new_activity.py xss-probe` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py xss-probe` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（4 項目）
 - [ ] 収集を実行する（Burp Suite, DOM Invader, 手動 payload）
-      - CLI: `uv run scripts/run_cmd.py evidence/xss-probe-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/xss-probe-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/xss-probe-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -353,10 +377,11 @@ JS のソース/シンクを追い、URL リダイレクト・CSS/リソース�
 - 影響度: 低 / 前提: `burp-crawl-authn`
 - カード: [WSTG-CLNT-02](playbooks/WSTG-CLNT-02.md), [WSTG-CLNT-04](playbooks/WSTG-CLNT-04.md), [WSTG-CLNT-05](playbooks/WSTG-CLNT-05.md), [WSTG-CLNT-06](playbooks/WSTG-CLNT-06.md), [WSTG-CLNT-11](playbooks/WSTG-CLNT-11.md), [WSTG-CLNT-12](playbooks/WSTG-CLNT-12.md), [WSTG-CLNT-13](playbooks/WSTG-CLNT-13.md)
 
-- [ ] `uv run scripts/new_activity.py clientside-js-review` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py clientside-js-review` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（7 項目）
 - [ ] 収集を実行する（ブラウザ開発者ツール, DOM Invader, Retire.js, Burp Suite）
-      - CLI: `uv run scripts/run_cmd.py evidence/clientside-js-review-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/clientside-js-review-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/clientside-js-review-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -367,10 +392,11 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
 - 影響度: 低 / 前提: `burp-crawl-authn`
 - カード: [WSTG-CLNT-07](playbooks/WSTG-CLNT-07.md), [WSTG-CLNT-10](playbooks/WSTG-CLNT-10.md)
 
-- [ ] `uv run scripts/new_activity.py cors-websocket-check` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py cors-websocket-check` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（2 項目）
 - [ ] 収集を実行する（curl, Burp Suite, wscat）
-      - CLI: `uv run scripts/run_cmd.py evidence/cors-websocket-check-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/cors-websocket-check-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/cors-websocket-check-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -381,10 +407,11 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
 - 影響度: 高（要事前合意） / 前提: `burp-crawl-authn`
 - カード: [WSTG-INPV-05](playbooks/WSTG-INPV-05.md), [WSTG-INPV-06](playbooks/WSTG-INPV-06.md), [WSTG-INPV-07](playbooks/WSTG-INPV-07.md), [WSTG-INPV-08](playbooks/WSTG-INPV-08.md), [WSTG-INPV-09](playbooks/WSTG-INPV-09.md), [WSTG-INPV-10](playbooks/WSTG-INPV-10.md), [WSTG-INPV-11](playbooks/WSTG-INPV-11.md), [WSTG-INPV-12](playbooks/WSTG-INPV-12.md), [WSTG-INPV-13](playbooks/WSTG-INPV-13.md), [WSTG-INPV-18](playbooks/WSTG-INPV-18.md), [WSTG-ERRH-01](playbooks/WSTG-ERRH-01.md)
 
-- [ ] `uv run scripts/new_activity.py injection-fuzz-server` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py injection-fuzz-server` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（11 項目）
 - [ ] 収集を実行する（Burp Intruder, sqlmap, tplmap, 手動 payload）
-      - CLI: `uv run scripts/run_cmd.py evidence/injection-fuzz-server-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/injection-fuzz-server-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/injection-fuzz-server-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -395,10 +422,11 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
 - 影響度: 高（要事前合意） / 前提: `burp-crawl-authn`
 - カード: [WSTG-INPV-04](playbooks/WSTG-INPV-04.md), [WSTG-INPV-15](playbooks/WSTG-INPV-15.md), [WSTG-INPV-16](playbooks/WSTG-INPV-16.md), [WSTG-INPV-17](playbooks/WSTG-INPV-17.md)
 
-- [ ] `uv run scripts/new_activity.py http-request-tamper` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py http-request-tamper` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（4 項目）
 - [ ] 収集を実行する（Burp Suite, Burp HTTP Request Smuggler, curl）
-      - CLI: `uv run scripts/run_cmd.py evidence/http-request-tamper-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/http-request-tamper-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/http-request-tamper-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -409,10 +437,11 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - 影響度: 中 / 前提: `burp-crawl-authn`
 - カード: [WSTG-INPV-19](playbooks/WSTG-INPV-19.md)
 
-- [ ] `uv run scripts/new_activity.py ssrf-probe` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py ssrf-probe` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（1 項目）
 - [ ] 収集を実行する（Burp Collaborator, interactsh, curl）
-      - CLI: `uv run scripts/run_cmd.py evidence/ssrf-probe-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/ssrf-probe-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/ssrf-probe-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -423,10 +452,11 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - 影響度: 中 / 前提: `burp-crawl-authn`
 - カード: [WSTG-BUSL-08](playbooks/WSTG-BUSL-08.md), [WSTG-BUSL-09](playbooks/WSTG-BUSL-09.md), [WSTG-CONF-03](playbooks/WSTG-CONF-03.md)
 
-- [ ] `uv run scripts/new_activity.py file-upload-tests` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py file-upload-tests` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（3 項目）
 - [ ] 収集を実行する（Burp Suite, EICAR テストファイル, 手動）
-      - CLI: `uv run scripts/run_cmd.py evidence/file-upload-tests-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/file-upload-tests-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/file-upload-tests-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -437,10 +467,11 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - 影響度: 高（要事前合意） / 前提: `tls-scan`, `session-capture`
 - カード: [WSTG-CRYP-02](playbooks/WSTG-CRYP-02.md), [WSTG-CRYP-03](playbooks/WSTG-CRYP-03.md), [WSTG-CRYP-04](playbooks/WSTG-CRYP-04.md)
 
-- [ ] `uv run scripts/new_activity.py crypto-review` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py crypto-review` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（3 項目）
 - [ ] 収集を実行する（padbuster, testssl.sh, Burp Suite, 手動レビュー）
-      - CLI: `uv run scripts/run_cmd.py evidence/crypto-review-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/crypto-review-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/crypto-review-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -451,10 +482,11 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - 影響度: 中 / 前提: `burp-crawl-authn`
 - カード: [WSTG-APIT-01](playbooks/WSTG-APIT-01.md), [WSTG-ATHZ-02](playbooks/WSTG-ATHZ-02.md)
 
-- [ ] `uv run scripts/new_activity.py api-graphql-test` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py api-graphql-test` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（2 項目）
 - [ ] 収集を実行する（Burp Suite, GraphQL Voyager, InQL, curl）
-      - CLI: `uv run scripts/run_cmd.py evidence/api-graphql-test-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/api-graphql-test-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/api-graphql-test-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 
@@ -469,10 +501,11 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - 影響度: 高（要事前合意） / 前提: `authz-matrix`
 - カード: [WSTG-BUSL-01](playbooks/WSTG-BUSL-01.md), [WSTG-BUSL-02](playbooks/WSTG-BUSL-02.md), [WSTG-BUSL-03](playbooks/WSTG-BUSL-03.md), [WSTG-BUSL-04](playbooks/WSTG-BUSL-04.md), [WSTG-BUSL-05](playbooks/WSTG-BUSL-05.md), [WSTG-BUSL-06](playbooks/WSTG-BUSL-06.md), [WSTG-BUSL-07](playbooks/WSTG-BUSL-07.md), [WSTG-INPV-14](playbooks/WSTG-INPV-14.md)
 
-- [ ] `uv run scripts/new_activity.py business-logic-walkthrough` でフォルダと run.yaml を作る
+- [ ] `uv run scripts/new_activity.py business-logic-walkthrough` でフォルダと run.yaml・worksheet を作る（複数サイトは `--target <site>`）
 - [ ] カードを開いて手順と判定基準を確認する（8 項目）
 - [ ] 収集を実行する（Burp Suite, 手動操作, 業務仕様書）
-      - CLI: `uv run scripts/run_cmd.py evidence/business-logic-walkthrough-<yyyymmdd> -- <コマンド>`
+      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/business-logic-walkthrough-<yyyymmdd>`
+      - CLI 直実行: `uv run scripts/run_cmd.py evidence/business-logic-walkthrough-<yyyymmdd> -- <コマンド>`
       - GUI: 操作内容を `run.yaml` の `steps:` に手記録
 - [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する
 

@@ -273,7 +273,8 @@ def render_notes(activity: dict, date: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("activity_id", help="matrix/coverage.yaml に定義済みの activity_id")
+    ap.add_argument("activity_id", nargs="?",
+                    help="matrix/coverage.yaml に定義済みの activity_id（省略すると一覧を表示）")
     ap.add_argument("--date", default=_dt.date.today().strftime("%Y%m%d"), help="yyyymmdd（既定: 今日）")
     ap.add_argument("--tester", default="TOKU")
     ap.add_argument("--target", help="対象サイト（複数サイト時。フォルダ名とコマンドの target 置換に使う）")
@@ -286,11 +287,19 @@ def main() -> int:
     criteria = load_yaml(CRITERIA_YAML) if CRITERIA_YAML.exists() else {}
     activities = {a["id"]: a for a in coverage["activities"]}
 
-    if args.activity_id not in activities:
-        print(f"未知の activity_id: {args.activity_id}")
-        print("定義済み:")
+    def print_activities() -> None:
+        print(f"定義済みアクティビティ {len(activities)} 本（引数に渡す ID）:")
         for aid, a in activities.items():
             print(f"  {aid:26s} {a.get('title','')}")
+        print("\n例: uv run scripts/new_activity.py recon-osint --target example.com")
+
+    if not args.activity_id:  # 引数なし＝一覧表示（何を実施できるかの確認用）
+        print_activities()
+        return 0
+
+    if args.activity_id not in activities:
+        print(f"未知の activity_id: {args.activity_id}\n")
+        print_activities()
         return 2
 
     activity = activities[args.activity_id]
