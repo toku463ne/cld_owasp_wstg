@@ -20,12 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing** — A black-box test will include at least three phases:
-2. **Detect Input Vectors** — Detect input vectors
-3. **Analyze Input Vectors** — Analyze each input vector to detect potential vulnerabilities
-4. **Check Impact** — For each test input attempted in the previous phase, the tester will analyze the result and determine if it represents a vulnerability that …
-5. **Bypass XSS Filters** — Reflected cross-site scripting attacks are prevented as the web application sanitizes input, a web application firewall blocks malicious inp …
-6. **Gray-Box Testing** — Gray-box testing is similar to black-box testing
+1. 各パラメータに `<script>alert(1)</script>` や `"><img src=x onerror=alert(1)>` を入れ、応答に無害化されず反映されるか確認
+2. 反映位置（HTML本文/属性値/JS内/URL）ごとに文脈に合ったペイロードを使い分ける
+3. Burp で全パラメータを一括テスト、フィルタは大小文字・エンコード・イベントハンドラ変種で迂回を試す
+4. 実際にブラウザで JS が実行されるか（アラート表示）まで確認して finding にする
 
 ## 使用ツール
 

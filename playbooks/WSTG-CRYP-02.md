@@ -20,8 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing** — First the possible input points for padding oracles must be identified
-2. **Gray-Box Testing** — Verify that all places where encrypted data from the client, that should only be known by the server, is decrypted
+1. 暗号化トークン/Cookie を1バイトずつ改変して送り、パディングエラーと復号エラーで応答差が出るか確認
+2. CBC モードの復号を伴うパラメータ（暗号化された ViewState/Cookie）を対象に選ぶ
+3. 応答差・エラーメッセージ・応答時間からパディングオラクルの兆候を確認
+4. 成立時は平文復元/改ざんの可能性。実証は最小限に留め finding に
 
 ## 使用ツール
 

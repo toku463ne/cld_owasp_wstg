@@ -20,10 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Bypass Clickjacking Protection** — If the http://www.target.site page does not appear in the inline frame, the site probably has some form of protection against clickjacking
-2. **Client-side Protection: Frame Busting** — The most common client-side method, that has been developed to protect a web page from clickjacking, is called Frame Busting and it consists …
-3. **Server-side Protection: X-Frame-Options** — An alternative approach to client-side frame busting code was implemented by Microsoft and it consists of an header based defense
-4. **Create a Proof of Concept** — Once we have discovered that the site we are testing is vulnerable to clickjacking attack, we can proceed with the development of a proof of …
+1. `curl -sI https://target/` で `X-Frame-Options` / CSP `frame-ancestors` の有無を確認
+2. 対象ページを `<iframe src=...>` で自作 HTML に埋め込み、実際に表示されるか（枠に出るか）確認
+3. 重要操作（送金・設定変更）画面がフレーム内で操作可能なら Clickjacking 可
+4. 防御ヘッダが無い/緩い重要画面を finding に。PoC の iframe HTML を artifacts に
 
 ## 使用ツール
 

@@ -20,8 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Test Password Reset** — In addition to the previous checks it is important to verify the following:
-2. **Test Password Change** — In addition to the previous test it is important to verify:
+1. パスワード変更に現行パスワードが必要か確認（不要なら CSRF/セッション奪取で悪用可）
+2. リセットのトークンが推測可能・長期有効・使い回し可能でないか確認
+3. リセットリンクの送信先を改変（`email` パラメータ差し替え）して他人宛に送れないか試す
+4. 変更/リセット後に既存セッションが無効化されるか確認
 
 ## 使用ツール
 

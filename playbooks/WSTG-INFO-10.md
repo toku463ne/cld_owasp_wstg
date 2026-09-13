@@ -19,13 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. The application architecture needs to be mapped through some test to determine what different components are used to build the web application.
-2. On more complex setups, such as an online bank system, multiple servers might be involved. These may include a reverse proxy, a front-end web server, an application server, and a database se …
-3. Getting knowledge of the application architecture can be easy if this information is provided to the testing team by the application developers in document form or through interviews, but ca …
-4. In the latter case, a tester will first start with the assumption that there is a simple setup (a single server).
-5. Detecting a reverse proxy in front of the web server can be done by analysis of the web server banner, which might directly disclose the existence of a reverse proxy.
-6. In some cases, even the protection system gives itself away. Here's an example of mod_security self identifying:
-7. Figure 4.1.10-1: Example mod_security Error Page
+1. `curl -sI` の応答ヘッダ（`Via`/`X-Cache`/`Server`/`Set-Cookie` の LB 印）から中間装置を推定
+2. `traceroute`／TTL・応答差から WAF・CDN・リバースプロキシの有無を判断（WAF は不正入力への 403/406 で炙り出す）
+3. サブドメイン・ポートから API GW・キャッシュ・DB 管理画面が外部露出していないか確認
+4. 推定した構成図を描き、ヒアリング結果と突き合わせて確定（推測のまま報告しない）
 
 ## 使用ツール
 

@@ -20,8 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Testing Method 1** — Start a transaction going through the application past the points that triggers credits/points to the users account.
-2. **Testing Method 2** — On a content management or bulletin board system enter and save valid initial text or values.
+1. 多段フロー（申込→承認→確定、カート→決済）の途中ステップを URL 直打ちで飛ばせるか確認
+2. 順序を入れ替える・前工程を省く・完了後に前工程へ戻ると状態が不整合にならないか確認
+3. 各ステップでサーバ側が前提状態を検証しているか確認
+4. ワークフローを迂回して不正な最終状態（未払い確定等）を作れた場合は finding に
 
 ## 使用ツール
 

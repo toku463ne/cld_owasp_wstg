@@ -21,13 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing and Examples** — All interaction between the client and application should be tested at least against the following criteria:
-2. **Cookie Collection** — The first step required to manipulate the cookie is to understand how the application creates and manages cookies
-3. **Session Analysis** — The session tokens (Cookie, SessionID or Hidden Field) themselves should be examined to ensure their quality from a security perspective
-4. **Session ID Predictability and Randomness** — Analysis of the variable areas (if any) of the Session ID should be undertaken to establish the existence of any recognizable or predictable …
-5. **Cookie Reverse Engineering** — Now that the tester has enumerated the cookies and has a general idea of their use, it is time to have a deeper look at cookies that seem in …
-6. **Brute Force Attacks** — Brute force attacks inevitably lead on from questions relating to predictability and randomness
-7. **Gray-Box Testing and Example** — If the tester has access to the session management schema implementation, they can check for the following:
+1. ログインで発行されるセッション ID を Burp で捕捉し、長さ・文字種・予測可能性を確認
+2. Burp Sequencer で多数のトークンを収集し、ランダム性（エントロピー）を測定
+3. セッション ID が URL に載る・JS から読める・複数同時ログインを許すか確認
+4. ログイン/権限変更時に ID が再発行されるか（固定でないか）確認。サンプルは artifacts に保存
 
 ## 使用ツール
 

@@ -19,8 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. The presence of the HSTS header can be confirmed by examining the server's response through an intercepting proxy or by using curl as follows:
-2. `$ curl -s -D- https://owasp.org | grep -i strict Strict-Transport-Security: max-age=31536000
+1. `curl -sI https://target/` で `Strict-Transport-Security` の有無・値を確認
+2. `max-age`（半年=15768000 以上が目安）・`includeSubDomains`・`preload` の各ディレクティブを確認
+3. `curl -sI http://target/` で HTTP アクセス時の挙動（HTTPS へ 301 されるか）を確認
+4. HTTP 応答に HSTS を付けても無効な点を踏まえ、HTTPS 応答での設定を評価
 
 ## 使用ツール
 

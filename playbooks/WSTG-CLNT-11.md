@@ -20,9 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Examine Origin Security** — Testers should check whether the application code is filtering and processing messages from trusted domains
-2. **Examine Input Validation** — Although the website is theoretically accepting messages from trusted domains only, data must still be treated as externally-sourced, untrus …
-3. **Static Code Analysis** — JavaScript code should be analyzed to determine how web messaging is implemented
+1. `postMessage` の送受信を DevTools で確認し、受信側が `event.origin` を検証しているか見る
+2. 任意オリジンからのメッセージを受理して DOM 操作/機微処理を行わないか確認
+3. 送信側が `targetOrigin` に `*` を使い、機微データを漏らさないか確認
+4. オリジン検証欠如による XSS/情報漏えいを finding に
 
 ## 使用ツール
 

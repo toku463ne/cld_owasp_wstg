@@ -20,10 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing** — The first step is to enumerate the victim DNS servers and resource records
-2. **Testing DNS A, CNAME Record Subdomain Takeover** — Perform a basic DNS enumeration on the victim's domain (victim.com) using dnsrecon:
-3. **Testing NS Record Subdomain Takeover** — Identify all nameservers for the domain in scope:
-4. **Gray-Box Testing** — The tester has the DNS zone file available which means DNS enumeration is not necessary
+1. サブドメインを列挙（`amass`/`crt.sh`）し、各 CNAME を `dig CNAME sub.target.co.jp` で確認
+2. CNAME 先が未登録のクラウドサービス（S3/GitHub Pages/Heroku 等）を指していないか確認
+3. 疑わしいものはサービスの「該当リソースが存在しない」旨のエラー画面が出るかで判定
+4. 乗っ取り可能性がある場合も実際の取得は行わず、CNAME と応答を証跡に留める
 
 ## 使用ツール
 

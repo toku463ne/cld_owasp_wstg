@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. In this section we give an explanation of the testing strategy that will be shown in the next section.
-2. The first step is to make a request to the site to be tested (e.g. www.example.com). If the tester requests the following:
-3. `GET / HTTP/1.1 Host: www.example.com
-4. They will obtain the following response:
-5. `HTTP/1.1 200 OK Date: Wed, 14 Aug 2008 08:45:11 GMT Server: IBM_HTTP_Server Set-Cookie: JSESSIONID=0000d8eyYq3L0z2fgq10m4v-rt4:-1; Path=/; secure Cache-Control: no-cache="set-cookie,set-coo …
-6. The application sets a new session identifier, JSESSIONID=0000d8eyYq3L0z2fgq10m4v-rt4:-1, for the client.
-7. Next, if the tester successfully authenticates to the application with the following POST to https://www.example.com/authentication.php:
+1. ログイン前のセッション ID を控え、ログイン後に同じ ID が使い続けられる（再発行されない）か確認
+2. 攻撃者が用意した ID を被害者に食わせてログインさせ、その ID で成り済ませるか検証
+3. URL/パラメータでセッション ID を注入できないか確認
+4. ログイン成功時に必ず新しい ID が発行されるなら pass。据え置きなら固定攻撃可として fail
 
 ## 使用ツール
 

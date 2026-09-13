@@ -19,9 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Testing for Amazon S3 Bucket Misconfiguration** — The Amazon S3 bucket URLs follow one of two formats, either virtual host style or path-style.
-2. **Identify Bucket URL** — For black-box testing, S3 URLs can be found in the HTTP messages
-3. **Testing with AWS-CLI** — In addition to testing with curl, you can also test with the AWS Command-line tool
+1. アプリが参照するストレージ URL（`*.s3.amazonaws.com` / `*.blob.core.windows.net` 等）を JS/HTML から抽出
+2. バケット/コンテナに匿名アクセスできるか（`curl -s https://bucket.s3.amazonaws.com/`）確認
+3. 一覧・読み取り・書き込み（`aws s3 ls --no-sign-request` 相当）の可否を、許可範囲内で確認
+4. 公開が業務上意図されたものか切り分け、意図しない公開のみ finding にする
 
 ## 使用ツール
 

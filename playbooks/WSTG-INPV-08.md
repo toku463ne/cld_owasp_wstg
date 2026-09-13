@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. To test for exploitable SSI, inject SSI directives as user input. If SSI are enabled and user input validation has not been properly implemented, the server will execute the directive.
-2. First determine if the web server supports SSI directives. Often, the answer is yes, as SSI support is quite common.
-3. Another way of verifying that SSI directives are enabled is by checking for pages with the .shtml extension, which is associated with SSI directives.
-4. The next step is determining all the possible user input vectors and testing to see if the SSI injection is exploitable.
-5. First find all the pages where user input is allowed. Possible input vectors may also include headers and cookies.
-6. Once you have a list of potential injection points, you may determine if the input is correctly validated.
-7. The below example returns the value of the variable. The references section has helpful links with server-specific documentation to help you better assess a particular system.
+1. SSI を使い得る環境で入力に `<!--#exec cmd="id"-->` `<!--#include file="..."-->` を注入
+2. 反映先が `.shtml` 等 SSI 有効ページか、注入がサーバ側で解釈されるか確認
+3. コマンド実行・ファイルインクルードが成立するか、出力で確認
+4. レガシー環境で残りがち。成立時は RCE 相当として扱う
 
 ## 使用ツール
 

@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Robots** — Web Spiders, Robots, or Crawlers retrieve a web page and then recursively traverse hyperlinks to retrieve further web content
-2. **Analyze robots.txt Using Google Webmaster Tools** — Web site owners can use the Google "Analyze robots.txt" function to analyze the website as part of its Google Webmaster Tools
-3. **META Tags** — <META> tags are located within the HEAD section of each HTML document and should be consistent across a web site in the event that the robot …
-4. **Robots META Tag** — If there is no <META NAME="ROBOTS" ..
-5. **Miscellaneous META Information Tags** — Organizations often embed informational META tags in web content to support various technologies such as screen readers, social networking p …
-6. **Sitemaps** — A sitemap is a file where a developer or organization can provide information about the pages, videos, and other files offered by the site o …
-7. **Security TXT** — security.txt is a proposed standard which allows websites to define security policies and contact details
+1. `curl -s https://target/robots.txt` `sitemap.xml` `.well-known/security.txt` を取得
+2. `curl -s https://target/.well-known/` 配下、`humans.txt`、`crossdomain.xml` も確認
+3. robots.txt の Disallow 行を1件ずつブラウザ/ curl で開き、非公開領域を指していないか見る
+4. sitemap に載る URL を認証なしで開き、非公開のはずの画面が列挙されていないか確認
 
 ## 使用ツール
 

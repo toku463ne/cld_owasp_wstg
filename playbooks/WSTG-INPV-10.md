@@ -21,9 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Identifying Vulnerable Parameters** — In order to detect vulnerable parameters, the tester has to analyze the application's ability in handling input
-2. **Understanding the Data Flow and Deployment Structure of the Client** — After identifying all vulnerable parameters (for example, passed_id), the tester needs to determine what level of injection is possible and …
-3. **IMAP/SMTP Command Injection** — Once the tester has identified vulnerable parameters and has analyzed the context in which they are executed, the next stage is exploiting t …
+1. メール送信/検索機能の入力に CRLF（`%0d%0a`）やコマンド区切りを注入し、ヘッダ/コマンドを追加できるか確認
+2. IMAP/SMTP コマンド（`\r\nHELO`・追加 `To:`/`Bcc:`）を注入して迷惑メール中継等ができないか試す
+3. メールヘッダインジェクション（件名/宛先の改ざん・追加）が成立するか確認
+4. 成立時は迷惑メール踏み台・情報漏えいリスクとして finding に
 
 ## 使用ツール
 

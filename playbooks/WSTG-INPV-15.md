@@ -20,11 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing**
-2. **HTTP Splitting** — Some web applications use part of the user input to generate the values of some headers of their responses
-3. **Gray-Box Testing**
-4. **HTTP Splitting** — Some web applications use part of the user input to generate the values of some headers of their responses
-5. **HTTP Smuggling** — As mentioned in the introduction, HTTP Smuggling leverages the different ways that a particularly crafted HTTP message can be parsed and int …
+1. リクエスト/応答に CRLF（`%0d%0a`）を注入し、ヘッダ分割・レスポンス分割ができるか確認
+2. フロント/バックの解釈差を突く smuggling（`Content-Length` と `Transfer-Encoding` の食い違い）を検証
+3. キャッシュポイズニング・認可迂回につながらないか確認
+4. 中間装置（CDN/LB）構成に依存するため、成立条件と経路を finding に明記
 
 ## 使用ツール
 

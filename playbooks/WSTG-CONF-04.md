@@ -19,13 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing** — Testing for unreferenced files uses both automated and manual techniques, and typically involves a combination of the following:
-2. **Inference from the Naming Scheme Used for Published Content** — Enumerate all of the application's pages and functionality
-3. **Other Clues in Published Content** — Many web applications leave clues in published content that can lead to the discovery of hidden pages and functionality
-4. **Blind Guessing** — In its simplest form, this involves running a list of common filenames through a request engine in an attempt to guess files and directories …
-5. **Information Obtained Through Server Vulnerabilities and Misconfiguration** — The most obvious way in which a misconfigured server may disclose unreferenced pages is through directory listing
-6. **Use of Publicly Available Information** — Pages and functionality in Internet-facing web applications that are not referenced from within the application itself may be referenced fro …
-7. **Filename Filter Bypass** — Because deny list filters are based on regular expressions, one can sometimes take advantage of obscure OS filename expansion features in wh …
+1. `ffuf -w wordlist -u https://target/FUZZ -e .bak,.old,.zip,.tar.gz,.swp,~` で旧版/バックアップを総当り
+2. 既知ファイル名に付随する残骸（`login.php.bak` `.index.php.swp`）を狙って確認
+3. リポジトリメタデータ `curl -s https://target/.git/config` `/.svn/entries` を確認（取れたら重大）
+4. `.git/` が取れる場合は git-dumper 等で復元可否を検証し、重大度・影響範囲を finding に明記
 
 ## 使用ツール
 

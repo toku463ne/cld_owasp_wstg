@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Detection Techniques** — The first step in this test is to understand when the application interacts with a DB Server in order to access some data
-2. **Standard SQL Injection Testing**
-3. **Classic SQL Injection** — Consider the following SQL query:
-4. **SELECT Statement** — Consider the following SQL query:
-5. **Stacked Queries** — Depending on the API which the web application is using and the DBMS (e.g
-6. **Fingerprinting the Database** — Even though the SQL language is a standard, every DBMS has its peculiarity and differs from each other in many aspects like special commands …
-7. **Errors Returned by the Application** — The first way to find out what back end database is used is by observing the error returned by the application
+1. 各パラメータに `'` `"` を入れ、SQL エラー・応答差・500 が出るか確認
+2. `' OR '1'='1' -- ` や `1 AND 1=1`/`1 AND 1=2` の真偽差でブラインド SQLi を確認
+3. 時間差（`' OR SLEEP(5)-- `）で盲目的注入を確認。文脈（数値/文字列）に応じて調整
+4. `sqlmap -u "https://target/x?id=1" --batch`（許可範囲で）で確証。取得データは要約のみ finding に
 
 ## 使用ツール
 

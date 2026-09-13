@@ -19,10 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Login** — Find the address of the login page and attempt to switch the protocol to HTTP
-2. **Account Creation** — To test for unencrypted account creation, attempt to force browse to the HTTP version of the account creation and create an account, for exa …
-3. **Password Reset, Change Password or Other Account Manipulation** — Similar to login and account creation, if the web application has features that allow a user to change an account or call a different servic …
-4. **Accessing Resources While Logged In** — After logging in, access all the features of the application, including public features that do not necessarily require a login to access
+1. ログイン画面を HTTP で開けるか試す: `curl -s http://target/login`（HTTPS 強制か確認）
+2. Burp で認証情報送信リクエストを捕捉し、送信先が https で POST body に載っている（GET/URL でない）か確認
+3. HTTPS 画面から HTTP エンドポイントへ資格情報を投げていないか、リダイレクト前の初回リクエストも確認
+4. ログイン後の各機能でも平文チャネルへ資格情報が漏れないか history を見る
 
 ## 使用ツール
 

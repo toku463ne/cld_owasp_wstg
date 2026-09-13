@@ -19,13 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Cookie Attributes**
-2. **Secure Attribute** — The Secure attribute tells the browser to only send the cookie if the request is being sent over a secure channel such as HTTPS
-3. **HttpOnly Attribute** — The HttpOnly attribute is used to help prevent attacks such as session leakage, since it does not allow the cookie to be accessed via a clie …
-4. **Domain Attribute** — The Domain attribute is used to compare the cookie's domain against the domain of the server for which the HTTP request is being made
-5. **Path Attribute** — The Path attribute plays a major role in setting the scope of the cookies in conjunction with the domain
-6. **Expires Attribute** — The Expires attribute is used to:
-7. **SameSite Attribute** — The SameSite attribute is used to assert that a cookie ought not to be sent along with cross-site requests
+1. `curl -sI` でログイン応答の `Set-Cookie` を取得し、属性を1つずつ確認
+2. `Secure`（HTTPS 限定）・`HttpOnly`（JS 遮断）・`SameSite`（Lax/Strict）の有無を確認
+3. `Domain`/`Path` が過度に広くないか、`__Host-`/`__Secure-` prefix の適否を確認
+4. セッション Cookie と CSRF/その他 Cookie で属性が適切に分かれているか確認
 
 ## 使用ツール
 

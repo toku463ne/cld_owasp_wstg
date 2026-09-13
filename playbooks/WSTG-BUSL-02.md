@@ -20,8 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Through Identifying Guessable Values** — Using an intercepting proxy observe the HTTP POST/GET looking for some indication that values are incrementing at a regular interval or are …
-2. **Through Identifying Hidden Options** — Using an intercepting proxy observe the HTTP POST/GET looking for some indication of hidden features such as debug that can be switched on o …
+1. 画面に出ない/無効化されたパラメータ（`price`,`status`,`userId`）をリクエストに追加/改変して通るか確認
+2. 本来サーバが決めるべき値（価格・権限・所有者）をクライアントから指定して上書きできないか試す
+3. 正規フローでは送られないフィールドを推測して注入する
+4. サーバが信頼すべきでない入力を信頼している箇所を finding に
 
 ## 使用ツール
 

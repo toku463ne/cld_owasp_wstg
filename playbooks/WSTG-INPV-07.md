@@ -20,8 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Discovery** — The first step in order to test an application for the presence of a XML Injection vulnerability consists of trying to insert XML metacharac …
-2. **Tag Injection** — Once the first step is accomplished, the tester will have some information about the structure of the XML document
+1. XML を受け取る入力に `<` `>` `]]>` 等を入れ、構造を壊せる/エラーになるか確認
+2. XXE を狙い `<!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]>&e;` を送りファイル読取を試す
+3. 外部エンティティ・パラメータエンティティ・SSRF（`http://` 参照）の受理可否を確認
+4. XML パーサが外部エンティティを解決する場合は XXE として重大度高めで finding に
 
 ## 使用ツール
 

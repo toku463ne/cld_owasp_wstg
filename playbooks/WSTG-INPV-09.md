@@ -19,13 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. The XPath attack pattern was first published by Amit Klein and is very similar to the usual SQL Injection.
-2. `<?xml version="1.0" encoding="ISO-8859-1"?> <users> <user> <username>gandalf</username> <password>!c3</password> <account>admin</account> </user> <user> <username>Stefan0</username> <passwo …
-3. An XPath query that returns the account whose username is gandalf and the password is !c3 would be the following:
-4. string(//user[username/text()='gandalf' and password/text()='!c3']/account/text())
-5. If the application does not properly filter user input, the tester will be able to inject XPath code and interfere with the query result.
-6. `Username: ' or '1' = '1 Password: ' or '1' = '1
-7. Looks quite familiar, doesn't it? Using these parameters, the query becomes:
+1. XPath クエリを伴う入力に `' or '1'='1` `x' or name()='` を入れ、認証迂回/全件取得を試す
+2. 真偽差・エラーからブラインド XPath 注入が可能か確認
+3. XML データストアを使うログイン等で、フィルタが壊れて迂回できないか確認
+4. 成立経路（どの入力・どのクエリ）を finding に明記
 
 ## 使用ツール
 

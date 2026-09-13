@@ -20,8 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Web Servers** — All web apps run on a web server, whether it was an integrated one or a full fledged one
-2. **Applications** — Applications are the most susceptible to let out a wide variety of error messages, which include: stack traces, memory dumps, mishandled exc …
+1. 不正入力・存在しないパス・型不一致を送り、詳細エラー（スタックトレース・SQL 文・パス）が返るか確認
+2. 4xx/5xx の両方、API（JSON）とフロント（HTML）の両方で応答本文を確認
+3. エラー時に内部情報（フレームワーク・DB・内部 IP・バージョン）が漏れないか確認
+4. 詳細が出る箇所を列挙。v4.2 では ERRH-02（スタックトレース）もここに統合して判定
 
 ## 使用ツール
 

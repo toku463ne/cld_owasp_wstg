@@ -19,13 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Determine which roles are able to provision users and what sort of accounts they can provision.
-2. Is there any verification, vetting and authorization of provisioning requests?
-3. Is there any verification, vetting and authorization of de-provisioning requests?
-4. Can an administrator provision other administrators or just users?
-5. Can an administrator or other user provision accounts with privileges greater than their own?
-6. Can an administrator or user de-provision themselves?
-7. How are the files or resources owned by the de-provisioned user managed? Are they deleted? Is access transferred?
+1. アカウント発行フロー（誰が・どの経路で作れるか）を確認し、承認なしで作れないか検証
+2. 退職・解約時の失効フローと、失効後もログイン/トークンが有効でないか確認
+3. 低権限ユーザが自分/他人のアカウントを作成・昇格できないか試す
+4. 発行〜失効のライフサイクルの穴を finding に整理（実装より運用の観点で）
 
 ## 使用ツール
 

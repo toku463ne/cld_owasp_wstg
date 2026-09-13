@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Verify that the identity requirements for user registration are aligned with business and security requirements:
-2. Can anyone register for access?
-3. Are registrations vetted by a human prior to provisioning, or are they automatically granted if the criteria are met?
-4. Can the same person or identity register multiple times?
-5. Can users register for different roles or permissions?
-6. What proof of identity is required for a registration to be successful?
-7. Are registered identities verified?
+1. 登録フォームを開き、同一メール/ユーザ名で二重登録できるか試す
+2. 登録に必要な検証（メール確認・管理者承認）を省略して自己登録できないか確認
+3. ロール指定パラメータ（`role=admin` 等）を登録リクエストに追加し、権限昇格して登録できないか試す
+4. 使い捨てメール・大量自動登録への対策（CAPTCHA・レート制限）の有無を確認
 
 ## 使用ツール
 

@@ -19,12 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing** — There are several methods of bypassing the authentication schema that is used by a web application:
-2. **Direct Page Request** — If a web application implements access control only on the log in page, the authentication schema could be bypassed
-3. **Parameter Modification** — Another problem related to authentication design is when the application verifies a successful log in on the basis of a fixed value paramete …
-4. **Session ID Prediction** — Many web applications manage authentication by using session identifiers (session IDs)
-5. **SQL Injection (HTML Form Authentication)** — SQL Injection is a widely known attack technique
-6. **Gray-Box Testing** — If an attacker has been able to retrieve the application source code by exploiting a previously discovered vulnerability (e.g., directory tr …
+1. 認証必須ページに直 URL でアクセス（force browsing）し、未認証で開けないか確認
+2. ログイン後にセットされる Cookie/パラメータ（`isAuth=false`→`true` 等）を Burp で改変して迂回を試す
+3. SQL インジェクション（`' or '1'='1`）・パラメータ改変・レスポンス改変（302→200）で認証を飛ばせるか試す
+4. 多段認証の途中ステップを飛ばして最終ページに到達できないか確認
 
 ## 使用ツール
 

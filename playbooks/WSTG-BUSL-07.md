@@ -21,13 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. This test is unusual in that the result can be drawn from all the other tests performed against the web application.
-2. Actions that log a user out or lock their account
-3. These may only be localized. Common localized (per function) defenses are:
-4. Rejecting input containing certain characters
-5. Locking out an account temporarily after a number of authentication failures
-6. Localized security controls are not sufficient. There are often no defenses against general mis-use such as:
-7. Bypassing presentation layer input validation
+1. 異常な使い方（高速連打・想定外の順序・大量リクエスト）を検知/抑止する仕組みがあるか確認
+2. 不正操作に対する監視・アラート・レート制限・アカウント制限の有無を確認
+3. 自動化ツールでの操作をアプリが検知/妨害するか確認
+4. 誤用に対する能動的防御が無い場合、悪用容易性として finding に
 
 ## 使用ツール
 

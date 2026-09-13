@@ -21,9 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Roles Identification** — The tester should start by identifying the application roles being tested through any of the following methods:
-2. **Switching to Available Roles** — After identifying possible attack vectors, the tester needs to test and validate that they can access the available roles.
-3. **Review Roles Permissions** — After gaining access to the roles on the system, the tester must understand the permissions provided to each role.
+1. 各ロール（管理者・一般・ゲスト等）でログインし、使える機能・見える画面を表に起こす
+2. ロール定義のドキュメント/ヒアリング内容と、実際の権限が一致するか突き合わせる
+3. ロール間で機能・データの重なりや、想定外に強い既定権限がないか確認
+4. この結果は ATHZ 系（認可）テストの入力になるので artifacts/roles-matrix.md に整理
 
 ## 使用ツール
 

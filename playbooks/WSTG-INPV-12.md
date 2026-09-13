@@ -19,13 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. When viewing a file in a web application, the filename is often shown in the URL. Perl allows piping data from a process into an open statement.
-2. Example URL before alteration:
-3. http://sensitive/cgi-bin/userData.pl?doc=user1.txt
-4. http://sensitive/cgi-bin/userData.pl?doc=/bin/ls|
-5. This will execute the command /bin/ls.
-6. Appending a semicolon to the end of a URL for a .PHP page followed by an operating system command, will execute the command. %3B is URL encoded and decodes to semicolon
-7. http://sensitive/something.php?dir=%3Bcat%20/etc/passwd
+1. OS コマンドを組み立てる入力に `; id` `| id` `$(id)` `` `id` `` `&& id` を注入して実行されるか確認
+2. 出力が返らない場合は時間差（`; sleep 5`）・アウトオブバンド（`; nslookup me.oob`）で確認
+3. Windows 系は `& whoami` `| whoami` も試す
+4. 成立時は RCE として最優先。実行は無害コマンド（id/whoami）に留め finding に要約
 
 ## 使用ツール
 

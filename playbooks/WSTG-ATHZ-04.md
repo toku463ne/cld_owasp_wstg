@@ -20,10 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **The Value of a Parameter Is Used Directly to Retrieve a Database Record** — `http://foo.bar/somepage?invoice=12345
-2. **The Value of a Parameter Is Used Directly to Perform an Operation in the System** — `http://foo.bar/changepassword?user=someuser
-3. **The Value of a Parameter Is Used Directly to Retrieve a File System Resource** — `http://foo.bar/showImage?img=img00011
-4. **The Value of a Parameter Is Used Directly to Access Application Functionality** — `http://foo.bar/accessPage?menuitem=12
+1. オブジェクト参照パラメータ（`?id=1001`,`/orders/1001`,ファイル名）を他人の値に変えて開けるか試す
+2. 連番・UUID・base64/ハッシュ ID を推測/列挙し、他人の資源にアクセスできるか確認
+3. 参照方法を変えても（GET/POST/JSON body/multipart）認可チェックが一貫しているか確認
+4. 自分の ID でのみアクセスできるべき資源に他 ID で到達できたら IDOR として finding に
 
 ## 使用ツール
 

@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Various types of information that must be protected, could be transmitted by the application in clear text.
-2. A typical example is the usage of Basic Authentication over HTTP. When using Basic Authentication, user credentials are encoded rather than encrypted, and are sent as HTTP headers.
-3. `$ curl -kis http://example.com/restricted/ HTTP/1.1 401 Authorization Required Date: Fri, 01 Aug 2013 00:00:00 GMT WWW-Authenticate: Basic realm="Restricted Area" Accept-Ranges: bytes Vary: …
-4. Another typical example is authentication forms which transmit user authentication credentials over HTTP.
-5. `<form action="http://example.com/login"> <label for="username">User:</label> <input type="text" id="username" name="username" value=""/><br /> <label for="password">Password:</label> <input …
-6. The Session ID Cookie must be transmitted over protected channels. If the cookie does not have the secure flag set, it is permitted for the application to transmit it unencrypted.
-7. `https://secure.example.com/login POST /login HTTP/1.1 Host: secure.example.com [...] Referer: https://secure.example.com/ Content-Type: application/x-www-form-urlencoded Content-Length: 188 …
+1. Burp history で、機微情報（資格情報・トークン・個人情報）が HTTP（平文）で送られていないか確認
+2. 混在コンテンツ（HTTPS ページ内の HTTP リソース）や、HTTP へフォールバックする経路を確認
+3. 機微データが URL・Referer に載って外部へ漏れないか確認
+4. 平文送出の箇所を列挙。ATHN-01 と重複時は経路の違いを finding に区別して記載
 
 ## 使用ツール
 

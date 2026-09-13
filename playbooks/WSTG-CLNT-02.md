@@ -19,12 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Consider the following: DOM XSS exercise
-2. The page contains the following script:
-3. `<script> function loadObj(){ var cc=eval('('+aMess+')'); document.getElementById('mess').textContent=cc.message; } if(window.location.hash.indexOf('message')==-1) { var aMess='({"message":" …
-4. The above code contains a source location.hash that is controlled by the attacker that can inject directly in the message value a JavaScript Code to take the control of the user browser.
-5. The OWASP® Foundation works to improve the security of software through its community-led open source software projects,
-6. hundreds of chapters worldwide, tens of thousands of members, and by hosting local and global conferences.
+1. `javascript:` スキームや DOM 経由でユーザ入力が `eval`/`setTimeout`/`Function` に渡らないか確認
+2. 入力から JS 実行に至る経路を DevTools のブレークポイントで追う
+3. フレームワークのテンプレート評価（`ng-`,`v-` バインド等）で式が実行されないか確認
+4. 実行が成立するシンクを finding に。DOM XSS（CLNT-01）と重なる点に注意
 
 ## 使用ツール
 

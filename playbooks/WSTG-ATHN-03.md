@@ -20,8 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Lockout Mechanism** — To test the strength of lockout mechanisms, you will need access to an account that you are willing or can afford to lock
-2. **Unlock Mechanism** — To evaluate the unlock mechanism's resistance to unauthorized account unlocking, initiate the unlock mechanism and look for weaknesses
+1. 同一アカウントに誤ったパスワードで連続ログインし、ロックされる閾値を確認（少数から）
+2. ロック後の解除方法（時間経過・管理者解除）と、ロック中の応答差を確認
+3. ロックがユーザ名基準か IP 基準か、API/別チャネルで回避できないか確認
+4. ロックアウトがないか極端に緩い場合は総当りリスクとして finding に。DoS を招く強すぎる設定も併記
 
 ## 使用ツール
 

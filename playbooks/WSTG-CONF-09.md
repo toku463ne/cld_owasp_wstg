@@ -19,12 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. In Linux, use ls command to check the file permissions. Alternatively, namei can also be used to recursively list file permissions.
-2. The files and directories that require file permission testing include but are not limited to:
-3. Configuration files/directory
-4. Sensitive files (encrypted data, password, key)/directory
-5. Log files (security logs, operation logs, admin logs)/directory
-6. Executables (scripts, EXE, JAR, class, PHP, ASP)/directory
+1. 対象サーバに手が届く場合、`ls -la` / `icacls` で Web ルート・設定ファイルの権限を確認
+2. 設定ファイル・鍵・ログが others 読み取り可、または実行ユーザで書き換え可能でないか見る
+3. アップロードディレクトリに実行権限が付いていないか確認
+4. この項目はサーバ内部権限が前提。外部からのみの検査時は情報不足として na/ヒアリング扱い
 
 ## 使用ツール
 

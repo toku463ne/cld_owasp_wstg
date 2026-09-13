@@ -20,10 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Determine the structure of account names.
-2. Evaluate the application's response to valid and invalid account names.
-3. Use different responses to valid and invalid account names to enumerate valid account names.
-4. Use account name dictionaries to enumerate valid account names.
+1. 登録時にユーザ名の形式（メール必須か・記号可否・長さ）と一意性の扱いを確認
+2. 推測しやすい命名規則（社員番号・`名.姓`）が強制/露出されていないか確認
+3. 大文字小文字・前後空白・同形異字で別ユーザを作れる（なりすまし余地）か試す
+4. 列挙容易性（IDNT-04）と合わせ、ユーザ名ポリシーの弱さを finding に整理
 
 ## 使用ツール
 

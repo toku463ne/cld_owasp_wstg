@@ -19,12 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Requests** — Identify where GETs are used and where POSTs are used.
-2. **Responses** — Identify where new cookies are set (Set-Cookie header), modified, or added to.
-3. **Black-Box Testing**
-4. **Testing for Application Entry Points** — The following are two examples on how to check for application entry points.
-5. **Gray-Box Testing** — Testing for application entry points via a gray-box methodology would consist of everything already identified above with one addition
-6. **OWASP Attack Surface Detector** — The Attack Surface Detector (ASD) tool investigates the source code and uncovers the endpoints of a web application, the parameters these en …
+1. Burp のブラウザで匿名・認証済みの両方でアプリを一通り操作し、Proxy→HTTP history に溜める
+2. history を右クリック→Engagement tools→Analyze target で、URL・パラメータ・ヘッダ・Cookie を列挙
+3. GET クエリ・POST body・JSON/XML・多段フォーム・隠しフィールド・ファイルアップロード口をすべて表に起こす
+4. 認証状態ごとに到達できる入力点を分け、artifacts/entry-points.md に一覧化（後続テストの土台）
 
 ## 使用ツール
 

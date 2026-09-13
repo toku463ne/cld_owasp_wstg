@@ -21,10 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Testing for Encryption & Reuse of Session Tokens Vulnerabilities** — Protection from eavesdropping is often provided by SSL encryption, but may incorporate other tunneling or encryption
-2. **Testing for Proxies & Caching Vulnerabilities** — Proxies must also be considered when reviewing application security
-3. **Testing for GET & POST Vulnerabilities** — In general, GET requests should not be used, as the Session ID may be exposed in Proxy or Firewall logs
-4. **Testing for Transport Vulnerabilities** — All interaction between the Client and Application should be tested at least against the following criteria.
+1. セッション ID・トークンが URL・ログ・Referer・隠しフィールドに露出しないか確認
+2. 開発者ツールで localStorage/sessionStorage にセッション情報が平文保存されないか確認
+3. エラーページ・デバッグ出力にセッション変数が漏れないか確認
+4. TLS で保護されていても、URL 露出はブラウザ履歴/プロキシログに残る点を finding に添える
 
 ## 使用ツール
 

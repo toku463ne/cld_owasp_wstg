@@ -21,13 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing**
-2. **Comment Review** — It is very common for programmers to add comments when developing large web-based applications
-3. **System Configuration** — Various tools, documents, or checklists can be used to give IT and security professionals a detailed assessment of target systems' conforman …
-4. **Gray-Box Testing**
-5. **Configuration Review** — The web server or application server configuration takes an important role in protecting the contents of the site and it must be carefully r …
-6. **Logging** — Logging is an important asset of the security of an application architecture, since it can be used to detect flaws in applications (users co …
-7. **Log Location** — Typically servers will generate local logs of their actions and errors, consuming the disk of the system the server is running on
+1. 定番パスを叩く: `curl -s https://target/{server-status,server-info,phpinfo.php,examples/,manual/,test/}`
+2. ディレクトリリスティングを確認（`curl -s https://target/images/` 等で index が返るか）
+3. 既定管理画面・サンプルアプリ（Tomcat `/manager`、`/docs` など）の有無を確認
+4. 不要な HTTP メソッド・モジュール・デバッグ機能が有効でないか、応答から判断
 
 ## 使用ツール
 

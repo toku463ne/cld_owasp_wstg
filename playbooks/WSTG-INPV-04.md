@@ -20,8 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Server-Side HPP** — To test for HPP vulnerabilities, identify any form or action that allows user-supplied input
-2. **Client-Side HPP** — Similarly to server-side HPP, manual testing is the only reliable technique to audit web applications in order to detect parameter pollution …
+1. 同名パラメータを2つ以上付けて送る（`?id=1&id=2`）とサーバがどちらを採用するか確認
+2. GET/POST 双方に同名を置く、配列表記（`id[]`）を混ぜるなどで挙動差を見る
+3. WAF/認可チェックと実処理が別々の値を見て、検証を迂回できないか試す
+4. 採用規則の違い（先勝ち/後勝ち/連結）を利用した認可迂回・値注入を確認
 
 ## 使用ツール
 

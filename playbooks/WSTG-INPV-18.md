@@ -21,9 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Identify Template Injection Vulnerability** — The first step in testing SSTI in plaintext context is to construct common template expressions used by various template engines as payloads …
-2. **Identify the Templating Engine** — Based on the information from the previous step now the tester has to identify which template engine is used by supplying various template e …
-3. **Build the RCE Exploit** — The main goal in this step is to identify to gain further control on the server with an RCE exploit by studying the template documentation a …
+1. テンプレートに渡り得る入力に `{{7*7}}` `${7*7}` `#{7*7}` `<%= 7*7 %>` を入れ、`49` に評価されるか確認
+2. 評価された場合はエンジンを特定し、対応ペイロードで内部変数/コマンド実行に到達できるか確認
+3. 反映先がサーバ側テンプレート（メール/PDF/画面）か切り分ける
+4. SSTI が RCE に至る経路を確認。実証は最小限に留め finding に
 
 ## 使用ツール
 

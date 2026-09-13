@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. The testing strategy is targeted at network attackers, hence it only needs to be applied to sites without full HSTS adoption (sites with full HSTS adoption are secure, since their cookies ar …
-2. Here are the steps for executing this test:
-3. Login to the website as the victim and reach any page offering a secure function requiring authentication.
-4. Delete from the cookie jar all the cookies which satisfy any of the following conditions.
-5. in case there is no HSTS adoption: the Secure attribute is set.
-6. in case there is partial HSTS adoption: the Secure attribute is set or the Domain attribute is not set.
-7. Save a snapshot of the cookie jar.
+1. 有効なセッション ID を別ブラウザ/別 IP にコピーし、同時に使えるか（バインドがないか）確認
+2. セッションが IP/User-Agent 等の属性に紐づくか、盗んだ ID だけで成り済ませるか検証
+3. XSS/ネットワーク傍受でトークンを取れた場合の悪用可否を、取得済みトークンで確認
+4. 同時多重ログインの検知・失効の有無を確認
 
 ## 使用ツール
 

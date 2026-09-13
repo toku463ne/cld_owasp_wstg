@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Let's suppose we have a web application using a search filter like the following one:
-2. searchfilter="(cn="+user+")"
-3. which is instantiated by an HTTP request like this:
-4. http://www.example.com/ldapsearch?user=John
-5. If the value John is replaced with a *, by sending the request:
-6. http://www.example.com/ldapsearch?user=*
-7. the filter will look like:
+1. LDAP 検索を伴う入力（ログイン・ユーザ検索）に `*` `)(uid=*)` `*)(|(uid=*` を入れて挙動を確認
+2. `*` で全件が返る、認証入力で `*)(&` 等により認証を迂回できないか試す
+3. エラー応答から LDAP 使用の兆候（LDAP: error code）を確認
+4. フィルタ構文が壊れて全件取得/認証迂回に至った場合は finding に
 
 ## 使用ツール
 

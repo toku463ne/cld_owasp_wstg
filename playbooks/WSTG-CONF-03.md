@@ -20,9 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Forced Browsing** — Submit requests with different file extensions and verify how they are handled
-2. **File Upload** — Windows 8.3 legacy file handling can sometimes be used to defeat file upload filters.
-3. **Gray-Box Testing** — Performing white-box testing against file extensions handling amounts to checking the configurations of web servers or application servers t …
+1. 既知ファイルの拡張子を変えて取得: `curl -s https://target/index.php.bak`（`.old .inc .txt .src ~`）
+2. 設定/ソース拡張子（`.config .inc .sql .java .cs`）が平文配信されないか（200 で中身が返るか）確認
+3. 大文字小文字違い（`.PHP`）・二重拡張子（`.php.jpg`）でハンドラ差が出ないか試す
+4. 取得できたソース/設定は要約のみ finding に、実物は evidence にパス参照で保存
 
 ## 使用ツール
 

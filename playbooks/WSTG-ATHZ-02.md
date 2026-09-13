@@ -19,13 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Testing for Horizontal Bypassing Authorization Schema** — For every function, specific role, or request that the application executes, it is necessary to verify:
-2. **Testing for Vertical Bypassing Authorization Schema** — A vertical authorization bypass is specific to the case that an attacker obtains a role higher than their own
-3. **Banking Site Roles Scenario** — The following table illustrates the system roles on a banking site
-4. **Administrator Page Access** — Suppose that the administrator menu is part of the administrator account.
-5. **Testing for Access to Administrative Functions** — For example, suppose that the addUser function is part of the administrative menu of the application, and it is possible to access it by req …
-6. **Testing for Access to Resources Assigned to a Different Role** — Various applications setup resource controls based on user roles
-7. **Testing for Special Request Header Handling** — Some applications support non-standard headers such as X-Original-URL or X-Rewrite-URL in order to allow overriding the target URL in reques …
+1. 低権限アカウントで、高権限用の URL/機能に直接アクセス（force browsing）できるか確認
+2. Burp で高権限操作のリクエストを捕捉し、低権限セッションの Cookie に差し替えて再送（横移動/縦移動）
+3. 認可判定がクライアント側（メニュー非表示のみ）に依存していないか確認
+4. 未認証でも保護リソースに到達できないか、Cookie を外して再送し確認
 
 ## 使用ツール
 

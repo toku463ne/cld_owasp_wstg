@@ -19,8 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing** — The same approach seen in the Testing for logout functionality section can be applied when measuring the timeout log out.
-2. **Gray-Box Testing** — The tester needs to check that:
+1. ログイン後に放置し、一定時間後にセッションが無効化されるまでの時間を計測
+2. 無効化がサーバ側判定か（クライアント時計依存でないか）を、Cookie の有効期限と実挙動で確認
+3. 機微度に対しタイムアウトが長すぎないか（例: 銀行系で数時間）を評価
+4. アイドルタイムアウトと絶対タイムアウトの両方の有無を確認
 
 ## 使用ツール
 

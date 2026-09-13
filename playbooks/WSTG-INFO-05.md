@@ -21,10 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Review webpage comments and metadata** — HTML comments are often used by the developers to include debugging information about the application
-2. **Identifying JavaScript Code and Gathering JavaScript Files** — Programmers often hardcode sensitive information with JavaScript variables on the front-end
-3. **Identifying Source Map Files** — Source map files will usually be loaded when DevTools open
-4. **Black-Box Testing** — Check source map files for any sensitive information that can help the attacker gain more insight about the application
+1. ブラウザで対象ページを開き、Ctrl+U（ソース表示）で HTML コメント `<!-- -->` を確認
+2. 開発者ツール→Sources で読み込まれる JS を一覧し、`grep -iE "password|apikey|token|internal|todo|debug"` 相当で走査
+3. minify JS の `//# sourceMappingURL` を辿り `.map` を取得、原本コードにコメント/内部情報が無いか見る
+4. `<meta>`・生成コメント（CMS 名・バージョン）・非公開エンドポイントの記述を記録
 
 ## 使用ツール
 

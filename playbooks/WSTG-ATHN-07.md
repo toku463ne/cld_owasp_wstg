@@ -19,13 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. What characters are permitted and forbidden for use within a password? Is the user required to use characters from different character sets such as lower and uppercase letters, digits and sp …
-2. How often can a user change their password? How quickly can a user change their password after a previous change? Users may bypass password history requirements by changing their password 5 …
-3. When must a user change their password?
-4. Both NIST and NCSC recommend against forcing regular password expiry, although it may be required by standards such as PCI DSS.
-5. How often can a user reuse a password? Does the application maintain a history of the user's previous used 8 passwords?
-6. How different must the next password be from the last password?
-7. Is the user prevented from using his username or other account information (such as first or last name) in the password?
+1. パスワード変更/登録で短い・単純な値（`1234`・`password`・辞書語）が通るか試す
+2. 最小長・文字種・使い回し/過去パスワード禁止・よくあるパスワード拒否の有無を確認
+3. 最大長制限が短すぎ（例: 16 未満）でパスフレーズが使えないか確認
+4. 強度要件を満たさない値が実際に登録できた場合は finding に（画面表記でなく実挙動で判定）
 
 ## 使用ツール
 

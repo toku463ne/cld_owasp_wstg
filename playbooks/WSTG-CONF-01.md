@@ -20,8 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Known Server Vulnerabilities** — Vulnerabilities found in the different areas of the application architecture, be it in the web server or in the back end database, can sever …
-2. **Administrative Tools** — Any web server infrastructure requires the existence of administrative tools to maintain and update the information used by the application
+1. `nmap -sV -p- --open target` で公開ポート/サービスを洗い出す
+2. SSH(22)/RDP(3389)/DB(3306,5432,1433)/管理コンソール等が公開されていないか確認
+3. `nikto -h https://target` と特定製品の既知脆弱性・既定資格情報を照合
+4. クラウドのセキュリティグループ/FW 設定（ヒアリング）と実スキャン結果を突き合わせ、差分を指摘
 
 ## 使用ツール
 

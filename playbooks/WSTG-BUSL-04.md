@@ -20,9 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. The tester should identify which processes are dependent on time, whether it was a window for a task to be completed, or if it was execution time between two processes that could allow the b …
-2. Following that, it is best to automate the requests that will abuse the above discovered processes, as tools are better fit to analyze the timing and are more precise than manual testing.
-3. The tester should draw a diagram of how the process flows, the injection points, and prepare the requests before hand to launch them at the vulnerable processes.
+1. 処理の応答時間差（成功/失敗・存在/非存在）から情報が漏れないか計測
+2. 時間依存の業務（予約・在庫・クーポン）で、タイミングを突いた不正取得ができないか確認
+3. レースコンディション（後述 BUSL-05 と関連）につながる時間窓がないか確認
+4. 計測結果（応答時間の統計）を artifacts に残し、判別可能性を finding に
 
 ## 使用ツール
 

@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Local Storage** — window.localStorage is a global property that implements the Web Storage API and provides persistent key-value storage in the browser.
-2. **List All Key-Value Entries** — `for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); const value = localStorage.getItem(key); console.log(`${ke …
-3. **Session Storage** — window.sessionStorage is a global property that implements the Web Storage API and provides ephemeral key-value storage in the browser.
-4. **List All Key-Value Entries** — `for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); const value = localStorage.getItem(key); console.log(`${ke …
-5. **IndexedDB** — IndexedDB is a transactional, object-oriented database intended for structured data
-6. **Print All the Contents of IndexedDB** — `const dumpIndexedDB = dbName => { const DB_VERSION = 1; const req = indexedDB.open(dbName, DB_VERSION); req.onsuccess = function() { const …
-7. **Web SQL** — Web SQL is deprecated since November 18, 2010 and it's recommended that web developers do not use it.
+1. DevTools→Application で localStorage/sessionStorage/IndexedDB/Cookie の中身を確認
+2. セッショントークン・個人情報・機微データが平文で保存されていないか確認
+3. 保存データが XSS で読める（HttpOnly でない）・信頼して処理される経路がないか確認
+4. 機微データのクライアント保存を finding に（保存の是非と保護の両面で）
 
 ## 使用ツール
 

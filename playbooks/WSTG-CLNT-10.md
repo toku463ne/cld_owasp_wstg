@@ -20,8 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing** — Identify that the application is using WebSockets.
-2. **Gray-Box Testing** — Gray-box testing is similar to black-box testing
+1. DevTools の Network→WS で WebSocket 接続を確認し、ハンドシェイクの Origin 検証有無を見る
+2. `wss://`（暗号化）か、認証・認可がメッセージ単位で行われているか確認
+3. Burp で WS メッセージを傍受・改変し、認可迂回や注入ができないか試す
+4. Origin 検証無し・平文 ws・入力無害化欠如を finding に
 
 ## 使用ツール
 

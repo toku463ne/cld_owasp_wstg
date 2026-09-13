@@ -19,10 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Search Engines** — Do not limit testing to just one search engine provider, as different search engines may generate different results
-2. **Search Operators** — A search operator is a special keyword or syntax that extends the capabilities of regular search queries, and can help obtain more specific …
-3. **Viewing Cached Content** — To search for content that has previously been indexed, use the cache: operator
-4. **Google Hacking, or Dorking** — Searching with operators can be a very effective discovery technique when combined with the creativity of the tester
+1. Google/Bing で `site:target.co.jp -www` `site:target.co.jp ext:xls OR ext:pdf OR ext:conf` などの dork を回す
+2. `site:target.co.jp intitle:index.of` `inurl:admin` `"error"|"exception"` で露出・エラーページを探す
+3. Wayback Machine（web.archive.org）と Google キャッシュで、消えたはずのページ・旧版を確認
+4. ヒットした URL・スニペットを artifacts/dorking-hits.md に貼り、機微情報を含むものに印を付ける
 
 ## 使用ツール
 

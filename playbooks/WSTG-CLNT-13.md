@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Collect Data Using Authenticated and Unauthenticated User Sessions** — Identify which endpoints are responsible for sending sensitive data, what parameters are required, and identify all relevant dynamically and …
-2. **Determine Whether the Sensitive Data Can Be Leaked Using JavaScript** — Testers should analyze code for the following vehicles for data leakage via XSSI vulnerabilities:
-3. **1. Sensitive Data Leakage via Global Variables** — An API key is stored in a JavaScript file with the URI https://victim.com/internal/api.js on the victim's website, victim.com, which is only …
-4. **2. Sensitive Data Leakage via Global Function Parameters** — This example is similar to the previous one, except in this case attackingwebsite.com uses a global JavaScript function to extract the sensi …
-5. **3. Sensitive Data Leakage via CSV with Quotations Theft** — To leak data the attacker/tester has to be able to inject JavaScript code into the CSV data
-6. **4. Sensitive Data Leakage via JavaScript Runtime Errors** — Browsers normally present standardized JavaScript error messages
-7. **5. Sensitive Data Leakage via Prototype Chaining Using this** — In JavaScript, the this keyword is dynamically scoped
+1. JSON/JS を返す認証付きエンドポイントを、`<script src>` で外部ページから読み込めるか確認
+2. 動的 JS・JSONP が Cookie 認証で機微データを返し、他サイトから読めないか（CSRF 的窃取）検証
+3. `X-Content-Type-Options: nosniff`・適切な Content-Type・CSRF 対策の有無を確認
+4. クロスサイトでデータを読み出せた場合は XSSI として finding に
 
 ## 使用ツール
 

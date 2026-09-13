@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. When testers manually check for this type of vulnerability, they first identify if there are client-side redirections implemented in the client-side code.
-2. `var redir = location.hash.substring(1); if (redir) { window.location='http://'+decodeURIComponent(redir); }
-3. In this example, the script does not perform any validation of the variable redir which contains the user-supplied input via the query string.
-4. This implies that an attacker could redirect the victim to a malicious site simply by submitting the following query string:
-5. `http://www.victim.site/?#www.malicious.site
-6. With a slight modification, the above example snippet can be vulnerable to JavaScript injection.
-7. `var redir = location.hash.substring(1); if (redir) { window.location=decodeURIComponent(redir); }
+1. リダイレクト先を決めるパラメータ（`?next=`,`?url=`,`?return=`）に外部 URL を入れて飛ぶか確認
+2. `//evil.example`・`https:evil.example`・`\/\/evil` などスキーム相対/変種で迂回を試す
+3. オープンリダイレクトがフィッシング・OAuth トークン奪取に使えないか確認
+4. 外部ドメインへ誘導できた場合はオープンリダイレクトとして finding に
 
 ## 使用ツール
 

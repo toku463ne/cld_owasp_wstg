@@ -19,9 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Banner Grabbing** — A banner grab is performed by sending an HTTP request to the web server and examining its response header
-2. **Sending Malformed Requests** — Web servers may be identified by examining their error responses, and in the cases where they have not been customized, their default error …
-3. **Using Automated Scanning Tools** — As stated earlier, web server fingerprinting is often included as a functionality of automated scanning tools
+1. `curl -sI https://target/` で Server / X-Powered-By / Via ヘッダを確認
+2. `nmap -sV -p80,443 target` と `whatweb https://target/` で製品名・バージョンを突き合わせる
+3. 存在しないパス（`curl -s https://target/nope123`）を叩き、404 ページの体裁からも製品を推定
+4. 特定できたバージョンを CVE（NVD 等）と照合し、既知脆弱性の有無を finding に書く
 
 ## 使用ツール
 

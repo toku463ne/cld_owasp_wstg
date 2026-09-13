@@ -19,10 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. As these methods provide a better user experience and allow the user to forget all about their credentials, they increase the attack surface area. Some applications:
-2. Store the credentials in an encoded fashion in the browser's storage mechanisms, which can be verified by following the web storage testing scenario and going through the session analysis sc …
-3. Automatically inject the user's credentials that can be abused by:
-4. Tokens should be analyzed in terms of token-lifetime, where some tokens never expire and put the users in danger if those tokens ever get stolen.
+1. 「パスワードを記憶」利用時に、資格情報が Cookie/localStorage に平文/可逆で保存されないか開発者ツールで確認
+2. 記憶トークンが推測可能・無期限・失効しない（ログアウト後も有効）でないか確認
+3. ブラウザのオートコンプリート（フォームの `autocomplete` 属性）で機微入力が保存されないか確認
+4. 記憶用トークンから元パスワードやセッションが復元できないか検証
 
 ## 使用ツール
 

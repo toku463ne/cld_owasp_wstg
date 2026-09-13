@@ -19,12 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. To test for RIA policy file weakness the tester should try to retrieve the policy files crossdomain.xml and clientaccesspolicy.xml from the application's root, and from every folder found.
-2. For example, if the application's URL is http://www.owasp.org, the tester should try to download the files http://www.owasp.org/crossdomain.xml and http://www.owasp.org/clientaccesspolicy.xm …
-3. After retrieving all the policy files, the permissions allowed should be be checked under the least privilege principle.
-4. `<cross-domain-policy> <allow-access-from domain="*" /> </cross-domain-policy>
-5. A list of policy files found.
-6. A list of weak settings in the policies.
+1. `curl -s https://target/crossdomain.xml` と `clientaccesspolicy.xml` を取得
+2. `allow-access-from domain="*"` などワイルドカード許可になっていないか確認
+3. `secure="false"` や過度に広い許可ドメインが指定されていないか見る
+4. 該当ファイルが存在しない/最小限なら pass、緩い許可があれば影響を finding に記載
 
 ## 使用ツール
 

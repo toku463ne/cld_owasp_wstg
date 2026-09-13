@@ -19,12 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Consider the following DOM XSS exercise http://www.domxss.com/domxss/01_Basics/06_jquery_old_html.html
-2. The HTML code contains the following script:
-3. `<script src="../js/jquery-1.7.1.js"></script> <script> function setMessage(){ var t=location.hash.slice(1); $("div[id="+t+"]").text("The DOM is now loaded and can be manipulated."); } $(doc …
-4. It is possible to inject HTML code.
-5. The OWASP® Foundation works to improve the security of software through its community-led open source software projects,
-6. hundreds of chapters worldwide, tens of thousands of members, and by hosting local and global conferences.
+1. 入力が HTML として反映される箇所に `<h1>test</h1>` `<b>` 等を入れ、タグが解釈されるか確認
+2. スクリプト無しでもコンテンツ偽装・フィッシング用の要素を差し込めるか確認
+3. 反映先の文脈（本文/属性）に応じてタグ注入の成否を確認
+4. HTML 注入が成立する箇所を finding に（XSS に発展し得るかも併記）
 
 ## 使用ツール
 

@@ -22,13 +22,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Malicious File Types** — The simplest checks that an application can do are to determine that only trusted types of files can be uploaded.
-2. **Web Shells** — If the server is configured to execute code, then it may be possible to obtain command execution on the server by uploading a file known as …
-3. **Filter Evasion** — The first step is to determine what the filters are allowing or blocking, and where they are implemented
-4. **Malicious File Contents** — Once the file type has been validated, it is important to also ensure that the contents of the file are safe
-5. **Malware** — Applications should generally scan uploaded files with anti-malware software to ensure that they do not contain anything malicious
-6. **Archive Directory Traversal** — If the application extracts archives (such as Zip files), then it may be possible to write to unintended locations using directory traversal
-7. **Zip Bombs** — A Zip bomb (more generally known as a decompression bomb) is an archive file that contains a large volume of data
+1. 実行可能/悪性ファイル（Web シェル・EICAR テストウイルス・巨大ファイル・XXE 入り docx/svg）を上げて処理を確認
+2. アップロードされた実行ファイルが Web ルートで実行できないか（`curl` で叩く）確認
+3. ウイルススキャン・サイズ/型検証・保存場所の分離が機能しているか確認
+4. 実行や被害が成立したら重大度高めで finding に。検証は EICAR 等の無害検体で
 
 ## 使用ツール
 

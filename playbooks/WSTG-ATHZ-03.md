@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Testing for Role/Privilege Manipulation** — In every portion of the application where a user can create information in the database (e.g., making a payment, adding a contact, or sendin …
-2. **Manipulation of User Group** — The following HTTP POST allows the user that belongs to grp001 to access order #0001:
-3. **Manipulation of User Profile** — The following server's answer shows a hidden field in the HTML returned to the user after a successful authentication.
-4. **Manipulation of Condition Value** — In an environment where the server sends an error message contained as a value in a specific parameter in a set of answer codes, as the foll …
-5. **Manipulation of IP Address** — Some websites limit access or count the number of failed login attempts based on IP address.
-6. **URL Traversal** — Try to traverse the website and check if some of pages that may miss the authorization check.
-7. **WhiteBox** — If the URL authorization check is only done by partial URL match, then it's likely testers or hackers may workaround the authorization by UR …
+1. 低権限アカウントで、ロールを示すパラメータ/Cookie/JWT クレーム（`role`,`isAdmin`,`group`）を管理者値に改変して再送
+2. 管理者専用機能のリクエストを低権限セッションで再送し、実行できるか確認
+3. 多段承認・所有者チェックを飛ばして他ユーザ資源を操作できないか試す
+4. 水平（同ロール他人）・垂直（上位ロール）の両方向で昇格を検証
 
 ## 使用ツール
 

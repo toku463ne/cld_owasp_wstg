@@ -20,10 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Testing for Log Out User Interface** — Verify the appearance and visibility of the log out functionality in the user interface
-2. **Testing for Server-Side Session Termination** — First, store the values of cookies that are used to identify a session
-3. **Testing for Session Timeout** — Try to determine a session timeout by performing requests to a page in the authenticated area of the web application with increasing delays
-4. **Testing for Session Termination in Single Sign-On Environments (Single Sign-Off)** — Perform a log out in the tested application
+1. ログアウト後、直前のセッション Cookie を Burp で再送し、まだ有効でないか確認
+2. ログアウトがサーバ側でセッション破棄しているか（クライアント Cookie 削除だけでないか）確認
+3. 「戻る」ボタン・複数タブ・別デバイスのセッションがログアウトで無効化されるか確認
+4. 明示的なログアウト導線の有無と、タイムアウト（SESS-07）との合わせ技も確認
 
 ## 使用ツール
 

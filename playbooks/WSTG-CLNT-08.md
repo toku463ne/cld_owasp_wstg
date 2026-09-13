@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Decompilation** — Since SWF files are interpreted by a virtual machine embedded in the player itself, they can be potentially decompiled and analyzed
-2. **Undefined Variables FlashVars** — FlashVars are the variables that the SWF developer planned on receiving from the web page
-3. **Unsafe Methods** — When an entry point is identified, the data it represents could be used by unsafe methods
-4. **Exploitation by Reflected XSS** — The swf file should be hosted on the victim's host, and the techniques of reflected XSS must be used
-5. **GetURL (AS2) / NavigateToURL (AS3)** — The GetURL function in ActionScript 2.0 and NavigateToURL in ActionScript 3.0 lets the movie load a URI into the browser's window
-6. **Using asfunction** — You can use the special asfunction protocol to cause the link to execute an ActionScript function in a SWF file instead of opening a URL
-7. **ExternalInterface** — ExternalInterface.call is a static method introduced by Adobe to improve player/browser interaction for both ActionScript 2.0 and ActionScri …
+1. Flash（SWF）が残る環境で、`allowScriptAccess`/`allowDomain` の設定と外部からの制御可否を確認
+2. SWF に渡るパラメータ（`FlashVars`）経由で JS 実行・遷移を誘発できないか確認
+3. レガシー技術。存在自体が縮退対象なので、残っていれば撤去も助言
+4. 成立する XSF 経路があれば finding に
 
 ## 使用ツール
 

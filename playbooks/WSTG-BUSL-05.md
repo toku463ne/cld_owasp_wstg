@@ -20,8 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Review the project documentation and use exploratory testing looking for functions or features in the application or system that should not be executed more that a single time or specified n …
-2. For each of the functions and features found that should only be executed a single time or specified number of times during the business logic workflow, develop abuse/misuse cases that may a …
+1. 回数制限があるべき機能（クーポン適用・投票・出金・OTP 試行）を連続実行し、上限を超えられるか確認
+2. 並行リクエスト（レースコンディション）で、1回制限を複数回すり抜けられないか試す
+3. サーバ側でカウント/ロックしているか、クライアント側制御だけでないか確認
+4. 上限超過・二重処理ができた場合、業務影響とともに finding に
 
 ## 使用ツール
 

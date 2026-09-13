@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing** — The process for identifying stored XSS vulnerabilities is similar to the process described during the testing for reflected XSS.
-2. **Input Forms** — The first step is to identify all points where user input is stored into the back-end and then displayed by the application
-3. **Analyze HTML Code** — Input stored by the application is normally used in HTML tags, but it can also be found as part of JavaScript content
-4. **Testing for Stored XSS** — This involves testing the input validation and filtering controls of the application
-5. **Leverage Stored XSS with BeEF** — Stored XSS can be exploited by advanced JavaScript exploitation frameworks such as BeEF and XSS Proxy.
-6. **File Upload** — If the web application allows file upload, it is important to check if it is possible to upload HTML content
-7. **Gray-Box Testing** — Gray-box testing is similar to black-box testing
+1. コメント・プロフィール・投稿等の保存系入力に XSS ペイロードを保存し、別画面/別ユーザで表示時に発火するか確認
+2. 保存→表示の経路（管理画面・通知・PDF/メール生成）を横断して発火点を探す
+3. 格納時と表示時のどちらでエスケープされるか、抜ける経路がないか確認
+4. 被害範囲（誰の画面で発火するか＝管理者含むか）を finding に明記
 
 ## 使用ツール
 

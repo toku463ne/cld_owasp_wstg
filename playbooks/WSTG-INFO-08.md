@@ -19,13 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing** — There are several common locations to consider in order to identify frameworks or components:
-2. **HTTP Headers** — The most basic form of identifying a web framework is to look at the X-Powered-By field in the HTTP response header
-3. **Cookies** — Another similar and somewhat more reliable way to determine the current web framework are framework-specific cookies.
-4. **HTML Source Code** — This technique is based on finding certain patterns in the HTML page source code
-5. **Specific Files and Folders** — There is another approach which greatly helps an attacker or tester to identify applications or components with high accuracy
-6. **File Extensions** — URLs may include file extensions, which can also help to identify the web platform or technology.
-7. **Error Messages** — As can be seen in the following screenshot the listed file system path points to use of WordPress (wp-content)
+1. `whatweb https://target/` と ブラウザ拡張 Wappalyzer でフレームワーク/CMS を推定
+2. Cookie 名（`JSESSIONID`/`ASP.NET_SessionId`/`laravel_session` 等）・URL パス・ヘッダから基盤を特定
+3. フロント JS を `retire --js` / Retire.js で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認
+4. 特定した製品・バージョンを CVE と照合し、finding にバージョン根拠（どこで判ったか）を添える
 
 ## 使用ツール
 

@@ -22,9 +22,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Specific Testing Method 1** — Using a proxy capture HTTP traffic looking for hidden fields.
-2. **Specific Testing Method 2** — Using a proxy capture HTTP traffic looking for a place to insert information into areas of the application that are non-editable.
-3. **Specific Testing Method 3** — List components of the application or system that could be impacted, for example logs or databases.
+1. 改ざん検知が必要なデータ（署名付きトークン・金額・数量）を改変し、整合性チェックが働くか確認
+2. 隠しフィールド・Cookie・JWT の署名を外す/改変して受理されるか試す
+3. サーバ側で再計算・再検証しているか（クライアント値を鵜呑みにしないか）確認
+4. 整合性チェックが無い/迂回できる箇所を finding に
 
 ## 使用ツール
 

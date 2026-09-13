@@ -20,10 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing**
-2. **Input Vectors Enumeration** — In order to determine which part of the application is vulnerable to input validation bypassing, the tester needs to enumerate all parts of …
-3. **Testing Techniques** — The next stage of testing is analyzing the input validation functions present in the web application
-4. **Gray-Box Testing** — When the analysis is performed with a gray-box testing approach, testers have to follow the same methodology as in black-box testing
+1. ファイル参照パラメータ（`?file=`,`?page=`,`?lang=`）に `../../etc/passwd`・`..\..\` を入れて範囲外読取を試す
+2. エンコード変種（`%2e%2e%2f`・二重エンコード `%252e`・`....//`）で WAF/フィルタを迂回できるか試す
+3. 絶対パス指定・null バイト・拡張子付与（`file=../../etc/passwd%00.png`）も試す
+4. LFI で設定ファイル/ソースが読める、または include で任意ファイルを実行できるか確認
 
 ## 使用ツール
 

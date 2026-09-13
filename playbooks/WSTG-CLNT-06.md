@@ -20,12 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. To manually check for this type of vulnerability, we must identify whether the application employs inputs without correctly validating them.
-2. The following table shows possible injection points (sink) that should be checked:
-3. xhr.open(method, [url], true);
-4. The most interesting ones are those that allow to an attacker to include client-side code (for example JavaScript) that could lead to XSS vulnerabilities.
-5. The OWASP® Foundation works to improve the security of software through its community-led open source software projects,
-6. hundreds of chapters worldwide, tens of thousands of members, and by hosting local and global conferences.
+1. JS がユーザ制御データで動的にリソース URL（script/img/iframe の src）を組み立てないか確認
+2. その URL に外部/悪性リソースを指定させて読み込ませられないか試す
+3. `location`,`XMLHttpRequest`,`fetch` の宛先がユーザ入力で操作されないか確認
+4. リソース読み込み先を乗っ取れた場合の影響を finding に
 
 ## 使用ツール
 

@@ -20,9 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing** — This vulnerability can be detected and exploited by enumerating all of the session variables used by the application and in which context th …
-2. **Examples** — A very simple example could be the password reset functionality that, in the entry point, could request the user to provide some identifying …
-3. **Gray-Box Testing** — The most effective way to detect these vulnerabilities is via a source code review.
+1. 認証途中・パスワードリセット途中など中間状態で発行される変数/セッションを確認
+2. 中間状態のセッションを使って、本来到達できない後続画面へ進めないか試す
+3. 同一セッションが複数のロール/フローで再利用され、状態が混線しないか確認
+4. 状態遷移を飛ばす/巻き戻すことで権限や本人確認を回避できないか検証
 
 ## 使用ツール
 

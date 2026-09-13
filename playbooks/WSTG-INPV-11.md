@@ -20,10 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Black-Box Testing**
-2. **Testing for PHP Injection Vulnerabilities** — Using the querystring, the tester can inject code (in this example, a malicious URL) to be processed as part of the included file:
-3. **Gray-Box Testing**
-4. **Testing for ASP Code Injection Vulnerabilities** — Examine ASP code for user input used in execution functions
+1. 評価系入力に言語別コード（PHP `;phpinfo();`、`system('id')`、`__import__('os')`）を注入し実行されるか確認
+2. eval/デシリアライズ/テンプレート等コードが評価される経路を特定
+3. 時間差・アウトオブバンド（DNS/HTTP コールバック）で盲目的に実行確認
+4. 成立時は RCE として最優先で finding に。実証は最小限に留める
 
 ## 使用ツール
 

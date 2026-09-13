@@ -20,9 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Testing for Weak Pre-generated Questions** — Try to obtain a list of security questions by creating a new account or by following the "I don't remember my password"-process
-2. **Testing for Weak Self-Generated Questions** — Try to create security questions by creating a new account or by configuring your existing account's password recovery properties
-3. **Testing for Brute-forcible Answers** — Use the methods described in Testing for Weak lock out mechanism to determine if a number of incorrectly supplied security answers trigger a …
+1. 秘密の質問の選択肢が、SNS 等から推測/調査可能な内容（出身地・母の旧姓）でないか確認
+2. 質問への回答試行にレート制限・ロックがあるか確認
+3. 質問だけでパスワードリセットまで到達できる（多要素でない）弱いフローでないか確認
+4. 自由記述質問で任意の弱い質問を設定できないか確認
 
 ## 使用ツール
 

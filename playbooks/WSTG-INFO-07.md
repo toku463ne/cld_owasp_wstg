@@ -19,8 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Code Review** — Ensuring sufficient code coverage for the application owner is far easier with gray-box and white-box approach to testing
-2. **Automatic Spidering** — The automatic spider is a tool used to automatically discover new resources (URLs) on a particular website
+1. 認証済みアカウントでアプリの全機能を手動で歩き（walkthrough）、画面遷移・状態遷移を記録
+2. Burp の Target→Site map と Content discovery、または ZAP Spider で自動クロールを併用
+3. 多段フォーム・ウィザード・JS 遷移など自動クロールが追えない経路を手動で補完
+4. 業務フロー図（正常系・分岐・キャンセル/戻る）を artifacts に描き、未検査領域を明示
 
 ## 使用ツール
 

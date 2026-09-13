@@ -20,9 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Reverse Proxy** — There is situation that we would like to monitor all HTTP incoming requests on web server but we can't change configuration on the browser o …
-2. **Port Forwarding** — Port forwarding is another way to allow us intercept HTTP requests without changes of client-side
-3. **TCP-level Network Traffic Capture** — This technique monitor all the network traffic at TCP-level
+1. サーバが受け付ける生リクエスト（異常メソッド・巨大ヘッダ・不正 Host）への挙動を確認
+2. リクエスト解析の甘さ（不正な行終端・重複ヘッダ）で異常応答が出ないか確認
+3. 監視・WAF が生の異常リクエストを取りこぼさないか確認
+4. 他の注入系（INPV-15/17）と併せて解釈差を検証
 
 ## 使用ツール
 

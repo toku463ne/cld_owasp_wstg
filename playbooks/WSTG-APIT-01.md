@@ -21,13 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Introspection Queries** — Introspection queries are the method by which GraphQL lets you ask what queries are supported, which data types are available, and many more …
-2. **Using Native GraphQL Introspection** — The most straightforward way is to send an HTTP request (using a personal proxy) with the following payload, taken from an article on Medium …
-3. **Using GraphiQL** — GraphiQL is a web-based IDE for GraphQL
-4. **Using GraphQL Playground** — GraphQL Playground is a GraphQL client
-5. **Introspection Conclusion** — Introspection is a useful tool that allows users to gain more information about the GraphQL deployment
-6. **Authorization** — Introspection is the first place to look for authorization problems
-7. **Injection** — GraphQL is the implementation of the API layer of an application, and as such, it usually forwards the requests to a back end API or the dat …
+1. GraphQL エンドポイント（`/graphql`）にイントロスペクション（`{__schema{types{name}}}`）が有効か確認
+2. スキーマから機微な query/mutation を洗い、認可なしで呼べないか確認
+3. 深いネスト/エイリアス量産でクエリコスト制限（DoS 耐性）・レート制限の有無を確認
+4. バッチクエリで認可迂回・列挙ができないか試し、成立点を finding に
 
 ## 使用ツール
 

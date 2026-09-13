@@ -21,11 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Review the project documentation and use exploratory testing looking for data entry points or hand off points between systems or software.
-2. Once found try to insert logically invalid data into the application/system.
-3. Perform front-end GUI Functional Valid testing on the application to ensure that the only "valid" values are accepted.
-4. Using an intercepting proxy observe the HTTP POST/GET looking for places that variables such as cost and quality are passed.
-5. Once variables are found start interrogating the field with logically "invalid" data, such as social security numbers or unique identifiers that do not exist or that do not fit the business …
+1. 業務データ（金額・数量・日付・状態）を業務上あり得ない値（負数・0・過大・過去日）に改変して受理されるか確認
+2. クライアント側バリデーションを Burp で外し、サーバ側が同じ検証をしているか確認
+3. 型・範囲・整合性（合計と明細の一致等）のサーバ側検証の抜けを探す
+4. 業務ルールに反する状態を作れた場合、業務影響とともに finding に
 
 ## 使用ツール
 

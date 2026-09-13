@@ -19,13 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Audit the application to ascertain if its session management is vulnerable. If session management relies only on client-side values (information available to the browser), then the applicati …
-2. Resources accessible via HTTP GET requests are easily vulnerable, though POST requests can be automated via JavaScript and are vulnerable as well; therefore, the use of POST alone is not eno …
-3. In case of POST, the following sample can be used.
-4. Create an HTML page similar to that shown below
-5. Host the HTML on a malicious or third-party site
-6. Send the link for the page to the victim(s) and induce them to click it.
-7. `<html> <body onload='document.CSRF.submit()'> <form action='http://targetWebsite/Authenticate.jsp' method='POST' name='CSRF'> <input type='hidden' name='name' value='Hacked'> <input type='h …
+1. 状態変更操作（送金・設定変更・削除）のリクエストに CSRF トークンがあるか確認
+2. トークンを削除/固定値に改変して再送し、受理されるか（検証されているか）試す
+3. トークンがセッションに紐づくか（他人のトークンが通らないか）、`SameSite` Cookie で守られているか確認
+4. GET で状態変更できる/`Referer`・`Origin` 検証がない箇所を CSRF 可として finding に
 
 ## 使用ツール
 

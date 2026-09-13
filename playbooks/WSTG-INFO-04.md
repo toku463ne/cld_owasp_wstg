@@ -19,13 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Approaches to Address Issue 1 - Non-standard URLs** — There is no way to fully ascertain the existence of non-standard-named web applications
-2. **Approaches to Address Issue 2 - Non-standard Ports** — It is easy to check for the existence of web applications on non-standard ports
-3. **Approaches to Address Issue 3 - Virtual Hosts** — There are a number of techniques which may be used to identify DNS names associated to a given IP address x.y.z.t.
-4. **DNS Zone Transfers** — This technique has limited use nowadays, given the fact that zone transfers are largely not honored by DNS servers
-5. **DNS Inverse Queries** — This process is similar to the previous one, but relies on inverse (PTR) DNS records
-6. **Web-based DNS Searches** — This kind of search is akin to DNS zone transfer, but relies on web-based services that enable name-based searches on DNS
-7. **Reverse-IP Services** — Reverse-IP services are similar to DNS inverse queries, with the difference that the testers query a web-based application instead of a name …
+1. `nmap -sV -p- target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録
+2. 同一 IP の他ホストを `crt.sh`（証明書）とバーチャルホスト総当り（`ffuf -H "Host: FUZZ.target"`）で列挙
+3. 見つかった各アプリのトップを開き、旧環境・検証環境・別部署ツール・管理コンソールを判別
+4. スコープ外のものは攻撃せず「存在の報告」に留め、artifacts に一覧化
 
 ## 使用ツール
 

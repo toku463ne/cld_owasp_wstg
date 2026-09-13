@@ -20,9 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **X-Forwarded Host Header Bypass** — In the event that Host header injection is mitigated by checking for invalid input injected via the Host header, you can supply the value to …
-2. **Web Cache Poisoning** — Using this technique, an attacker can manipulate a web-cache to serve poisoned content to anyone who requests it
-3. **Password Reset Poisoning** — It is common for password reset functionality to include the Host header value when creating password reset links that use a generated secre …
+1. `Host:` ヘッダを任意値に書き換え（`Host: evil.example`）て応答に反映/リダイレクトされるか確認
+2. パスワードリセットのリンク生成に Host が使われ、リセット URL を攻撃者ドメインに向けられないか試す
+3. `X-Forwarded-Host` 等でキャッシュポイズニング・認可迂回ができないか確認
+4. Host 依存のリンク生成・ルーティングがある場合は影響を finding に
 
 ## 使用ツール
 

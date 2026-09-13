@@ -20,11 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Browser History** — Technically, the Back button is a history and not a cache (see Caching in HTTP: History Lists)
-2. **Browser Cache** — Here testers check that the application does not leak any sensitive data into the browser cache
-3. **Reviewing Cached Information** — Firefox provides functionality for viewing cached information, which may be to your benefit as a tester
-4. **Check Handling for Mobile Browsers** — Handling of cache directives may be completely different for mobile browsers
-5. **Gray-Box Testing** — The methodology for testing is equivalent to the black-box case, as in both scenarios testers have full access to the server response header …
+1. 認証済み画面のレスポンスヘッダで `Cache-Control: no-store` / `Pragma: no-cache` の有無を確認
+2. ログアウト後にブラウザの「戻る」で認証済み画面が再表示されないか確認
+3. ブラウザキャッシュ（ディスク上）に機微画面が残っていないか確認
+4. 機微画面でキャッシュ抑止がない場合、共用端末での漏えいリスクとして finding に
 
 ## 使用ツール
 

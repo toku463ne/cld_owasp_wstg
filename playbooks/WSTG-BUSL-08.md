@@ -21,13 +21,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Study the applications logical requirements.
-2. Prepare a library of files that are "not approved" for upload that may contain files such as: jsp, exe, or HTML files containing script.
-3. In the application navigate to the file submission or upload mechanism.
-4. Submit the "not approved" file for upload and verify that they are properly prevented from uploading
-5. Check if the website only do file type check in client-side JavaScript
-6. Check if the website only check the file type by "Content-Type" in HTTP request.
-7. Check if the website only check by the file extension.
+1. アップロード機能に想定外の拡張子/MIME（`.php`,`.jsp`,`.svg`,`.html`）を上げて受理されるか確認
+2. 拡張子偽装（`shell.php.jpg`）・MIME 偽装・大小文字・二重拡張子でフィルタを迂回できるか試す
+3. アップロード先が Web からアクセス可能で、かつ実行されないか確認
+4. 受理されるべきでない型が通った場合、後段の実行リスク（BUSL-09）と併せ finding に
 
 ## 使用ツール
 

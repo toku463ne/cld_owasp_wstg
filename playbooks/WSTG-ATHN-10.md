@@ -20,10 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Understand the Primary Mechanism** — Fully test the website's primary authentication functions
-2. **Identify Other Channels** — Other channels can be found by using the following methods:
-3. **Enumerate Authentication Functionality** — For each alternative channel where user accounts or functionality are shared, identify if all the authentication functions of the primary ch …
-4. **Review and Test** — Alternative channels should be mentioned in the testing report, even if they are marked as "information only" or "out of scope"
+1. モバイルアプリ・API・IVR 等の代替チャネルで、Web と同等のロックアウト/MFA/強度要件があるか確認
+2. 旧版 API エンドポイント（`/api/v1/login` 等）が残り、弱い認証のままでないか確認
+3. チャネル間でセッション/トークンが共有され、弱い側から強い側を侵害できないか確認
+4. 代替チャネルだけ保護が抜けている箇所を finding に整理
 
 ## 使用ツール
 

@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. A tool such as ZAP can enable testers to intercept HTTP headers, which can reveal how CORS is used.
-2. Request http://attacker.bar/test.php (note the ‘origin' header):
-3. `GET /test.php HTTP/1.1 Host: attacker.bar [...] Referer: http://example.foo/CORSexample1.html Origin: http://example.foo Connection: keep-alive
-4. Response (note the ‘Access-Control-Allow-Origin' header:)
-5. `HTTP/1.1 200 OK [...] Access-Control-Allow-Origin: * Content-Length: 4 Content-Type: application/xml [Response Body]
-6. This code makes a request to the resource passed after the # character in the URL, initially used to get resources in the same server.
-7. `<script> var req = new XMLHttpRequest(); req.onreadystatechange = function() { if(req.readyState==4 && req.status==200) { document.getElementById("div1").innerHTML=req.responseText; } } var …
+1. `curl -sI -H "Origin: https://evil.example" https://target/api` で `Access-Control-Allow-Origin` の応答を確認
+2. Origin をそのまま反射する・`*` かつ `Allow-Credentials: true` になっていないか確認
+3. 任意/緩いオリジンからの認証付きリクエストで機微データを読めないか検証
+4. 過度に緩い CORS（旧指示の CONF-12 相当）を finding に
 
 ## 使用ツール
 

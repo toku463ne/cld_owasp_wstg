@@ -20,9 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Testing for Default Credentials of Common Applications** — In black-box testing the tester knows nothing about the application and its underlying infrastructure
-2. **Testing for Default Password of New Accounts** — It can also occur that when a new account is created in an application the account is assigned a default password
-3. **Gray-Box Testing** — The following steps rely on an entirely gray-box approach
+1. 製品/機器の既定資格情報（`admin/admin`・ベンダ既定）を管理画面・アプリログインで試す
+2. 既定ユーザ名の列挙（`admin`/`root`/`test`/`guest`）と、初期パスワード未変更を確認
+3. インストーラ・セットアップ画面が残り、無認証でアクセスできないか確認
+4. 成功した組合せは要約のみ finding に、実際の資格情報は evidence にパス参照で残す
 
 ## 使用ツール
 

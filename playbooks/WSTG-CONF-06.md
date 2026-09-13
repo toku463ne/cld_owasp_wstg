@@ -22,11 +22,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Discover the Supported Methods** — To perform this test, the tester needs some way to figure out which HTTP methods are supported by the web server that is being examined
-2. **Testing the PUT Method** — Capture the base request of the target with a web proxy.
-3. **Testing for Access Control Bypass** — Find a page to visit that has a security constraint such that a GET request would normally force a 302 redirect to a log in page or force a …
-4. **Testing for Cross-Site Tracing Potential** — Note: in order to understand the logic and the goals of a cross-site tracing (XST) attack, one must be familiar with cross-site scripting at …
-5. **Testing for HTTP Method Overriding** — Some web frameworks provide a way to override the actual HTTP method in the request by emulating the missing HTTP verbs passing some custom …
+1. `curl -sX OPTIONS https://target/ -i` で Allow ヘッダを確認（自己申告なので鵜呑みにしない）
+2. 各メソッドを実際に投げる: `curl -sX PUT` `DELETE` `TRACE` `CONNECT` して応答コード・挙動を見る
+3. `PUT` でファイル設置、`TRACE` で XST、任意メソッドで認可迂回ができないか検証
+4. `X-HTTP-Method-Override: DELETE` 等のヘッダで本来拒否されるメソッドに化けられないか試す
 
 ## 使用ツール
 

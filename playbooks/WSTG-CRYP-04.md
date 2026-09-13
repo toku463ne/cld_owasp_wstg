@@ -19,8 +19,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. **Basic Security Checklist** — When using AES128 or AES256, the IV (Initialization Vector) must be random and unpredictable
-2. **Source Code Review** — Search for the following keywords to identify use of weak algorithms: MD4, MD5, RC4, RC2, DES, Blowfish, SHA-1, ECB
+1. 保存/送信データの暗号化方式（弱い ECB、独自暗号、可逆エンコードを暗号と誤認）を確認
+2. パスワード保存が平文/MD5/SHA1 等の弱いハッシュ（ソルト無し）でないか、判る範囲で確認
+3. ハードコードされた鍵・IV 使い回し・予測可能な乱数が使われていないか確認
+4. 暗号化と単なるエンコード（base64）の混同を見抜き、実質無防備な箇所を finding に
 
 ## 使用ツール
 

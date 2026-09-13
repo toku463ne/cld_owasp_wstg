@@ -20,13 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Code should be analyzed to determine if a user is permitted to inject content in the CSS context.
-2. The following is a basic example:
-3. `<a id="a1">Click me</a> <b>Hi</b> <script> $("a").click(function(){ $("b").attr("style","color: " + location.hash.slice(1)); }); </script>
-4. The above code contains a source location.hash, controlled by the attacker, that can inject directly in the style attribute of an HTML element.
-5. The following pages provide examples of CSS injection vulnerabilities:
-6. Password "cracker" via CSS and HTML5
-7. JavaScript based attacks using CSSStyleDeclaration with unescaped input
+1. スタイルに反映される入力に CSS 注入（`}body{background:url(...)}` や属性セレクタ）ができるか確認
+2. CSS で入力値を推測・外部送信（属性セレクタ + 背景画像リクエスト）できないか確認
+3. `style` 属性/`<style>` へのユーザ入力反映を DevTools で確認
+4. 情報漏えい・画面改ざんにつながる注入を finding に
 
 ## 使用ツール
 
