@@ -30,7 +30,7 @@
 | `matrix/coverage.yaml` の `phases:` と `activities:` | アクティビティ定義・実施順（唯一の真実） |
 | `matrix/criteria.yaml` | カードの目的・pass/fail 判定基準 |
 | `scripts/*` | ツール本体 |
-| `README.md` / `CLAUDE.md` / `templates/run.yaml` | ドキュメントと雛形 |
+| `README.md` / `CLAUDE.md` / `templates/**` | ドキュメントと雛形（`run.yaml`・`artifacts/` の成果物フォーマット） |
 
 **自動生成物（手で直しても次の生成で消える）**:
 

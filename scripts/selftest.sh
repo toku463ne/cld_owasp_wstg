@@ -67,6 +67,14 @@ assert all(c['verdict']=='todo' for c in d['covers'])
 " || ng "run.yaml のプリフィルが壊れている"
 ok "run.yaml + cmd/ + artifacts/"
 
+# .md 成果物の雛形（検索用フォーマット）が outputs から生成されるか
+"${PY[@]}" scripts/new_activity.py recon-osint --root "${TMP}/ev" --date 20260101 >/dev/null
+DORK="${TMP}/ev/recon-osint-20260101/artifacts/dorking-hits.md"
+[ -f "${DORK}" ] || ng "outputs の .md 成果物の雛形が作られない（templates/artifacts/）"
+grep -q "WSTG-INFO-01" "${DORK}" && grep -q "| dork |" "${DORK}" \
+  || ng "成果物の雛形に WSTG-ID/検索用の見出しが埋まっていない"
+ok ".md 成果物の雛形生成（templates/artifacts/）"
+
 echo "[4/8] run_cmd.py（実行・保存・追記）"
 "${PY[@]}" scripts/run_cmd.py "${DIR}" --slug selftest -- printf 'selftest\n' >/dev/null
 [ -s "${DIR}/cmd/selftest.txt" ] || ng "cmd/ に出力が残らない"

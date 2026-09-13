@@ -61,6 +61,10 @@ uv run scripts/new_activity.py burp-crawl-authn
 
 `run.yaml` の `covers:` には、そのアクティビティがカバーする WSTG-ID が
 `matrix/coverage.yaml` から自動で入る（`verdict: todo`）。
+`artifacts/` には、`coverage.yaml` の `outputs:` にある `.md` 成果物の雛形が
+検索しやすいフォーマット（1観察=1行・列固定・`[角括弧]` タグ・WSTG-ID 列）で
+用意される。雛形は `templates/artifacts/`（`<basename>` 専用が無ければ `_findings.md`）。
+後から `grep -rn "\[creds\]" evidence/` や `grep -rn "WSTG-INFO-01" evidence/` で横断検索できる。
 
 対応するプレイブックカード（`playbooks/WSTG-*.md`）を開きながら進める。
 一覧は `playbooks/INDEX.md`、どのアクティビティが何を満たすかは `matrix/coverage.md`。
@@ -133,6 +137,7 @@ uv run scripts/export_checklist.py --summary
 | `playbooks/` | 1テスト=1枚のカード（自動生成） | ✅ |
 | `TASKS.md` | 実施順のタスクリスト（自動生成） | ✅ |
 | `templates/run.yaml` | run.yaml のスキーマ兼雛形 | ✅ |
+| `templates/artifacts/` | `.md` 成果物の検索用フォーマット雛形（**手編集**） | ✅ |
 | `pyproject.toml` / `uv.lock` / `.python-version` | uv による環境定義 | ✅ |
 | `docs/owasp/` | WSTG 原文（`FETCH.md` 以外は追跡しない） | ❌ |
 | `evidence/` | 生エビデンス（社内PCのローカルのみ） | ❌ |
