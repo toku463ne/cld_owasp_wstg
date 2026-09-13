@@ -28,14 +28,7 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- 手動レビュー
-- ls -l / icacls
-- nikto
-- CIS Benchmark チェックリスト
-- nmap -sV
-- whatweb
-- Wappalyzer
-- httpx
+- curl
 
 ## 判定基準（pass / fail の見分け）
 

@@ -26,9 +26,8 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- Burp Suite
 - curl
-- ブラウザ開発者ツール
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

@@ -20,17 +20,14 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. JSON/JS を返す認証付きエンドポイントを、`<script src>` で外部ページから読み込めるか確認
+1. JSON/JS を返す認証付きエンドポイントを、`<script src>` で外部ページから読み込めるか確認（`curl` で Content-Type も確認）
 2. 動的 JS・JSONP が Cookie 認証で機微データを返し、他サイトから読めないか（CSRF 的窃取）検証
 3. `X-Content-Type-Options: nosniff`・適切な Content-Type・CSRF 対策の有無を確認
 4. クロスサイトでデータを読み出せた場合は XSSI として finding に
 
 ## 使用ツール
 
-- ブラウザ開発者ツール
-- DOM Invader
-- Retire.js
-- Burp Suite
+- curl
 
 ## 判定基準（pass / fail の見分け）
 

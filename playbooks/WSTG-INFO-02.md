@@ -26,10 +26,9 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- nmap -sV
+- curl
+- nmap
 - whatweb
-- Wappalyzer
-- httpx
 
 ## 判定基準（pass / fail の見分け）
 

@@ -29,10 +29,7 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- Ncat
-- cURL
-- nmap http-methods NSE script
-- w3af plugin htaccess_methods
+- curl
 
 ## 判定基準（pass / fail の見分け）
 

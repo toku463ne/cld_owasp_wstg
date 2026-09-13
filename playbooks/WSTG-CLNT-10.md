@@ -27,9 +27,8 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- OWASP Zed Attack Proxy (ZAP)
-- WebSocket Client
-- Google Chrome Simple WebSocket Client
+- ブラウザ開発者ツール
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

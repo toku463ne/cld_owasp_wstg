@@ -20,20 +20,15 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. ファイル参照パラメータ（`?file=`,`?page=`,`?lang=`）に `../../etc/passwd`・`..\..\` を入れて範囲外読取を試す
-2. エンコード変種（`%2e%2e%2f`・二重エンコード `%252e`・`....//`）で WAF/フィルタを迂回できるか試す
+1. ファイル参照パラメータ（`?file=`,`?page=`,`?lang=`）に `../../etc/passwd`・`..\..\` を Burp Repeater で入れて範囲外読取を試す
+2. エンコード変種（`%2e%2e%2f`・二重エンコード `%252e`・`....//`）で WAF/フィルタを迂回できるか `dotdotpwn` 等で試す
 3. 絶対パス指定・null バイト・拡張子付与（`file=../../etc/passwd%00.png`）も試す
 4. LFI で設定ファイル/ソースが読める、または include で任意ファイルを実行できるか確認
 
 ## 使用ツール
 
-- DotDotPwn - The Directory Traversal Fuzzer
-- Path Traversal Fuzz Strings (from WFuzz Tool)
-- OWASP ZAP
-- Burp Suite
-- Enconding/Decoding tools
-- String searcher "grep"
-- DirBuster
+- Burp Repeater
+- DotDotPwn
 
 ## 判定基準（pass / fail の見分け）
 

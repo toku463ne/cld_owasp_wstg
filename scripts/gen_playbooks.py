@@ -79,16 +79,48 @@ def condense_steps(how_to_test: str) -> list[str]:
     return steps
 
 
-def parse_tools(tools_section: str, fallback: list[str]) -> list[str]:
-    tools = []
-    for line in tools_section.splitlines():
-        item = re.sub(r"^(\d+\.|-)\s*", "", line).strip()
-        item = re.sub(r"\s*\(https?://\S+\)", "", item)
-        item = clean(item)
-        if not item or item.startswith("###") or len(item) > 80:
-            continue
-        tools.append(item)
-    return tools[:8] or fallback[:8]
+# 手順に現れたツール名 → カード上の正式表記。手順を唯一の真実にして、
+# 「## 使用ツール」を手順から機械的に導出する（手順に出ないツールは載せない）。
+# 正規表現は小文字化した手順テキストに対して照合する。上から順に評価する。
+TOOL_PATTERNS = [
+    (r"theharvester", "theHarvester"), (r"crt\.sh", "crt.sh"), (r"\bamass\b", "amass"),
+    (r"\bwhois\b", "whois"), (r"\bnslookup\b", "nslookup"), (r"\bdig\b", "dig"),
+    (r"wayback|web\.archive", "Wayback Machine"), (r"\bdork|site:", "Google/Bing dorking"),
+    (r"\bcurl\b", "curl"), (r"\bwget\b", "wget"), (r"\bnmap\b", "nmap"),
+    (r"\bffuf\b", "ffuf"), (r"gobuster", "gobuster"), (r"\bsqlmap\b", "sqlmap"),
+    (r"testssl", "testssl.sh"), (r"\bsslyze\b", "sslyze"), (r"\bnikto\b", "nikto"),
+    (r"\bwhatweb\b", "whatweb"), (r"wappalyzer", "Wappalyzer"), (r"\bhttpx\b", "httpx"),
+    (r"retire", "Retire.js"), (r"git-dumper", "git-dumper"), (r"\bncat\b|\bnc \b", "ncat"),
+    (r"\bhydra\b", "hydra"), (r"dotdotpwn", "DotDotPwn"), (r"\bwfuzz\b", "wfuzz"),
+    (r"aws s3", "AWS CLI"), (r"\beicar\b", "EICAR テスト検体"), (r"padbuster", "padbuster"),
+    (r"\bicacls\b", "icacls"), (r"\bnamei\b", "namei"), (r"accesschk", "AccessChk"),
+    (r"\bls -l", "ls -l"),
+    (r"burp sequencer", "Burp Sequencer"), (r"burp intruder", "Burp Intruder"),
+    (r"burp repeater", "Burp Repeater"), (r"\bburp\b", "Burp Suite"),
+    (r"\bzap\b|owasp zap", "OWASP ZAP"),
+    (r"開発者ツール|devtools|sources\s*→|network\s*→|application\s*→|"
+     r"application で|sources で|network で|network タブ", "ブラウザ開発者ツール"),
+    (r"iframe|別ブラウザ|ブラウザで", "ブラウザ"),
+]
+_TOOL_RE = [(re.compile(p), name) for p, name in TOOL_PATTERNS]
+
+
+def tools_from_steps(steps: list) -> list:
+    """手順テキストに現れたツールを、出現順・ユニークで抜き出す。"""
+    text = " ".join(steps).lower()
+    hits = []
+    for rx, name in _TOOL_RE:
+        m = rx.search(text)
+        if m:
+            hits.append((m.start(), name))
+    out: list = []
+    for _, name in sorted(hits):
+        if name not in out:
+            out.append(name)
+    # 具体的な Burp 機能名があれば、汎用の「Burp Suite」は重複なので落とす
+    if any(t.startswith("Burp ") and t != "Burp Suite" for t in out):
+        out = [t for t in out if t != "Burp Suite"]
+    return out
 
 
 def load_yaml(path: Path, default=None):
@@ -167,7 +199,10 @@ def render_card(test, criteria: dict, activities: list, act_defs: dict) -> str:
 
     w("## 使用ツール")
     w("")
-    for t in parse_tools(test.section("tools"), tool_fallback):
+    # 手順に出てきたツールを列挙する（手順＝唯一の真実）。criteria の tools で
+    # 明示上書きでき、手順からも活動定義からも拾えない場合だけ活動ツールに退避。
+    tools = c.get("tools") or tools_from_steps(steps) or tool_fallback[:8]
+    for t in tools:
         w(f"- {t}")
     w("")
 

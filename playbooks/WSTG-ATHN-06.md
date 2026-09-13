@@ -20,14 +20,15 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. 認証済み画面のレスポンスヘッダで `Cache-Control: no-store` / `Pragma: no-cache` の有無を確認
+1. 認証済み画面のレスポンスヘッダを `curl -sI`/Burp で取得し `Cache-Control: no-store` / `Pragma: no-cache` の有無を確認
 2. ログアウト後にブラウザの「戻る」で認証済み画面が再表示されないか確認
 3. ブラウザキャッシュ（ディスク上）に機微画面が残っていないか確認
 4. 機微画面でキャッシュ抑止がない場合、共用端末での漏えいリスクとして finding に
 
 ## 使用ツール
 
-- OWASP Zed Attack Proxy
+- curl
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

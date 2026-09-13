@@ -27,13 +27,7 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- Browser (View Source or Dev Tools functionality)
 - curl
-- wget
-- Burp Suite
-- ZAP
-- Watch
-- Star
 
 ## 判定基準（pass / fail の見分け）
 

@@ -26,9 +26,7 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- Nikto
-- OWASP Zed Attack Proxy Project
-- W3af
+- curl
 
 ## 判定基準（pass / fail の見分け）
 

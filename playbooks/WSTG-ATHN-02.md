@@ -20,16 +20,15 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. 製品/機器の既定資格情報（`admin/admin`・ベンダ既定）を管理画面・アプリログインで試す
+1. 既定資格情報（`admin/admin`・ベンダ既定）を管理画面・アプリログインで試す（まとめて試すなら `hydra` や Burp Intruder）
 2. 既定ユーザ名の列挙（`admin`/`root`/`test`/`guest`）と、初期パスワード未変更を確認
 3. インストーラ・セットアップ画面が残り、無認証でアクセスできないか確認
 4. 成功した組合せは要約のみ finding に、実際の資格情報は evidence にパス参照で残す
 
 ## 使用ツール
 
+- hydra
 - Burp Intruder
-- THC Hydra
-- Nikto 2
 
 ## 判定基準（pass / fail の見分け）
 

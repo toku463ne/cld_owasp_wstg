@@ -21,16 +21,14 @@ WSTG の Test Objectives:
 ## 手順
 
 1. 有効なセッション ID を別ブラウザ/別 IP にコピーし、同時に使えるか（バインドがないか）確認
-2. セッションが IP/User-Agent 等の属性に紐づくか、盗んだ ID だけで成り済ませるか検証
+2. セッションが IP/User-Agent 等の属性に紐づくか、盗んだ ID だけで Burp で成り済ませるか検証
 3. XSS/ネットワーク傍受でトークンを取れた場合の悪用可否を、取得済みトークンで確認
 4. 同時多重ログインの検知・失効の有無を確認
 
 ## 使用ツール
 
-- OWASP ZAP
-- JHijack - a numeric session hijacking tool
-- Watch
-- Star
+- ブラウザ
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

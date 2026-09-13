@@ -26,14 +26,9 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- DNS lookup tools such as nslookup, dig and similar.
-- Search engines (Google, Bing and other major search engines).
-- Specialized DNS-related web-based search service: see text.
-- Nmap
-- Nessus Vulnerability Scanner
-- Nikto
-- Watch
-- Star
+- nmap
+- crt.sh
+- ffuf
 
 ## 判定基準（pass / fail の見分け）
 

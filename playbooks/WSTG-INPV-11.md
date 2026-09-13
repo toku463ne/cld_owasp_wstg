@@ -20,17 +20,14 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. 評価系入力に言語別コード（PHP `;phpinfo();`、`system('id')`、`__import__('os')`）を注入し実行されるか確認
+1. 評価系入力に言語別コード（PHP `;phpinfo();`、`system('id')`、`__import__('os')`）を Burp で注入し実行されるか確認
 2. eval/デシリアライズ/テンプレート等コードが評価される経路を特定
-3. 時間差・アウトオブバンド（DNS/HTTP コールバック）で盲目的に実行確認
+3. 時間差・アウトオブバンド（Burp Collaborator 等の DNS/HTTP コールバック）で盲目的に実行確認
 4. 成立時は RCE として最優先で finding に。実証は最小限に留める
 
 ## 使用ツール
 
-- Burp Intruder
-- sqlmap
-- tplmap
-- 手動 payload
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

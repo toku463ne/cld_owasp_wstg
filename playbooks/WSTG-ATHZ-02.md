@@ -26,11 +26,7 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- OWASP Zed Attack Proxy (ZAP)
-- - ZAP add-on: Access Control Testing
-- Port Swigger Burp Suite
-- - Burp extension: AuthMatrix
-- - Burp extension: Autorize
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

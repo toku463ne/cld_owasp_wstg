@@ -26,9 +26,8 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- Zed Attack Proxy (ZAP)
-- List of spreadsheet software
-- Diagramming software
+- Burp Suite
+- OWASP ZAP
 
 ## 判定基準（pass / fail の見分け）
 

@@ -28,13 +28,8 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- Wget
-- Browser "view source" function
-- Eyeballs
-- Curl
-- Burp Suite
-- Waybackurls
-- Google Maps API Scanner
+- ブラウザ
+- ブラウザ開発者ツール
 
 ## 判定基準（pass / fail の見分け）
 

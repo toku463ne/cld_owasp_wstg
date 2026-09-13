@@ -20,21 +20,15 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. サーバが受け付ける生リクエスト（異常メソッド・巨大ヘッダ・不正 Host）への挙動を確認
+1. サーバが受け付ける生リクエスト（異常メソッド・巨大ヘッダ・不正 Host）を `ncat`/`curl` で送り挙動を確認
 2. リクエスト解析の甘さ（不正な行終端・重複ヘッダ）で異常応答が出ないか確認
 3. 監視・WAF が生の異常リクエストを取りこぼさないか確認
 4. 他の注入系（INPV-15/17）と併せて解釈差を検証
 
 ## 使用ツール
 
-- Fiddler
-- TCPProxy
-- Charles Web Debugging Proxy
-- WireShark
-- PowerEdit-Pcap
-- pcapteller
-- replayproxy
-- Ostinato
+- ncat
+- curl
 
 ## 判定基準（pass / fail の見分け）
 

@@ -20,16 +20,15 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. JS がユーザ制御データで動的にリソース URL（script/img/iframe の src）を組み立てないか確認
-2. その URL に外部/悪性リソースを指定させて読み込ませられないか試す
+1. JS がユーザ制御データで動的にリソース URL（script/img/iframe の src）を組み立てないかブラウザ開発者ツールで確認
+2. その URL に外部/悪性リソースを Burp で指定させて読み込ませられないか試す
 3. `location`,`XMLHttpRequest`,`fetch` の宛先がユーザ入力で操作されないか確認
 4. リソース読み込み先を乗っ取れた場合の影響を finding に
 
 ## 使用ツール
 
+- ブラウザ
 - ブラウザ開発者ツール
-- DOM Invader
-- Retire.js
 - Burp Suite
 
 ## 判定基準（pass / fail の見分け）

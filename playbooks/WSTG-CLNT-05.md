@@ -22,15 +22,12 @@ WSTG の Test Objectives:
 
 1. スタイルに反映される入力に CSS 注入（`}body{background:url(...)}` や属性セレクタ）ができるか確認
 2. CSS で入力値を推測・外部送信（属性セレクタ + 背景画像リクエスト）できないか確認
-3. `style` 属性/`<style>` へのユーザ入力反映を DevTools で確認
+3. `style` 属性/`<style>` へのユーザ入力反映をブラウザ開発者ツールで確認
 4. 情報漏えい・画面改ざんにつながる注入を finding に
 
 ## 使用ツール
 
 - ブラウザ開発者ツール
-- DOM Invader
-- Retire.js
-- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

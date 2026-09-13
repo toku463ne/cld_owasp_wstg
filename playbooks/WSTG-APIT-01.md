@@ -21,19 +21,15 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. GraphQL エンドポイント（`/graphql`）にイントロスペクション（`{__schema{types{name}}}`）が有効か確認
+1. GraphQL エンドポイント（`/graphql`）に `curl`/Burp でイントロスペクション（`{__schema{types{name}}}`）が有効か確認
 2. スキーマから機微な query/mutation を洗い、認可なしで呼べないか確認
 3. 深いネスト/エイリアス量産でクエリコスト制限（DoS 耐性）・レート制限の有無を確認
 4. バッチクエリで認可迂回・列挙ができないか試し、成立点を finding に
 
 ## 使用ツール
 
-- GraphQL Playground
-- GraphQL Voyager
-- sqlmap
-- InQL (Burp Extension)
-- GraphQL Raider (Burp Extension)
-- GraphQL (Add-on for OWASP ZAP)
+- curl
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

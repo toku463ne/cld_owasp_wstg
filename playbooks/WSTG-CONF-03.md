@@ -27,11 +27,7 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- wget
 - curl
-- google for "web mirroring tools".
-- Watch
-- Star
 
 ## 判定基準（pass / fail の見分け）
 

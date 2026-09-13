@@ -26,12 +26,7 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- OWASP Zed Attack Proxy Project
-- Web Proxy Burp Suite
-- Tamper Data for FF Quantum
-- "FireSheep" for FireFox
-- "EditThisCookie" for Chrome
-- "Cookiebro - Cookie Manager" for FireFox
+- curl
 
 ## 判定基準（pass / fail の見分け）
 

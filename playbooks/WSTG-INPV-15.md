@@ -20,16 +20,15 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. リクエスト/応答に CRLF（`%0d%0a`）を注入し、ヘッダ分割・レスポンス分割ができるか確認
+1. リクエスト/応答に CRLF（`%0d%0a`）を `curl`/Burp で注入し、ヘッダ分割・レスポンス分割ができるか確認
 2. フロント/バックの解釈差を突く smuggling（`Content-Length` と `Transfer-Encoding` の食い違い）を検証
 3. キャッシュポイズニング・認可迂回につながらないか確認
 4. 中間装置（CDN/LB）構成に依存するため、成立条件と経路を finding に明記
 
 ## 使用ツール
 
-- Burp Suite
-- Burp HTTP Request Smuggler
 - curl
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

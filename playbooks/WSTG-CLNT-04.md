@@ -20,16 +20,14 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. リダイレクト先を決めるパラメータ（`?next=`,`?url=`,`?return=`）に外部 URL を入れて飛ぶか確認
+1. リダイレクト先を決めるパラメータ（`?next=`,`?url=`,`?return=`）に外部 URL を `curl`/Burp で入れて飛ぶか確認
 2. `//evil.example`・`https:evil.example`・`\/\/evil` などスキーム相対/変種で迂回を試す
 3. オープンリダイレクトがフィッシング・OAuth トークン奪取に使えないか確認
 4. 外部ドメインへ誘導できた場合はオープンリダイレクトとして finding に
 
 ## 使用ツール
 
-- ブラウザ開発者ツール
-- DOM Invader
-- Retire.js
+- curl
 - Burp Suite
 
 ## 判定基準（pass / fail の見分け）

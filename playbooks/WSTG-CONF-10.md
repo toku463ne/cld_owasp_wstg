@@ -27,12 +27,9 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- dig - man page
-- recon-ng - Web Reconnaissance framework
-- theHarvester - OSINT intelligence gathering tool
-- Sublist3r - OSINT subdomain enumeration tool
-- dnsrecon - DNS Enumeration Script
-- OWASP Amass DNS enumeration
+- amass
+- crt.sh
+- dig
 
 ## 判定基準（pass / fail の見分け）
 

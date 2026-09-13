@@ -21,16 +21,14 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. テンプレートに渡り得る入力に `{{7*7}}` `${7*7}` `#{7*7}` `<%= 7*7 %>` を入れ、`49` に評価されるか確認
+1. テンプレートに渡り得る入力に `{{7*7}}` `${7*7}` `#{7*7}` `<%= 7*7 %>` を Burp Repeater で入れ、`49` に評価されるか確認
 2. 評価された場合はエンジンを特定し、対応ペイロードで内部変数/コマンド実行に到達できるか確認
 3. 反映先がサーバ側テンプレート（メール/PDF/画面）か切り分ける
 4. SSTI が RCE に至る経路を確認。実証は最小限に留め finding に
 
 ## 使用ツール
 
-- Tplmap
-- Backslash Powered Scanner Burp Suite extension
-- Template expression test strings/payloads list
+- Burp Repeater
 
 ## 判定基準（pass / fail の見分け）
 

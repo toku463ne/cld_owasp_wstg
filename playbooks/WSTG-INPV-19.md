@@ -21,16 +21,15 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. URL/ホストを受け取る入力（`?url=`,`?image=`,webhook）に `http://169.254.169.254/`（クラウドメタデータ）を指定し取得できるか確認
+1. URL/ホストを受け取る入力（`?url=`,`?image=`,webhook）に `http://169.254.169.254/`（クラウドメタデータ）を `curl`/Burp で指定し取得できるか確認
 2. 内部 IP（`http://127.0.0.1:port`,`http://10.x`）へのアクセスや、`file://`/`gopher://` スキームを試す
 3. リダイレクト・DNS リバインド・別表記（`http://0x7f000001`）でフィルタ迂回を試す
 4. 内部到達・メタデータ取得が成立したら SSRF として重大度高めで finding に
 
 ## 使用ツール
 
-- Burp Collaborator
-- interactsh
 - curl
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

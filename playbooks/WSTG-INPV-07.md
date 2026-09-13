@@ -21,13 +21,14 @@ WSTG の Test Objectives:
 ## 手順
 
 1. XML を受け取る入力に `<` `>` `]]>` 等を入れ、構造を壊せる/エラーになるか確認
-2. XXE を狙い `<!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]>&e;` を送りファイル読取を試す
+2. XXE を狙い `<!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]>&e;` を `curl`/Burp で送りファイル読取を試す
 3. 外部エンティティ・パラメータエンティティ・SSRF（`http://` 参照）の受理可否を確認
 4. XML パーサが外部エンティティを解決する場合は XXE として重大度高めで finding に
 
 ## 使用ツール
 
-- XML Injection Fuzz Strings (from wfuzz tool)
+- curl
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

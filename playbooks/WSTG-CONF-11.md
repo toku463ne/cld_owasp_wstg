@@ -26,6 +26,7 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
+- curl
 - AWS CLI
 
 ## 判定基準（pass / fail の見分け）

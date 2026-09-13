@@ -29,8 +29,8 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- Metasploit's payload generation functionality
-- Intercepting proxy
+- EICAR テスト検体
+- curl
 
 ## 判定基準（pass / fail の見分け）
 

@@ -21,16 +21,14 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. 各ロール（管理者・一般・ゲスト等）でログインし、使える機能・見える画面を表に起こす
+1. 各ロール（管理者・一般・ゲスト等）ごとに Burp でセッションを分けてログインし、使える機能・見える画面を表に起こす
 2. ロール定義のドキュメント/ヒアリング内容と、実際の権限が一致するか突き合わせる
-3. ロール間で機能・データの重なりや、想定外に強い既定権限がないか確認
-4. この結果は ATHZ 系（認可）テストの入力になるので artifacts/roles-matrix.md に整理
+3. Burp の Autorize 拡張でロール間の機能・データの重なりや、想定外に強い既定権限がないか確認
+4. この結果は ATHZ 系（認可）テストの入力になるので artifacts/role-matrix.md に整理
 
 ## 使用ツール
 
-- To make things easier and more documented, one can use:
-- Burp's Autorize extension
-- ZAP's Access Control Testing add-on
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

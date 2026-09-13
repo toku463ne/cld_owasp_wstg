@@ -22,15 +22,13 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. 改ざん検知が必要なデータ（署名付きトークン・金額・数量）を改変し、整合性チェックが働くか確認
+1. 改ざん検知が必要なデータ（署名付きトークン・金額・数量）を Burp で改変し、整合性チェックが働くか確認
 2. 隠しフィールド・Cookie・JWT の署名を外す/改変して受理されるか試す
 3. サーバ側で再計算・再検証しているか（クライアント値を鵜呑みにしないか）確認
 4. 整合性チェックが無い/迂回できる箇所を finding に
 
 ## 使用ツール
 
-- Various system/application tools such as editors and file manipulation tools.
-- OWASP Zed Attack Proxy (ZAP)
 - Burp Suite
 
 ## 判定基準（pass / fail の見分け）

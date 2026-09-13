@@ -29,7 +29,6 @@ WSTG の Test Objectives:
 ## 使用ツール
 
 - Burp Sequencer
-- YEHG's JHijack
 
 ## 判定基準（pass / fail の見分け）
 

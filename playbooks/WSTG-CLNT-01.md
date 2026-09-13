@@ -20,16 +20,15 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. URL フラグメント/パラメータを DOM に書き込む JS（`document.write`,`innerHTML`,`location`,`eval`）を Sources で探す
+1. URL フラグメント/パラメータを DOM に書き込む JS（`document.write`,`innerHTML`,`location`,`eval`）をブラウザ開発者ツールの Sources で探す
 2. `#<img src=x onerror=alert(1)>` 等をシンクに流し込み、サーバを介さず DOM 上で発火するか確認
-3. ソース（`location.hash`,`document.referrer`）→シンクの経路を DevTools で追跡
+3. ソース（`location.hash`,`document.referrer`）→シンクの経路を DevTools や Burp DOM Invader で追跡
 4. どのシンクで成立したかを finding に明記（CLNT-01 と INPV-01 の切り分け）
 
 ## 使用ツール
 
+- ブラウザ開発者ツール
 - Burp Suite
-- DOM Invader
-- 手動 payload
 
 ## 判定基準（pass / fail の見分け）
 

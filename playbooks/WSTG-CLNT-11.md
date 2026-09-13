@@ -20,7 +20,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `postMessage` の送受信を DevTools で確認し、受信側が `event.origin` を検証しているか見る
+1. `postMessage` の送受信をブラウザ開発者ツールで確認し、受信側が `event.origin` を検証しているか見る
 2. 任意オリジンからのメッセージを受理して DOM 操作/機微処理を行わないか確認
 3. 送信側が `targetOrigin` に `*` を使い、機微データを漏らさないか確認
 4. オリジン検証欠如による XSS/情報漏えいを finding に
@@ -28,9 +28,6 @@ WSTG の Test Objectives:
 ## 使用ツール
 
 - ブラウザ開発者ツール
-- DOM Invader
-- Retire.js
-- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

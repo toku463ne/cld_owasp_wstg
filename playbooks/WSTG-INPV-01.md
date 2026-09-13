@@ -27,7 +27,8 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- XSS-Proxy is an advanced Cross-Site-Scripting (XSS) attack tool.
+- Burp Suite
+- ブラウザ
 
 ## 判定基準（pass / fail の見分け）
 

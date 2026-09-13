@@ -19,17 +19,14 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. XPath クエリを伴う入力に `' or '1'='1` `x' or name()='` を入れ、認証迂回/全件取得を試す
+1. XPath クエリを伴う入力に `' or '1'='1` `x' or name()='` を Burp Repeater で入れ、認証迂回/全件取得を試す
 2. 真偽差・エラーからブラインド XPath 注入が可能か確認
 3. XML データストアを使うログイン等で、フィルタが壊れて迂回できないか確認
 4. 成立経路（どの入力・どのクエリ）を finding に明記
 
 ## 使用ツール
 
-- Burp Intruder
-- sqlmap
-- tplmap
-- 手動 payload
+- Burp Repeater
 
 ## 判定基準（pass / fail の見分け）
 

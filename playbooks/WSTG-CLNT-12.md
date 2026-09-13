@@ -20,7 +20,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. DevTools→Application で localStorage/sessionStorage/IndexedDB/Cookie の中身を確認
+1. ブラウザ開発者ツール→Application で localStorage/sessionStorage/IndexedDB/Cookie の中身を確認
 2. セッショントークン・個人情報・機微データが平文で保存されていないか確認
 3. 保存データが XSS で読める（HttpOnly でない）・信頼して処理される経路がないか確認
 4. 機微データのクライアント保存を finding に（保存の是非と保護の両面で）
@@ -28,9 +28,6 @@ WSTG の Test Objectives:
 ## 使用ツール
 
 - ブラウザ開発者ツール
-- DOM Invader
-- Retire.js
-- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

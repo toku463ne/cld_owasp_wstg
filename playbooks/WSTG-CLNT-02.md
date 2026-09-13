@@ -20,16 +20,13 @@ WSTG の Test Objectives:
 ## 手順
 
 1. `javascript:` スキームや DOM 経由でユーザ入力が `eval`/`setTimeout`/`Function` に渡らないか確認
-2. 入力から JS 実行に至る経路を DevTools のブレークポイントで追う
+2. 入力から JS 実行に至る経路をブラウザ開発者ツール（DevTools）のブレークポイントで追う
 3. フレームワークのテンプレート評価（`ng-`,`v-` バインド等）で式が実行されないか確認
 4. 実行が成立するシンクを finding に。DOM XSS（CLNT-01）と重なる点に注意
 
 ## 使用ツール
 
 - ブラウザ開発者ツール
-- DOM Invader
-- Retire.js
-- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

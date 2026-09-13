@@ -21,14 +21,13 @@ WSTG の Test Objectives:
 ## 手順
 
 1. Flash（SWF）が残る環境で、`allowScriptAccess`/`allowDomain` の設定と外部からの制御可否を確認
-2. SWF に渡るパラメータ（`FlashVars`）経由で JS 実行・遷移を誘発できないか確認
+2. SWF に渡るパラメータ（`FlashVars`）経由で JS 実行・遷移をブラウザで誘発できないか確認
 3. レガシー技術。存在自体が縮退対象なので、残っていれば撤去も助言
 4. 成立する XSF 経路があれば finding に
 
 ## 使用ツール
 
-- curl
-- 手動レビュー
+- ブラウザ
 
 ## 判定基準（pass / fail の見分け）
 

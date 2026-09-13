@@ -27,13 +27,7 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- curl
-- grep
-- Identity Finder
-- Wireshark
-- TCPDUMP
-- Watch
-- Star
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

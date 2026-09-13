@@ -20,16 +20,14 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. SSI を使い得る環境で入力に `<!--#exec cmd="id"-->` `<!--#include file="..."-->` を注入
+1. SSI を使い得る環境で入力に `<!--#exec cmd="id"-->` `<!--#include file="..."-->` を Burp で注入
 2. 反映先が `.shtml` 等 SSI 有効ページか、注入がサーバ側で解釈されるか確認
 3. コマンド実行・ファイルインクルードが成立するか、出力で確認
 4. レガシー環境で残りがち。成立時は RCE 相当として扱う
 
 ## 使用ツール
 
-- Web Proxy Burp Suite
-- OWASP ZAP
-- String searcher: grep
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

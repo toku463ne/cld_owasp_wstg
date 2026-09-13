@@ -120,6 +120,12 @@ if compgen -G "docs/owasp/*" > /dev/null; then
   [ "${n}" -ge 90 ] || ng "カードが ${n} 枚しか生成されない"
   grep -q "判定基準" "${TMP}/pb/WSTG-SESS-02.md" || ng "カードの体裁が壊れている"
   ok "カード ${n} 枚"
+  # 使用ツールは手順から導出する（手順に出たツールが載る／原文由来の雑多語は出さない）
+  awk '/## 使用ツール/{f=1;next} /^## /{f=0} f&&/theHarvester/{ok=1} END{exit !ok}' \
+    "${TMP}/pb/WSTG-INFO-01.md" || ng "使用ツールが手順から導出されていない（theHarvester 欠落）"
+  grep -Eq '^- (Watch|Star|Eyeballs)$' "${TMP}/pb"/WSTG-*.md \
+    && ng "原文由来の雑多な語が使用ツールに混入している" || true
+  ok "使用ツールは手順から導出（原文由来の雑多語なし）"
   diff -rq playbooks "${TMP}/pb" >/dev/null && ok "コミット済みカードは最新" \
     || echo "  warn playbooks/ が古い: uv run scripts/gen_playbooks.py"
 else

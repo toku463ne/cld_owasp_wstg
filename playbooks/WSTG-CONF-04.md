@@ -26,14 +26,9 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- Nessus
-- Nikto2
-- Web spider tools
-- wget
-- Wget for Windows
-- Sam Spade
-- Spike proxy includes a web site crawler function
-- Xenu
+- ffuf
+- curl
+- git-dumper
 
 ## 判定基準（pass / fail の見分け）
 

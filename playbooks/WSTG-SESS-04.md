@@ -21,16 +21,15 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. セッション ID・トークンが URL・ログ・Referer・隠しフィールドに露出しないか確認
-2. 開発者ツールで localStorage/sessionStorage にセッション情報が平文保存されないか確認
+1. セッション ID・トークンが URL・ログ・Referer・隠しフィールドに露出しないか Burp の HTTP 履歴で確認
+2. ブラウザ開発者ツールで localStorage/sessionStorage にセッション情報が平文保存されないか確認
 3. エラーページ・デバッグ出力にセッション変数が漏れないか確認
 4. TLS で保護されていても、URL 露出はブラウザ履歴/プロキシログに残る点を finding に添える
 
 ## 使用ツール
 
 - Burp Suite
-- curl
-- ブラウザ2枚
+- ブラウザ開発者ツール
 
 ## 判定基準（pass / fail の見分け）
 

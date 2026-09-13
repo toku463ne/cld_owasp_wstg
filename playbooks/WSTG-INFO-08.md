@@ -26,14 +26,9 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- Website: https://github.com/urbanadventurer/WhatWeb
-- Text strings (case sensitive)
-- Regular expressions
-- Google Hack Database queries (limited set of keywords)
-- MD5 hashes
-- URL recognition
-- HTML tag patterns
-- Custom ruby code for passive and aggressive operations
+- whatweb
+- Wappalyzer
+- Retire.js
 
 ## 判定基準（pass / fail の見分け）
 

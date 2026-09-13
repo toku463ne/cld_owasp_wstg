@@ -19,16 +19,14 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. 状態変更操作（送金・設定変更・削除）のリクエストに CSRF トークンがあるか確認
-2. トークンを削除/固定値に改変して再送し、受理されるか（検証されているか）試す
+1. 状態変更操作（送金・設定変更・削除）のリクエストに CSRF トークンがあるか Burp で確認
+2. トークンを Burp Repeater で削除/固定値に改変して再送し、受理されるか（検証されているか）試す
 3. トークンがセッションに紐づくか（他人のトークンが通らないか）、`SameSite` Cookie で守られているか確認
 4. GET で状態変更できる/`Referer`・`Origin` 検証がない箇所を CSRF 可として finding に
 
 ## 使用ツール
 
-- OWASP ZAP
-- CSRF Tester
-- Pinata-csrf-tool
+- Burp Repeater
 
 ## 判定基準（pass / fail の見分け）
 

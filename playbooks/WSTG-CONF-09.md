@@ -26,9 +26,8 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- Windows AccessEnum
-- Windows AccessChk
-- Linux namei
+- ls -l
+- icacls
 
 ## 判定基準（pass / fail の見分け）
 

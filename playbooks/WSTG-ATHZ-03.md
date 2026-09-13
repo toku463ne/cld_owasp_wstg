@@ -20,16 +20,14 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. 低権限アカウントで、ロールを示すパラメータ/Cookie/JWT クレーム（`role`,`isAdmin`,`group`）を管理者値に改変して再送
+1. 低権限アカウントで、ロールを示すパラメータ/Cookie/JWT クレーム（`role`,`isAdmin`,`group`）を管理者値に改変し Burp Repeater で再送
 2. 管理者専用機能のリクエストを低権限セッションで再送し、実行できるか確認
 3. 多段承認・所有者チェックを飛ばして他ユーザ資源を操作できないか試す
 4. 水平（同ロール他人）・垂直（上位ロール）の両方向で昇格を検証
 
 ## 使用ツール
 
-- OWASP Zed Attack Proxy (ZAP)
-- Watch
-- Star
+- Burp Repeater
 
 ## 判定基準（pass / fail の見分け）
 

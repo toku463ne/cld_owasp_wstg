@@ -21,7 +21,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. アップロード機能に想定外の拡張子/MIME（`.php`,`.jsp`,`.svg`,`.html`）を上げて受理されるか確認
+1. アップロード機能に想定外の拡張子/MIME（`.php`,`.jsp`,`.svg`,`.html`）を Burp で上げて受理されるか確認
 2. 拡張子偽装（`shell.php.jpg`）・MIME 偽装・大小文字・二重拡張子でフィルタを迂回できるか試す
 3. アップロード先が Web からアクセス可能で、かつ実行されないか確認
 4. 受理されるべきでない型が通った場合、後段の実行リスク（BUSL-09）と併せ finding に
@@ -29,8 +29,6 @@ WSTG の Test Objectives:
 ## 使用ツール
 
 - Burp Suite
-- EICAR テストファイル
-- 手動
 
 ## 判定基準（pass / fail の見分け）
 

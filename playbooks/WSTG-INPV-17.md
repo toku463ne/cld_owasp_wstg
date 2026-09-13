@@ -20,16 +20,15 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `Host:` ヘッダを任意値に書き換え（`Host: evil.example`）て応答に反映/リダイレクトされるか確認
+1. `Host:` ヘッダを `curl -H`/Burp で任意値に書き換え（`Host: evil.example`）て応答に反映/リダイレクトされるか確認
 2. パスワードリセットのリンク生成に Host が使われ、リセット URL を攻撃者ドメインに向けられないか試す
 3. `X-Forwarded-Host` 等でキャッシュポイズニング・認可迂回ができないか確認
 4. Host 依存のリンク生成・ルーティングがある場合は影響を finding に
 
 ## 使用ツール
 
-- Burp Suite
-- Burp HTTP Request Smuggler
 - curl
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

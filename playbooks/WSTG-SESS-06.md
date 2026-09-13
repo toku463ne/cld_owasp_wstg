@@ -27,7 +27,7 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- Burp Suite - Repeater
+- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

@@ -20,16 +20,14 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. オブジェクト参照パラメータ（`?id=1001`,`/orders/1001`,ファイル名）を他人の値に変えて開けるか試す
-2. 連番・UUID・base64/ハッシュ ID を推測/列挙し、他人の資源にアクセスできるか確認
+1. オブジェクト参照パラメータ（`?id=1001`,`/orders/1001`,ファイル名）を他人の値に変えて開けるか Burp で試す
+2. 連番・UUID・base64/ハッシュ ID を Burp Intruder で推測/列挙し、他人の資源にアクセスできるか確認
 3. 参照方法を変えても（GET/POST/JSON body/multipart）認可チェックが一貫しているか確認
 4. 自分の ID でのみアクセスできるべき資源に他 ID で到達できたら IDOR として finding に
 
 ## 使用ツール
 
-- Burp Suite
-- Autorize / AuthMatrix
-- curl
+- Burp Intruder
 
 ## 判定基準（pass / fail の見分け）
 

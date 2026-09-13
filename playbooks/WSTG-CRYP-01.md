@@ -30,7 +30,7 @@ WSTG の Test Objectives:
 
 - testssl.sh
 - sslyze
-- nmap --script ssl-enum-ciphers
+- nmap
 
 ## 判定基準（pass / fail の見分け）
 

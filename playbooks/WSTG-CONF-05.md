@@ -26,12 +26,8 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- Burp Suite
-- OWASP ZAP
-- curl
-- wget
-- grep/ripgrep
-- Burp Suite
+- ffuf
+- nmap
 
 ## 判定基準（pass / fail の見分け）
 

@@ -27,10 +27,7 @@ WSTG の Test Objectives:
 
 ## 使用ツール
 
-- SQL Injection Fuzz Strings (from wfuzz tool) - Fuzzdb
-- sqlbftools
-- Bernardo Damele A. G.: sqlmap, automatic SQL injection tool
-- Muhaimin Dzulfakar: MySqloit, MySql Injection takeover tool
+- sqlmap
 
 ## 判定基準（pass / fail の見分け）
 

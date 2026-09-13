@@ -19,18 +19,20 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. Google/Bing で `site:target.co.jp -www` `site:target.co.jp ext:xls OR ext:pdf OR ext:conf` などの dork を回す
-2. `site:target.co.jp intitle:index.of` `inurl:admin` `"error"|"exception"` で露出・エラーページを探す
-3. Wayback Machine（web.archive.org）と Google キャッシュで、消えたはずのページ・旧版を確認
-4. ヒットした URL・スニペットを artifacts/dorking-hits.md に貼り、機微情報を含むものに印を付ける
+1. `whois target.co.jp` で組織名・登録者・ネームサーバを確認し、名寄せの起点にする
+2. `theHarvester -d target.co.jp -b google,bing,duckduckgo` で検索エンジン経由の露出メール・サブドメイン・ホストを収集
+3. crt.sh（`https://crt.sh/?q=%25.target.co.jp`）と `amass enum -passive -d target.co.jp` で公開・失念サブドメインを列挙
+4. Google/Bing で dork を回す: `site:target.co.jp ext:xls OR ext:pdf OR ext:conf`・`intitle:index.of`・`inurl:admin`・`"error"|"exception"`。Wayback Machine（web.archive.org）で消えた旧版も確認
+5. ヒットした URL・スニペットを artifacts/dorking-hits.md に記録し、機微情報を含む行に [creds]/[internal] 等のタグを付ける
 
 ## 使用ツール
 
+- whois
 - theHarvester
 - crt.sh
-- whois
-- Google/Bing dorking
 - amass
+- Google/Bing dorking
+- Wayback Machine
 
 ## 判定基準（pass / fail の見分け）
 

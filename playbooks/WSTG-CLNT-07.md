@@ -28,11 +28,6 @@ WSTG の Test Objectives:
 ## 使用ツール
 
 - curl
-- Burp Suite
-- securityheaders.io 相当の手動チェック
-- curl
-- Burp Suite
-- wscat
 
 ## 判定基準（pass / fail の見分け）
 
