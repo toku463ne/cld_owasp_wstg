@@ -112,15 +112,15 @@ def render_tasks_md(coverage: dict, tests: dict) -> str:
           + (f" / 前提: {', '.join(f'`{d}`' for d in deps)}" if deps else " / 前提: なし"))
         w(f"- カード: {', '.join(f'[{c}](playbooks/{c}.md)' for c in covers)}")
         w("")
-        w(f"- [ ] `uv run scripts/new_activity.py {a['id']}` でフォルダと run.yaml・worksheet を作る"
-          "（複数サイトは `--target <site>`）")
-        w(f"- [ ] カードを開いて手順と判定基準を確認する（{len(covers)} 項目）")
         tools = ", ".join(a.get("tools", []))
-        w(f"- [ ] 収集を実行する（{tools}）")
-        w(f"      - 貼付: `worksheet.md` に出力を貼り `uv run scripts/capture.py evidence/{a['id']}-<yyyymmdd>`")
-        w(f"      - CLI 直実行: `uv run scripts/run_cmd.py evidence/{a['id']}-<yyyymmdd> -- <コマンド>`")
-        w("      - GUI: 操作内容を `run.yaml` の `steps:` に手記録")
-        w("- [ ] `run.yaml` の `covers:` に verdict と finding（要約のみ）を記入する")
+        w(f"- [ ] `uv run scripts/new_activity.py {a['id']}` で `record.md`（実施記録）を作る"
+          "（複数サイトは `--target <site>`）")
+        w(f"- [ ] `record.md` の各手順（{len(covers)} 項目・{tools}）を実施し、"
+          "コマンド出力や画面の観察を「結果:」に貼る ← このファイルがエビデンス本体")
+        w("      - `[コマンド]` は `$` 行を実行、`[手動/ブラウザ]` は指示どおり操作")
+        w(f"      - 直接実行して `cmd/` にも残したいときは `uv run scripts/run_cmd.py evidence/{a['id']}-<yyyymmdd> -- <コマンド>`")
+        w("- [ ] `record.md` に WSTG-ID ごとの `@verdict`（pass|fail|info|na|todo）と `@finding`（要約のみ）を記入")
+        w(f"- [ ] `uv run scripts/capture.py evidence/{a['id']}-<yyyymmdd>` で判定を `run.yaml`（→CSV）に反映")
         w("")
 
     w("## 仕上げ")

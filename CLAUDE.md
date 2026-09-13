@@ -50,14 +50,17 @@
 docs/owasp（原文） ─▶ wstg_tests.yaml ─┬─▶ coverage.{yaml,md}（+ coverage.yaml の activities）
                                        └─▶ playbooks/（+ criteria.yaml）
 coverage.yaml ─┬─▶ TASKS.md（実施順）
-               └─▶ new_activity.py ─▶ evidence/*/{run.yaml, worksheet.md}
-                     worksheet.md ─(貼付)─▶ capture.py ─▶ cmd/*.txt + run.yaml 更新
+               └─▶ new_activity.py ─▶ evidence/*/{run.yaml, record.md}
+                     record.md（手順=Q&A・結果を貼る＝エビデンス本体）
+                        └─(記入)─▶ capture.py ─▶ run.yaml の covers を更新
                      run.yaml ─┬─▶ export_checklist.py ─▶ CSV
                                └─▶ tasks.py（進捗表示）
 ```
 
-`new_activity.py` は `criteria.yaml` の手順の `backtick` コマンド（target を参照するもの）を
-拾って `worksheet.md` を作る。`--target` でサイトごとにフォルダとコマンドを量産できる。
+`new_activity.py` は `criteria.yaml` の手順を Q&A 形式の `record.md` に並べる（手順の
+`backtick` で target を参照するものは `$` 実行コマンド、それ以外は手動/ブラウザ操作）。
+`--target` でサイトごとにフォルダと record を量産できる。`record.md` の raw 結果は
+分解せずそのまま残し、`capture.py` は `@verdict`/`@finding` を `covers` に転記するだけ。
 
 上流を変えたら下流を必ず再生成し、生成物の差分も一緒にコミットする
 （原文の再取得後は `playbooks/` が大量に変わり得る。差分に目を通してからコミットする）。
@@ -77,8 +80,9 @@ coverage.yaml ─┬─▶ TASKS.md（実施順）
 
 - **`run_cmd.py` と `capture.py` は `run.yaml` をテキストとして追記・部分置換する**。
   PyYAML で読み込んで丸ごと書き戻さない（コメント・並び・空行が消え、手記録の意図が
-  失われる）。`capture.py` は `commands:` への追記と、`covers:` の該当 id ブロックの
-  `verdict`/`finding`/`evidence` 行の置換だけを行う（ブロック外は触らない）。
+  失われる）。`capture.py` は `covers:` の該当 id ブロックの `verdict`/`finding`/`evidence`
+  行だけを置換する（ブロック外は触らない）。`record.md` に貼られた raw 結果は分解・複製
+  しない（そのファイル自体がエビデンス本体で、`evidence:` はそこを指す）。
 - **`export_checklist.py` の CSV 列は Google Sheets 側の契約**。
   列名・順序（`wstg_id, category, title, status, activities, evidence_paths,
   finding_summary, updated`）を変えるときは、人間に確認してから。

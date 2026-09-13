@@ -75,35 +75,35 @@ grep -q "WSTG-INFO-01" "${DORK}" && grep -q "| dork |" "${DORK}" \
   || ng "成果物の雛形に WSTG-ID/検索用の見出しが埋まっていない"
 ok ".md 成果物の雛形生成（templates/artifacts/）"
 
-# --target 命名 + ワークシート生成 + capture.py 取り込み
+# --target 命名 + 実施記録(record.md) 生成 + capture.py 取り込み
 "${PY[@]}" scripts/new_activity.py recon-osint --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null
 TDIR="${TMP}/ev/recon-osint-ex.test-20260101"
-WS="${TDIR}/worksheet.md"
-[ -f "${WS}" ] || ng "--target のフォルダ/ワークシートが作られない"
-grep -q "whois ex.test" "${WS}" && grep -q "^@cmd whois | cmd/whois.txt" "${WS}" \
-  || ng "ワークシートにコマンドが target 置換で埋まっていない"
-# 実施者の貼付を模擬して capture
-"${PY[@]}" - "${WS}" <<'PYEOF'
+REC="${TDIR}/record.md"
+[ -f "${REC}" ] || ng "--target のフォルダ/実施記録(record.md)が作られない"
+grep -q "^\$ whois ex.test" "${REC}" && grep -q "\[コマンド\]" "${REC}" && grep -q "\[手動/ブラウザ\]" "${REC}" \
+  || ng "record.md が Q&A 形式（コマンド/手動 + $ 行）で target 置換されていない"
+# 実施者の記入を模擬（結果を貼り、verdict/finding を記入）して capture
+"${PY[@]}" - "${REC}" <<'PYEOF'
 import sys
 p=sys.argv[1]; t=open(p).read()
-t=t.replace("@cmd whois | cmd/whois.txt\n$ whois ex.test\n```paste\n```",
-            "@cmd whois | cmd/whois.txt\n$ whois ex.test\n```paste\nDomain Name: EX.TEST\n```")
+t=t.replace("$ whois ex.test\n結果:\n```\n```",
+            "$ whois ex.test\n結果:\n```\nDomain Name: EX.TEST\n```",1)
 t=t.replace("@verdict todo\n@finding \n","@verdict info\n@finding whois 確認済み。\n",1)
 open(p,"w").write(t)
 PYEOF
 "${PY[@]}" scripts/capture.py "${TDIR}" >/dev/null
-[ -s "${TDIR}/cmd/whois.txt" ] || ng "capture が cmd/ に出力を保存しない"
-grep -q "Domain Name: EX.TEST" "${TDIR}/cmd/whois.txt" || ng "貼付内容が保存されない"
+grep -q "Domain Name: EX.TEST" "${REC}" || ng "record.md に貼った raw 結果が保持されない"
 "${PY[@]}" -c "
 import yaml
 d=yaml.safe_load(open('${TDIR}/run.yaml'))
 assert d['target_scope']=='ex.test', d['target_scope']
 c={x['id']:x for x in d['covers']}
 assert c['WSTG-INFO-01']['verdict']=='info', c['WSTG-INFO-01']
-assert c['WSTG-INFO-01']['evidence']=='cmd/whois.txt', c['WSTG-INFO-01']
-assert any(e.get('source')=='worksheet' for e in d['commands']), d['commands']
-" || ng "capture が run.yaml（covers/commands）を正しく更新しない"
-ok "worksheet 生成 + capture 取り込み（--target 命名・covers 更新）"
+assert c['WSTG-INFO-01']['finding'], 'finding 未転記'
+assert c['WSTG-INFO-01']['evidence']=='record.md', c['WSTG-INFO-01']
+assert c['WSTG-CONF-10']['verdict']=='todo', '未記入は据え置き'
+" || ng "capture が run.yaml の covers を正しく更新しない"
+ok "record.md(Q&A) 生成 + capture 取り込み（--target 命名・covers 更新・raw 保持）"
 
 echo "[4/8] run_cmd.py（実行・保存・追記）"
 "${PY[@]}" scripts/run_cmd.py "${DIR}" --slug selftest -- printf 'selftest\n' >/dev/null

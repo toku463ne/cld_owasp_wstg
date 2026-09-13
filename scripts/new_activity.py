@@ -8,16 +8,18 @@
 生成物:
     evidence/<activity_id>[-<target>]-<yyyymmdd>/
       run.yaml       covers: を matrix/coverage.yaml から自動プリフィル（verdict: todo）
-      worksheet.md   カードのコマンドを埋めた収集ワークシート（出力をここに貼る）
-      cmd/           run_cmd.py / capture.py の出力先
+      record.md      手順を Q&A 形式に並べた「実施記録」。各手順の結果をここに貼る＝
+                     このファイル自体がエビデンス本体（テンポラリではない）
+      cmd/           run_cmd.py で直接実行したときの出力先
       artifacts/     Burp エクスポート・スクショ等。coverage.yaml の outputs にある
                      .md 成果物は検索しやすい雛形（templates/artifacts/）で自動生成
       notes.md
 
-収集フロー（貼付方式）:
-    1. worksheet.md の各コマンドを実行し、出力を直後の ```paste ブロックに貼る
-    2. 各 WSTG-ID の @verdict / @finding を記入
-    3. uv run scripts/capture.py <このフォルダ>  で cmd/*.txt と run.yaml を生成
+収集フロー:
+    1. record.md の各手順を実施する（[コマンド] は $ 行を実行、[手動/ブラウザ] は指示どおり操作）
+    2. コマンド出力・画面の観察を、各手順の「結果:」直後の ``` ブロックにそのまま貼る
+    3. WSTG-ID ごとに @verdict / @finding を記入する
+    4. uv run scripts/capture.py <このフォルダ>  で判定を run.yaml（→CSV）に反映する
 
 このスクリプトは evidence/ に「書く」だけで、中身を読み返したり要約したりはしない。
 """
@@ -27,17 +29,9 @@ from __future__ import annotations
 import argparse
 import datetime as _dt
 import re
-import shlex
 from pathlib import Path
 
 import yaml
-
-try:  # スラグ生成は run_cmd.py と共通化する（同じ命名規則にするため）
-    from run_cmd import make_slug
-except ImportError:  # 直接 import できない実行形態のフォールバック
-    def make_slug(command, explicit=None):
-        base = re.sub(r"[^A-Za-z0-9._-]+", "-", Path(command[0]).name).strip("-")
-        return (base or "cmd")[:48]
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 COVERAGE_YAML = REPO_ROOT / "matrix" / "coverage.yaml"
@@ -105,48 +99,50 @@ def extract_commands(steps: list, target: str | None) -> list:
     return cmds
 
 
-def render_worksheet(activity: dict, tests: dict, criteria: dict, target: str | None, date: str) -> str:
-    """カードのコマンドを埋めた収集ワークシートを作る（出力をここに貼る）。"""
+RULE = "-" * 60
+
+
+def render_record(activity: dict, tests: dict, criteria: dict, target: str | None,
+                  date: str, tester: str) -> str:
+    """カードの手順を Q&A 形式に並べた「実施記録」を作る。
+
+    各手順が1問。[コマンド] は `$` 行をそのまま実行し、[手動/ブラウザ] は指示どおり
+    操作して、いずれも「結果:」直後の ``` ブロックに raw 出力・観察をそのまま貼る。
+    このファイル自体を残す（＝エビデンス）。判定は末尾の @verdict / @finding に書く。
+    """
     tgt = target or "target"
+    folder = _dir_name(activity, target, date)
     out = [
-        f"# {activity['id']} — {tgt}  収集ワークシート",
+        f"# 実施記録 ({activity['id']} / {tgt})",
         "#",
-        "# 使い方:",
-        "#   1. 各コマンド（$ 行）を実行し、出力を直後の ```paste ブロックに貼る",
-        "#      （target は置換済み。GUI/手動中心のカードはコマンド行が無い）",
-        "#   2. 各 WSTG-ID の @verdict（pass|fail|info|na|todo）と @finding を記入",
-        f"#   3. uv run scripts/capture.py evidence/{Path(_dir_name(activity, target, date)).name}",
-        "#      で cmd/*.txt と run.yaml（commands / covers）を生成する",
+        "# ★ このファイルはそのまま残すエビデンスです（テンポラリではありません）。",
+        "#   各手順を実施し、コマンド出力や画面の観察を「結果:」直後の ``` ブロックに貼る。",
+        "#     [コマンド]     … $ 行をそのまま実行して出力を貼る（target 置換済み）",
+        "#     [手動/ブラウザ] … 指示どおり操作し、観察・URL・スクショのパスを貼る",
+        "#   判定は各 WSTG-ID 末尾の @verdict（pass|fail|info|na|todo）と @finding に記入。",
+        f"#   記入後、判定を run.yaml/CSV に反映: uv run scripts/capture.py evidence/{folder}",
         "#",
-        f"# activity: {activity['id']}",
-        f"# target:   {tgt}",
+        f"# activity : {activity['id']} — {activity.get('title','')}",
+        f"# target   : {tgt}",
+        f"# tester   : {tester}",
+        f"# date     : {iso_date(date)}",
         "",
     ]
-    seen: set = set()
     for cov in activity.get("covers", []):
         wid = cov["id"]
         title = tests.get(wid, {}).get("title", "")
-        out.append(f"### {wid} | {title}")
-        emitted = False
-        used_paths: set = set()
-        for cmd in extract_commands(criteria.get(wid, {}).get("steps", []), target):
-            if cmd in seen:
-                continue
-            seen.add(cmd)
-            try:
-                slug = make_slug(shlex.split(cmd), None)
-            except ValueError:
-                slug = make_slug([cmd.split()[0]], None)
-            path = f"cmd/{slug}.txt"
-            n = 2
-            while path in used_paths:
-                path = f"cmd/{slug}-{n}.txt"
-                n += 1
-            used_paths.add(path)
-            out += [f"@cmd {slug} | {path}", f"$ {cmd}", "```paste", "```", ""]
-            emitted = True
-        if not emitted:
-            out.append("# （CLI コマンドなし＝GUI/手動中心。artifacts/ に手記録し @finding を記入）")
+        steps = criteria.get(wid, {}).get("steps", [])
+        out += ["", f"=== {wid} | {title} ===", f"# カード: playbooks/{wid}.md", ""]
+        if not steps:
+            out.append("# （手順未登録。カードを参照して実施し、結果を書く）")
+        for idx, step in enumerate(steps, 1):
+            cmds = extract_commands([step], target)
+            kind = "コマンド" if cmds else "手動/ブラウザ"
+            out.append(f"-- 手順{idx} [{kind}] {RULE}")
+            out.append(f"# {sub_target(step, target)}")
+            for cmd in cmds:
+                out.append(f"$ {cmd}")
+            out += ["結果:", "```", "```", ""]
         out += ["@verdict todo", "@finding ", ""]
     return "\n".join(out) + "\n"
 
@@ -319,10 +315,11 @@ def main() -> int:
     if not notes.exists():
         notes.write_text(render_notes(activity, args.date), encoding="utf-8")
     stubs = write_artifact_stubs(activity, target_dir, args.date, args.force)
-    worksheet = target_dir / "worksheet.md"
-    if not worksheet.exists() or args.force:
-        worksheet.write_text(
-            render_worksheet(activity, tests, criteria, args.target, args.date), encoding="utf-8"
+    record = target_dir / "record.md"
+    if not record.exists() or args.force:
+        record.write_text(
+            render_record(activity, tests, criteria, args.target, args.date, args.tester),
+            encoding="utf-8",
         )
 
     covered = ", ".join(c["id"] for c in activity.get("covers", []))
@@ -330,8 +327,9 @@ def main() -> int:
     print(f"  covers ({len(activity.get('covers', []))} 件): {covered}")
     if stubs:
         print(f"  成果物の雛形: {', '.join(stubs)}")
-    print(f"  ワークシート: {worksheet}（コマンド出力を貼る）")
-    print(f"  次: worksheet.md に貼付 → uv run scripts/capture.py {target_dir}")
+    print(f"  実施記録: {record}")
+    print("     └ 各手順の「結果:」に出力・観察を貼る（このファイルがエビデンス本体）")
+    print(f"  記入後: uv run scripts/capture.py {target_dir}  で判定を run.yaml/CSV に反映")
     return 0
 
 

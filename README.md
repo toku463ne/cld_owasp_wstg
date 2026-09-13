@@ -23,10 +23,11 @@ matrix/coverage.yaml（アクティビティ定義・実施順）
    │ tasks.py --write ─▶ TASKS.md（実施順チェックリスト）
    │ new_activity.py
    ▼
-evidence/<activity>-<date>/run.yaml ─┬─▶ export_checklist.py ─▶ checklist_export.csv
-   ▲                                  │                                │
-   └ run_cmd.py（実行ログを自動追記）  └─▶ tasks.py（進捗表示）  目視レビュー ▼
-                                                              Google Sheets
+evidence/<activity>[-<target>]-<date>/
+   ├ record.md（手順=Q&A。結果を貼る＝エビデンス本体）─ capture.py ─┐
+   ├ cmd/（run_cmd.py で直接実行したときのログ）                     ▼
+   └ run.yaml ─┬─▶ export_checklist.py ─▶ checklist_export.csv ─ 目視レビュー ─▶ Google Sheets
+               └─▶ tasks.py（進捗表示）
 ```
 
 ## セットアップ
@@ -49,16 +50,16 @@ uv を入れられない会社PC では `pip install pyyaml` して `python scri
 
 ## 日々の流れ
 
-`TASKS.md` を上から消化していく。1本のアクティビティで踏むのは 1〜3、
-区切りのたびに 4〜5 を回す。
+`TASKS.md` を上から消化していく。1本のアクティビティで踏むのは 1〜2、
+区切りのたびに 3〜4 を回す。
 
 ### 1. アクティビティを開始する
 
 ```bash
 uv run scripts/new_activity.py burp-crawl-authn
-# -> evidence/burp-crawl-authn-20260908/{run.yaml,worksheet.md,cmd/,artifacts/,notes.md}
+# -> evidence/burp-crawl-authn-20260908/{run.yaml,record.md,cmd/,artifacts/,notes.md}
 
-# 複数サイトは --target で名前空間を分ける（コマンド中の target も置換される）
+# 複数サイトは --target で名前空間を分ける（record.md のコマンドの target も置換される）
 uv run scripts/new_activity.py recon-osint --target example.com
 # -> evidence/recon-osint-example.com-20260913/
 ```
@@ -76,47 +77,43 @@ uv run scripts/new_activity.py recon-osint --target example.com
 対応するプレイブックカード（`playbooks/WSTG-*.md`）を開きながら進める。
 一覧は `playbooks/INDEX.md`、どのアクティビティが何を満たすかは `matrix/coverage.md`。
 
-### 2. コマンドを実行し、出力を集める
+### 2. `record.md` に実施しながら結果を貼る
 
-やり方は2通り。どちらも `cmd/<slug>.txt` と `run.yaml` の `commands:` に残る。
+`record.md`（実施記録）は、そのアクティビティのカード手順を **Q&A 形式**に並べたもの。
+各手順が1問で、`[コマンド]` は `$` 行をそのまま実行、`[手動/ブラウザ]` は指示どおり操作し、
+**コマンド出力や画面の観察を「結果:」直後の ` ``` ` ブロックにそのまま貼る**。target は置換済み。
+このファイル自体を残す（＝エビデンス本体。テンポラリではない）。
 
-**(a) 貼付ワークシート方式**（ツールを別環境で回すとき・複数サイトで効率化したいとき）
+```text
+=== WSTG-INFO-01 | Conduct Search Engine Discovery ... ===
+-- 手順1 [コマンド] --------------------------------------------------
+# whois で組織名・登録者・ネームサーバを確認する
+$ whois example.com
+結果:
+```            ← ここに出力を貼る
+```
+...
+@verdict info          # pass | fail | info | na | todo
+@finding whois で登録者・NSを確認。露出情報なし。（要約のみ・生値は貼らない）
+```
 
-`worksheet.md` にカードの実コマンドが target 置換済みで並ぶ。各コマンドを実行し、
-出力を直後の ` ```paste ` ブロックに貼り、WSTG-ID ごとに `@verdict` / `@finding` を記入する。
+記入したら取り込む。`record.md` の `@verdict` / `@finding` が `run.yaml` の `covers:` に転記され、
+`evidence:` はこの `record.md` を指す（raw はこのファイルを見れば分かる）:
 
 ```bash
-# 記入後、まとめて取り込み（コマンドごとに別ファイル＝ツール別フォーマットで残る）
 uv run scripts/capture.py evidence/recon-osint-example.com-20260913
-# -> cmd/whois.txt, cmd/theHarvester-...txt などを生成し、run.yaml の covers も更新
 ```
 
-**(b) ロガー経由で直接実行**（このリポジトリ上でそのまま走らせるとき）
+- **`finding` は要約のみ**。生トークン・資格情報・生ホスト名は `record.md` の「結果:」に残し、
+  `finding` には書かない。
+- `record.md` を使わず **CLI をその場で回して `cmd/*.txt` に残したい**ときは、ロガーも使える:
+  ```bash
+  uv run scripts/run_cmd.py evidence/tls-scan-20260908 -- testssl.sh --quiet target.example
+  ```
+- Burp/ZAP などの GUI 操作は、`record.md` の `[手動/ブラウザ]` の「結果:」に何をしたか
+  （スコープ・使った機能・エクスポート先）を書く。これが再現メモになる。
 
-```bash
-uv run scripts/run_cmd.py evidence/burp-crawl-authn-20260908 -- nmap -sV -p- target.example
-uv run scripts/run_cmd.py evidence/tls-scan-20260908 --note "本番のみ" -- testssl.sh --quiet target.example
-```
-
-- **GUI ツール（Burp / ZAP など）は対象外**。何をしたかを `run.yaml` の `steps:` に手記録する。
-  ここが再現メモになるので、スコープ設定・使った機能・エクスポート先まで書く。
-
-### 3. 判定を書く
-
-`run.yaml` の `covers:` を埋める。
-
-```yaml
-covers:
-  - id: WSTG-INFO-06
-    verdict: pass          # pass | fail | info | na | todo
-    finding: "エントリポイントを列挙。認証必須の管理系2件を確認（生値は artifacts 参照）"
-    evidence: artifacts/entry-points.txt
-```
-
-`finding` は **要約のみ**。生トークン・資格情報・生ホスト名は書かず、`evidence:` の
-パスで実物を参照させる。
-
-### 4. 進捗を確認する
+### 3. 進捗を確認する
 
 ```bash
 uv run scripts/tasks.py
@@ -129,7 +126,7 @@ uv run scripts/tasks.py
 `evidence/*/run.yaml` の `verdict` を見て、アクティビティ単位の進捗と「次にやること」
 （前提が終わっていて着手できるもの）を出す。
 
-### 5. チェックリストを出力する
+### 4. チェックリストを出力する
 
 ```bash
 uv run scripts/export_checklist.py --summary
