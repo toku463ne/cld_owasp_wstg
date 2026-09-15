@@ -20,9 +20,9 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `nmap -sV -p- --open target` で公開ポート/サービスを洗い出す
+1. `nmap -sV -p- --open -oN evidence/<活動フォルダ>/artifacts/nmap-allports.txt target` で公開ポート/サービスを洗い出す
 2. SSH(22)/RDP(3389)/DB(3306,5432,1433)/管理コンソール等が公開されていないか確認
-3. `nikto -h https://target` と特定製品の既知脆弱性・既定資格情報を照合
+3. `nikto -h https://target -o evidence/<活動フォルダ>/artifacts/nikto.txt` と特定製品の既知脆弱性・既定資格情報を照合
 4. クラウドのセキュリティグループ/FW 設定（ヒアリング）と実スキャン結果を突き合わせ、差分を指摘
 
 ## 使用ツール

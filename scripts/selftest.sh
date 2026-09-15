@@ -82,6 +82,12 @@ REC="${TDIR}/record.md"
 [ -f "${REC}" ] || ng "--target のフォルダ/実施記録(record.md)が作られない"
 grep -q "^\$ whois ex.test" "${REC}" && grep -q "\[コマンド\]" "${REC}" && grep -q "\[手動/ブラウザ\]" "${REC}" \
   || ng "record.md が Q&A 形式（コマンド/手動 + $ 行）で target 置換されていない"
+# ツールの出力先はエビデンスフォルダの artifacts/ に置換されること（OUTDIR を残さない）
+grep -q "OUTDIR" "${REC}" && ng "record.md に OUTDIR プレースホルダが残っている" || true
+grep -qF -- "-f ${TDIR}/artifacts/theharvester.xml" "${REC}" \
+  || ng "出力ファイルの保存先が artifacts/ に置換されていない"
+grep -qF -- "-o ${TDIR}/artifacts/amass-passive.txt" "${REC}" \
+  || ng "複数コマンドの出力先が artifacts/ に置換されていない（amass）"
 # 実施者の記入を模擬（結果を貼り、verdict/finding を記入）して capture
 "${PY[@]}" - "${REC}" <<'PYEOF'
 import sys

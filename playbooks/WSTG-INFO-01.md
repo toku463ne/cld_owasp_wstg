@@ -20,8 +20,8 @@ WSTG の Test Objectives:
 ## 手順
 
 1. `whois target.co.jp` で組織名・登録者・ネームサーバを確認し、名寄せの起点にする
-2. `theHarvester -d target.co.jp -b duckduckgo,crtsh,otx,hackertarget -f evidence` で露出メール・サブドメイン・ホストを収集（-f で結果も保存。`-b all` で全ソース）
-3. crt.sh（`https://crt.sh/?q=%25.target.co.jp`）と `amass enum -passive -d target.co.jp` で公開・失念サブドメインを列挙
+2. `theHarvester -d target.co.jp -b duckduckgo,crtsh,otx,hackertarget -f evidence/<活動フォルダ>/artifacts/theharvester.xml` で露出メール・サブドメイン・ホストを収集（同名の .xml と .json が残る。`-b all` で全ソース）
+3. crt.sh（`https://crt.sh/?q=%25.target.co.jp`）と `amass enum -passive -d target.co.jp -o evidence/<活動フォルダ>/artifacts/amass-passive.txt` で公開・失念サブドメインを列挙
 4. Google/Bing で dork を回す: `site:target.co.jp ext:xls OR ext:pdf OR ext:conf`・`intitle:index.of`・`inurl:admin`・`"error"|"exception"`。Wayback Machine（web.archive.org）で消えた旧版も確認
 5. ヒットした URL・スニペットを artifacts/dorking-hits.md に記録し、機微情報を含む行に [creds]/[internal] 等のタグを付ける
 
@@ -38,7 +38,7 @@ WSTG の Test Objectives:
 
 - **pass**: 検索結果に機微情報（資格情報・内部URL・設定ファイル・個人情報）が出てこない。
 - **fail**: dork でヒットした結果に、内部ホスト名・エラーメッセージ・認証情報・非公開ドキュメントが含まれる。
-- 補足: キャッシュにしか残っていない場合も指摘対象。削除依頼（Search Console 等）まで助言する。
+- 補足: キャッシュにしか残っていない場合も指摘対象。削除依頼（Search Console 等）まで助言する。theHarvester は -f を付けないと画面と ~/.local/share/theHarvester/stash.sqlite にしか残らない。-f は末尾の拡張子を差し替える実装なので、パスに . を含むとき（フォルダ名に対象ドメインが入る）は `.xml` まで書かないと別名で保存される。
 
 ## 記録すべき成果物（run.yaml へ）
 

@@ -19,7 +19,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `ffuf -w wordlist -u https://target/FUZZ -e .bak,.old,.zip,.tar.gz,.swp,~` で旧版/バックアップを総当り
+1. `ffuf -w wordlist -u https://target/FUZZ -e .bak,.old,.zip,.tar.gz,.swp,~ -o evidence/<活動フォルダ>/artifacts/ffuf-backup.json -of json` で旧版/バックアップを総当り
 2. 既知ファイル名に付随する残骸（`login.php.bak` `.index.php.swp`）を狙って確認
 3. リポジトリメタデータ `curl -s https://target/.git/config` `/.svn/entries` を確認（取れたら重大）
 4. `.git/` が取れる場合は git-dumper 等で復元可否を検証し、重大度・影響範囲を finding に明記

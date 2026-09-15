@@ -13,6 +13,10 @@
 #             How to Test の機械抽出（英語・粗い要約）にフォールバックする。
 #             1項目 3〜6 手順・各 1行程度に抑える（カードを小さく保つため）。
 #             コマンドは `backtick` で囲む。ホスト名は target 等のプレースホルダにする。
+#             ファイルを吐くコマンドは、保存先を `OUTDIR/` で始める。実施記録では
+#             new_activity.py がそのエビデンスフォルダの `artifacts/` の実パスに
+#             置換する（結果をエビデンスの外に散らかさないため）。カード上は
+#             `evidence/<活動フォルダ>/artifacts` と表示される。
 #   tools   … 「## 使用ツール」を明示上書きしたいときだけ（リスト）。既定では
 #             steps に出てきたツール名を gen_playbooks.py が自動抽出する
 #             （TOOL_PATTERNS 参照）。つまり手順で使うツールは手順に書けば載る。
@@ -22,11 +26,11 @@ WSTG-INFO-01:
   purpose: "検索エンジンや公開アーカイブに、対象組織が意図せず晒した情報が残っていないかを確認する。"
   pass: "検索結果に機微情報（資格情報・内部URL・設定ファイル・個人情報）が出てこない。"
   fail: "dork でヒットした結果に、内部ホスト名・エラーメッセージ・認証情報・非公開ドキュメントが含まれる。"
-  note: "キャッシュにしか残っていない場合も指摘対象。削除依頼（Search Console 等）まで助言する。"
+  note: "キャッシュにしか残っていない場合も指摘対象。削除依頼（Search Console 等）まで助言する。theHarvester は -f を付けないと画面と ~/.local/share/theHarvester/stash.sqlite にしか残らない。-f は末尾の拡張子を差し替える実装なので、パスに . を含むとき（フォルダ名に対象ドメインが入る）は `.xml` まで書かないと別名で保存される。"
   steps:
     - "`whois target.co.jp` で組織名・登録者・ネームサーバを確認し、名寄せの起点にする"
-    - "`theHarvester -d target.co.jp -b duckduckgo,crtsh,otx,hackertarget -f evidence` で露出メール・サブドメイン・ホストを収集（-f で結果も保存。`-b all` で全ソース）"
-    - "crt.sh（`https://crt.sh/?q=%25.target.co.jp`）と `amass enum -passive -d target.co.jp` で公開・失念サブドメインを列挙"
+    - "`theHarvester -d target.co.jp -b duckduckgo,crtsh,otx,hackertarget -f OUTDIR/theharvester.xml` で露出メール・サブドメイン・ホストを収集（同名の .xml と .json が残る。`-b all` で全ソース）"
+    - "crt.sh（`https://crt.sh/?q=%25.target.co.jp`）と `amass enum -passive -d target.co.jp -o OUTDIR/amass-passive.txt` で公開・失念サブドメインを列挙"
     - "Google/Bing で dork を回す: `site:target.co.jp ext:xls OR ext:pdf OR ext:conf`・`intitle:index.of`・`inurl:admin`・`\"error\"|\"exception\"`。Wayback Machine（web.archive.org）で消えた旧版も確認"
     - "ヒットした URL・スニペットを artifacts/dorking-hits.md に記録し、機微情報を含む行に [creds]/[internal] 等のタグを付ける"
 
@@ -37,7 +41,7 @@ WSTG-INFO-02:
   note: "バージョン秘匿だけでは対策にならない。パッチ状況とセットで報告する。"
   steps:
     - "`curl -sI https://target/` で Server / X-Powered-By / Via ヘッダを確認"
-    - "`nmap -sV -p80,443 target` と `whatweb https://target/` で製品名・バージョンを突き合わせる"
+    - "`nmap -sV -p80,443 -oN OUTDIR/nmap-http.txt target` と `whatweb --log-json=OUTDIR/whatweb.json https://target/` で製品名・バージョンを突き合わせる"
     - "存在しないパス（`curl -s https://target/nope123`）を叩き、404 ページの体裁からも製品を推定"
     - "特定できたバージョンを CVE（NVD 等）と照合し、既知脆弱性の有無を finding に書く"
 
@@ -58,7 +62,7 @@ WSTG-INFO-04:
   fail: "想定外のアプリ（旧環境・検証環境・別部署のツール・管理コンソール）が同じホストで公開されている。"
   note: "発見物が検査スコープ外なら、攻撃はせず「存在の報告」に留める。"
   steps:
-    - "`nmap -sV -p- target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録"
+    - "`nmap -sV -p- -oN OUTDIR/nmap-allports.txt target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録"
     - "同一 IP の他ホストを `crt.sh`（証明書）とバーチャルホスト総当り（`ffuf -H \"Host: FUZZ.target\"`）で列挙"
     - "見つかった各アプリのトップを開き、旧環境・検証環境・別部署ツール・管理コンソールを判別"
     - "スコープ外のものは攻撃せず「存在の報告」に留め、artifacts に一覧化"
@@ -102,9 +106,9 @@ WSTG-INFO-08:
   fail: "既知脆弱性のあるバージョンのフレームワーク・ライブラリを使用している（Cookie 名・パス・ヘッダ・JS から特定）。"
   note: "フロント側のライブラリ（jQuery 等）は Retire.js で確認できる。"
   steps:
-    - "`whatweb https://target/` と ブラウザ拡張 Wappalyzer でフレームワーク/CMS を推定"
+    - "`whatweb --log-json=OUTDIR/whatweb.json https://target/` と ブラウザ拡張 Wappalyzer でフレームワーク/CMS を推定"
     - "Cookie 名（`JSESSIONID`/`ASP.NET_SessionId`/`laravel_session` 等）・URL パス・ヘッダから基盤を特定"
-    - "取得したフロント JS を `retire --path <JSフォルダ>`（Retire.js）で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認"
+    - "取得したフロント JS を `retire --path <JSフォルダ> --outputformat json --outputpath OUTDIR/retire.json`（Retire.js）で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認"
     - "特定した製品・バージョンを CVE と照合し、finding にバージョン根拠（どこで判ったか）を添える"
 
 WSTG-INFO-10:
@@ -124,9 +128,9 @@ WSTG-CONF-01:
   fail: "SSH・RDP・DB・管理コンソール等が無制限に公開されている、またはサポート切れの製品が動いている。"
   note: "クラウドのセキュリティグループ設定と実際のスキャン結果を突き合わせる。"
   steps:
-    - "`nmap -sV -p- --open target` で公開ポート/サービスを洗い出す"
+    - "`nmap -sV -p- --open -oN OUTDIR/nmap-allports.txt target` で公開ポート/サービスを洗い出す"
     - "SSH(22)/RDP(3389)/DB(3306,5432,1433)/管理コンソール等が公開されていないか確認"
-    - "`nikto -h https://target` と特定製品の既知脆弱性・既定資格情報を照合"
+    - "`nikto -h https://target -o OUTDIR/nikto.txt` と特定製品の既知脆弱性・既定資格情報を照合"
     - "クラウドのセキュリティグループ/FW 設定（ヒアリング）と実スキャン結果を突き合わせ、差分を指摘"
 
 WSTG-CONF-02:
@@ -157,7 +161,7 @@ WSTG-CONF-04:
   fail: ".bak/.old/~/.swp/.zip、リポジトリメタデータ（.git/、.svn/）等が取得できる。"
   note: ".git/config が取れたらリポジトリ全体を復元できる可能性がある。重大度は高く扱う。"
   steps:
-    - "`ffuf -w wordlist -u https://target/FUZZ -e .bak,.old,.zip,.tar.gz,.swp,~` で旧版/バックアップを総当り"
+    - "`ffuf -w wordlist -u https://target/FUZZ -e .bak,.old,.zip,.tar.gz,.swp,~ -o OUTDIR/ffuf-backup.json -of json` で旧版/バックアップを総当り"
     - "既知ファイル名に付随する残骸（`login.php.bak` `.index.php.swp`）を狙って確認"
     - "リポジトリメタデータ `curl -s https://target/.git/config` `/.svn/entries` を確認（取れたら重大）"
     - "`.git/` が取れる場合は git-dumper 等で復元可否を検証し、重大度・影響範囲を finding に明記"
@@ -168,7 +172,7 @@ WSTG-CONF-05:
   fail: "管理画面が公開ネットワークから到達でき、既定パス・既定資格情報・弱い認証で入れる。"
   note: "パスを秘匿しているだけの状態は fail 寄り。列挙で見つかる時点で保護になっていない。"
   steps:
-    - "`ffuf -w admin-wordlist -u https://target/FUZZ`（`/admin /manager /wp-admin /phpmyadmin` 等）で管理画面を探索"
+    - "`ffuf -w admin-wordlist -u https://target/FUZZ -o OUTDIR/ffuf-admin.json -of json`（`/admin /manager /wp-admin /phpmyadmin` 等）で管理画面を探索"
     - "インフラ側管理（`nmap` で 8080/8443/9990/10000 等の管理ポート）も併せて確認"
     - "見つけた管理画面の認証（既定資格情報・接続元制限・MFA）を確認。既定資格情報は必ず試す"
     - "「パスを秘匿しているだけ」で列挙で出てくる状態は保護不十分として扱う"
@@ -589,7 +593,7 @@ WSTG-INPV-05:
     - "各パラメータに `'` `\"` を入れ、SQL エラー・応答差・500 が出るか確認"
     - "`' OR '1'='1' -- ` や `1 AND 1=1`/`1 AND 1=2` の真偽差でブラインド SQLi を確認"
     - "時間差（`' OR SLEEP(5)-- `）で盲目的注入を確認。文脈（数値/文字列）に応じて調整"
-    - "`sqlmap -u \"https://target/x?id=1\" --batch`（許可範囲で）で確証。取得データは要約のみ finding に"
+    - "`sqlmap -u \"https://target/x?id=1\" --batch --output-dir=OUTDIR`（許可範囲で）で確証。取得データは要約のみ finding に"
 
 WSTG-INPV-06:
   purpose: "入力が LDAP フィルタの構造に影響しないかを確認する。"
@@ -762,10 +766,10 @@ WSTG-CRYP-01:
   fail: "SSLv3/TLS1.0/1.1 が有効、RC4/3DES/NULL/EXPORT が有効、証明書が期限切れ・自己署名・名前不一致。"
   note: "対象は Web だけでなく、メール・API・管理ポートの TLS も含める。"
   steps:
-    - "`testssl.sh https://target` または `sslyze target:443` で全 TLS ポートを一括検査（sslyze v5 は引数なしで標準スキャン。`--regular` は廃止）"
+    - "`testssl.sh --logfile OUTDIR/testssl.log https://target` または `sslyze --json_out OUTDIR/sslyze.json target:443` で全 TLS ポートを一括検査（sslyze v5 は引数なしで標準スキャン。`--regular` は廃止）"
     - "SSLv3/TLS1.0/1.1・弱い暗号スイート（RC4/3DES/EXPORT）・弱い鍵長が有効でないか確認"
     - "証明書の有効期限・発行者・ホスト名一致、既知脆弱性（Heartbleed/ROBOT 等）を確認"
-    - "`nmap --script ssl-enum-ciphers -p443 target` で裏取り。結果は artifacts/tls-summary.md に"
+    - "`nmap --script ssl-enum-ciphers -p443 -oN OUTDIR/nmap-ssl-ciphers.txt target` で裏取り。結果は artifacts/tls-summary.md に"
 
 WSTG-CRYP-02:
   purpose: "暗号文の改変に対する応答差から平文を復元できないか（パディングオラクル）を確認する。"

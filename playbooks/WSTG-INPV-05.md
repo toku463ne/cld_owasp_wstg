@@ -23,7 +23,7 @@ WSTG の Test Objectives:
 1. 各パラメータに `'` `"` を入れ、SQL エラー・応答差・500 が出るか確認
 2. `' OR '1'='1' -- ` や `1 AND 1=1`/`1 AND 1=2` の真偽差でブラインド SQLi を確認
 3. 時間差（`' OR SLEEP(5)-- `）で盲目的注入を確認。文脈（数値/文字列）に応じて調整
-4. `sqlmap -u "https://target/x?id=1" --batch`（許可範囲で）で確証。取得データは要約のみ finding に
+4. `sqlmap -u "https://target/x?id=1" --batch --output-dir=evidence/<活動フォルダ>/artifacts`（許可範囲で）で確証。取得データは要約のみ finding に
 
 ## 使用ツール
 

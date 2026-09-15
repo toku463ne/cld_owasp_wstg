@@ -11,8 +11,9 @@
       record.md      手順を Q&A 形式に並べた「実施記録」。各手順の結果をここに貼る＝
                      このファイル自体がエビデンス本体（テンポラリではない）
       cmd/           run_cmd.py で直接実行したときの出力先
-      artifacts/     Burp エクスポート・スクショ等。coverage.yaml の outputs にある
-                     .md 成果物は検索しやすい雛形（templates/artifacts/）で自動生成
+      artifacts/     Burp エクスポート・スクショ・ツールの出力ファイル（record.md の
+                     手順に出てくる保存先はここを指すように置換される）。coverage.yaml の
+                     outputs にある .md 成果物は検索しやすい雛形（templates/artifacts/）で自動生成
       notes.md
 
 収集フロー:
@@ -80,6 +81,15 @@ def sub_target(text: str, target: str | None) -> str:
     return re.sub(r"\btarget\b", target, text)
 
 
+def sub_outdir(text: str, act_dir: str) -> str:
+    """手順の OUTDIR プレースホルダを、この実施の artifacts/ の実パスに置換する。
+
+    ツールが吐くファイルをエビデンスフォルダの外に散らかさないための置換。
+    コマンドはリポジトリルートから実行する前提のパスにする。
+    """
+    return text.replace("OUTDIR", f"{act_dir}/artifacts")
+
+
 def extract_commands(steps: list, target: str | None) -> list:
     """手順の `backtick` から、実際に走らせる CLI コマンドだけを抜き出す。
 
@@ -103,7 +113,7 @@ RULE = "-" * 60
 
 
 def render_record(activity: dict, tests: dict, criteria: dict, target: str | None,
-                  date: str, tester: str) -> str:
+                  date: str, tester: str, act_dir: str) -> str:
     """カードの手順を Q&A 形式に並べた「実施記録」を作る。
 
     各手順が1問。[コマンド] は `$` 行をそのまま実行し、[手動/ブラウザ] は指示どおり
@@ -111,7 +121,6 @@ def render_record(activity: dict, tests: dict, criteria: dict, target: str | Non
     このファイル自体を残す（＝エビデンス）。判定は末尾の @verdict / @finding に書く。
     """
     tgt = target or "target"
-    folder = _dir_name(activity, target, date)
     out = [
         f"# 実施記録 ({activity['id']} / {tgt})",
         "#",
@@ -119,8 +128,10 @@ def render_record(activity: dict, tests: dict, criteria: dict, target: str | Non
         "#   各手順を実施し、コマンド出力や画面の観察を「結果:」直後の ``` ブロックに貼る。",
         "#     [コマンド]     … $ 行をそのまま実行して出力を貼る（target 置換済み）",
         "#     [手動/ブラウザ] … 指示どおり操作し、観察・URL・スクショのパスを貼る",
+        "#   コマンドはリポジトリルートで実行する（$ 行の保存先パスはこのフォルダの",
+        "#   artifacts/ を指すように置換済み。出力ファイルはそこに残す）。",
         "#   判定は各 WSTG-ID 末尾の @verdict（pass|fail|info|na|todo）と @finding に記入。",
-        f"#   記入後、判定を run.yaml/CSV に反映: uv run scripts/capture.py evidence/{folder}",
+        f"#   記入後、判定を run.yaml/CSV に反映: uv run scripts/capture.py {act_dir}",
         "#",
         f"# activity : {activity['id']} — {activity.get('title','')}",
         f"# target   : {tgt}",
@@ -139,9 +150,9 @@ def render_record(activity: dict, tests: dict, criteria: dict, target: str | Non
             cmds = extract_commands([step], target)
             kind = "コマンド" if cmds else "手動/ブラウザ"
             out.append(f"-- 手順{idx} [{kind}] {RULE}")
-            out.append(f"# {sub_target(step, target)}")
+            out.append(f"# {sub_outdir(sub_target(step, target), act_dir)}")
             for cmd in cmds:
-                out.append(f"$ {cmd}")
+                out.append(f"$ {sub_outdir(cmd, act_dir)}")
             out += ["結果:", "```", "```", ""]
         out += ["@verdict todo", "@finding ", ""]
     return "\n".join(out) + "\n"
@@ -315,10 +326,17 @@ def main() -> int:
     if not notes.exists():
         notes.write_text(render_notes(activity, args.date), encoding="utf-8")
     stubs = write_artifact_stubs(activity, target_dir, args.date, args.force)
+    # 記録に載せるパス。リポジトリ内なら相対（evidence/...）、外（--root で一時
+    # ディレクトリ等）ならそのままのパスにする。リポジトリルートから実行できること。
+    try:
+        act_dir = target_dir.resolve().relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        act_dir = target_dir.as_posix()
+
     record = target_dir / "record.md"
     if not record.exists() or args.force:
         record.write_text(
-            render_record(activity, tests, criteria, args.target, args.date, args.tester),
+            render_record(activity, tests, criteria, args.target, args.date, args.tester, act_dir),
             encoding="utf-8",
         )
 

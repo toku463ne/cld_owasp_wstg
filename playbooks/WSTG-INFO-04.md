@@ -19,7 +19,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `nmap -sV -p- target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録
+1. `nmap -sV -p- -oN evidence/<活動フォルダ>/artifacts/nmap-allports.txt target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録
 2. 同一 IP の他ホストを `crt.sh`（証明書）とバーチャルホスト総当り（`ffuf -H "Host: FUZZ.target"`）で列挙
 3. 見つかった各アプリのトップを開き、旧環境・検証環境・別部署ツール・管理コンソールを判別
 4. スコープ外のものは攻撃せず「存在の報告」に留め、artifacts に一覧化
