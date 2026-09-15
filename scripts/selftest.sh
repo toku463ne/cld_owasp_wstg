@@ -84,10 +84,13 @@ grep -q "^\$ whois ex.test" "${REC}" && grep -q "\[コマンド\]" "${REC}" && g
   || ng "record.md が Q&A 形式（コマンド/手動 + $ 行）で target 置換されていない"
 # ツールの出力先はエビデンスフォルダの artifacts/ に置換されること（OUTDIR を残さない）
 grep -q "OUTDIR" "${REC}" && ng "record.md に OUTDIR プレースホルダが残っている" || true
-grep -qF -- "-f ${TDIR}/artifacts/theharvester.xml" "${REC}" \
-  || ng "出力ファイルの保存先が artifacts/ に置換されていない"
+grep -qF -- "mv theharvester.xml theharvester.json ${TDIR}/artifacts/" "${REC}" \
+  || ng "theHarvester の出力を artifacts/ へ移す手順になっていない"
 grep -qF -- "-o ${TDIR}/artifacts/amass-passive.txt" "${REC}" \
   || ng "複数コマンドの出力先が artifacts/ に置換されていない（amass）"
+# record.md 単体で判定できるよう、目的と pass/fail 基準が各セクションに埋まっていること
+grep -q "^# 目的: " "${REC}" && grep -q "^# 判定基準  pass = " "${REC}" \
+  || ng "record.md に判定基準（目的・pass/fail）が埋め込まれていない"
 # 実施者の記入を模擬（結果を貼り、verdict/finding を記入）して capture
 "${PY[@]}" - "${REC}" <<'PYEOF'
 import sys

@@ -142,8 +142,18 @@ def render_record(activity: dict, tests: dict, criteria: dict, target: str | Non
     for cov in activity.get("covers", []):
         wid = cov["id"]
         title = tests.get(wid, {}).get("title", "")
-        steps = criteria.get(wid, {}).get("steps", [])
-        out += ["", f"=== {wid} | {title} ===", f"# カード: playbooks/{wid}.md", ""]
+        c = criteria.get(wid, {})
+        steps = c.get("steps", [])
+        out += ["", f"=== {wid} | {title} ===", f"# カード: playbooks/{wid}.md"]
+        # 判定に必要な文脈をここに埋め込む（record.md 単体で「何を見て問題なしと
+        # 判断したか」が分かるように）。詳細はカードを参照。
+        if c.get("purpose"):
+            out.append(f"# 目的: {c['purpose']}")
+        if c.get("pass") or c.get("fail"):
+            out.append(f"# 判定基準  pass = {c.get('pass', '（カード参照）')}")
+            out.append(f"#           fail = {c.get('fail', '（カード参照）')}")
+        out.append("# → scope はヘッダの target。上の基準で下の結果を見て末尾の @verdict を決める。")
+        out.append("")
         if not steps:
             out.append("# （手順未登録。カードを参照して実施し、結果を書く）")
         for idx, step in enumerate(steps, 1):
@@ -154,7 +164,8 @@ def render_record(activity: dict, tests: dict, criteria: dict, target: str | Non
             for cmd in cmds:
                 out.append(f"$ {sub_outdir(cmd, act_dir)}")
             out += ["結果:", "```", "```", ""]
-        out += ["@verdict todo", "@finding ", ""]
+        out += ["# --- 判定（上の pass/fail 基準で。無所見なら pass、未実施は todo のまま）---",
+                "@verdict todo", "@finding ", ""]
     return "\n".join(out) + "\n"
 
 
