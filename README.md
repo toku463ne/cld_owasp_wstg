@@ -113,6 +113,10 @@ sudo curl -sI https://github.com | head -1
   どうしても要るなら公開 DNS 宛を社内 DNS へ DNAT する手はあるが、DNS の挙動を
   歪めるので amass を回す間だけにし、戻したことを記録に残す
 - **検査対象が社内 IP のときは `no_proxy` に入れる**（入れないとプロキシに飛んで失敗する）
+- **プロキシが要るのは外部の公開ソースへ出るときだけ**（crt.sh / hackertarget / subfinder の
+  API、retire.js の脆弱性DB更新など）。`nmap` / `nikto` / `ffuf` / `testssl.sh` / `sqlmap` の
+  ようなアクティブスキャンは**検査対象ホストに直接**つなぐので、対象が社内 IP なら
+  `no_proxy` に入れてプロキシを経由させない（TLS/生ソケットは HTTP プロキシを通らない）
 
 ツールが 0 件を返したときは、まず疎通を疑う。「何も無い」と「収集に失敗した」は別で、
 後者を `pass` にしてはいけない（`playbooks/WSTG-INFO-01.md` の疎通確認の手順を参照）。
