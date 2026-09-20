@@ -110,6 +110,71 @@ def extract_commands(steps: list, target: str | None) -> list:
     return cmds
 
 
+# 「結果:」に何を貼るかの指示。手順の種類ごとに1行だけ添える（注釈を増やしすぎない）。
+HINT_CMD = ("> 貼るもの: 上の `$` 行の出力をそのまま。"
+            "何も出力しないコマンドは、その旨と終了コード（`echo $?`）を書く。")
+HINT_CMD_FILE = ("> 貼るもの: 上の `$` 行の出力をそのまま。"
+                 "**最後の確認コマンドの結果（ファイルのサイズ・行数・先頭）まで含める**。"
+                 "0 行・空・HTML が返っているなら収集失敗なので、`pass` の根拠にしない。")
+HINT_MANUAL = ("> 貼るもの: ① 操作した URL とクリック手順 "
+               "② 画面・レスポンスで確認できたこと（無ければ「該当なし」と明記） "
+               "③ スクショのパス（`artifacts/*.png`）④ 件数・該当箇所。")
+
+# 確認コマンドを足さない出力先（バイナリ・画像など先頭を出しても意味がないもの）
+_BINARY_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".pdf", ".zip", ".pcap")
+
+
+def output_paths(cmd: str, act_dir: str) -> list:
+    """コマンドが artifacts/ に書き出すファイルのパスを拾う。
+
+    `-o path` / `-oN path` / `> path` はパスがそのまま出てくる。
+    `mv a.xml a.json OUTDIR/` のようにディレクトリだけ指定する形は、
+    その `mv`/`cp` の引数に出てくるファイル名と結合する（target に付いた
+    ドメイン名などを拾わないよう、探す範囲は mv/cp 以降に限る）。
+    """
+    prefix = f"{act_dir}/artifacts/"
+    toks = [tok.strip("'\"") for tok in cmd.split()]
+    paths = []
+    for i, tok in enumerate(toks):
+        if not tok.startswith(prefix):
+            continue
+        if not tok.endswith("/"):
+            paths.append(tok)
+            continue
+        # 直前の mv/cp までさかのぼり、その引数のファイル名を移動先に結合する
+        head = next((j for j in range(i - 1, -1, -1)
+                     if toks[j] in ("mv", "cp")), None)
+        if head is None:
+            continue
+        for name in toks[head + 1:i]:
+            if name.startswith("-") or "/" in name:
+                continue
+            if re.search(r"\.[A-Za-z0-9]{1,6}$", name):
+                paths.append(tok + name)
+    # 重複排除（順序は維持）。中身を覗いても意味が無いものは確認対象から外す
+    seen, uniq = set(), []
+    for path in paths:
+        if path not in seen and not path.lower().endswith(_BINARY_SUFFIXES):
+            seen.add(path)
+            uniq.append(path)
+    return uniq
+
+
+def verify_commands(cmd: str, act_dir: str) -> list:
+    """出力ファイルが「ちゃんと取れているか」を確認するコマンドを組み立てる。
+
+    -s で黙るコマンド（curl 等）は「結果:」に貼るものが無くなり、失敗と
+    「何も無い」の区別がつかなくなる。行数と先頭を必ず出させる。
+    """
+    checks = []
+    for path in output_paths(cmd, act_dir):
+        if path.lower().endswith((".json", ".xml", ".html")):
+            checks.append(f"ls -l {path}; head -c 400 {path}; echo")
+        else:
+            checks.append(f"wc -l {path}; head -5 {path}")
+    return checks
+
+
 def render_record(activity: dict, tests: dict, criteria: dict, target: str | None,
                   date: str, tester: str, act_dir: str) -> str:
     """カードの手順を Q&A 形式に並べた「実施記録」を作る。
@@ -135,6 +200,8 @@ def render_record(activity: dict, tests: dict, criteria: dict, target: str | Non
         "> - 各手順を実施し、コマンド出力や画面の観察を「結果:」直後のコードブロックにそのまま貼る。",
         "> - `[コマンド]` … `$` 行をそのまま実行して出力を貼る（target 置換済み）。",
         "> - `[手動/ブラウザ]` … 指示どおり操作し、観察・URL・スクショのパスを貼る。",
+        "> - 各手順の「貼るもの:」に何を残すかが書いてある。空欄のままにしない",
+        ">   （何も出なかったときは「該当なし」と書く。空欄は未実施と区別できない）。",
         "> - コマンドはリポジトリルートで実行する（保存先はこのフォルダの `artifacts/` を指すように",
         ">   置換済み。出力ファイルはそこに残す）。",
         "> - 判定は各 WSTG-ID 末尾の `@verdict`（pass|fail|info|na|todo）と `@finding` に記入する。",
@@ -162,9 +229,16 @@ def render_record(activity: dict, tests: dict, criteria: dict, target: str | Non
             out += ["", f"### 手順{idx} [{kind}]", ""]
             out.append(sub_outdir(sub_target(step, target), act_dir))
             if cmds:
+                shown = [sub_outdir(cmd, act_dir) for cmd in cmds]
+                checks = [c for cmd in shown for c in verify_commands(cmd, act_dir)]
                 out += ["", "```sh"]
-                out += [f"$ {sub_outdir(cmd, act_dir)}" for cmd in cmds]
+                out += [f"$ {cmd}" for cmd in shown]
+                # ファイルに落とすコマンドは、取れているかの確認までを1セットにする
+                out += [f"$ {check}" for check in checks]
                 out.append("```")
+                out += ["", HINT_CMD_FILE if checks else HINT_CMD]
+            else:
+                out += ["", HINT_MANUAL]
             out += ["", "結果:", "```", "```"]
         out += ["", "### 判定",
                 "",

@@ -88,6 +88,18 @@ grep -qF -- "mv theharvester.xml theharvester.json ${TDIR}/artifacts/" "${REC}" 
   || ng "theHarvester の出力を artifacts/ へ移す手順になっていない"
 grep -qF -- "-o ${TDIR}/artifacts/subfinder.txt" "${REC}" \
   || ng "複数コマンドの出力先が artifacts/ に置換されていない（subfinder）"
+# 出力をファイルに落とすコマンドは、取れているかの確認コマンドまで並ぶこと
+grep -qF -- "head -c 400 ${TDIR}/artifacts/crtsh.json" "${REC}" \
+  || ng "ファイル出力コマンドに確認コマンド（サイズ・先頭）が付いていない"
+grep -qF -- "wc -l ${TDIR}/artifacts/subfinder.txt" "${REC}" \
+  || ng "テキスト出力コマンドに行数確認が付いていない"
+grep -qF -- "artifacts/ex.test" "${REC}" && ng "target 名を出力ファイルと誤認している" || true
+# 各手順に「結果に何を貼るか」の指示があること（手動/ブラウザを含む）
+[ "$(grep -c "^> 貼るもの: " "${REC}")" -ge 5 ] \
+  || ng "各手順に「貼るもの:」の指示が入っていない"
+grep -q "^> 貼るもの: ① 操作した URL" "${REC}" \
+  || ng "[手動/ブラウザ] の手順に貼るものの指示が無い"
+
 # record.md 単体で判定できるよう、目的と pass/fail 基準が各セクションに埋まっていること
 grep -q "^- 目的: " "${REC}" && grep -q "^- 判定基準 pass = " "${REC}" \
   || ng "record.md に判定基準（目的・pass/fail）が埋め込まれていない"
@@ -98,8 +110,7 @@ grep -E "^#" "${REC}" | grep -vE "^(# 実施記録 |## WSTG-|### )" \
 "${PY[@]}" - "${REC}" <<'PYEOF'
 import sys
 p=sys.argv[1]; t=open(p).read()
-t=t.replace("$ whois ex.test\n```\n\n結果:\n```\n```",
-            "$ whois ex.test\n```\n\n結果:\n```\nDomain Name: EX.TEST\n```",1)
+t=t.replace("結果:\n```\n```", "結果:\n```\nDomain Name: EX.TEST\n```", 1)   # 手順1(whois)
 t=t.replace("@verdict todo\n\n@finding \n","@verdict info\n\n@finding whois 確認済み。\n",1)
 open(p,"w").write(t)
 PYEOF
