@@ -68,7 +68,7 @@ WSTG-INFO-04:
   steps:
     - "`nmap -sV -p- -oN OUTDIR/nmap-allports.txt target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録"
     - "同一 IP の他ホストを `crt.sh`（証明書）とバーチャルホスト総当り（`ffuf -H \"Host: FUZZ.target\"`）で列挙"
-    - "見つかった各アプリのトップを開き、旧環境・検証環境・別部署ツール・管理コンソールを判別"
+    - "見つかった各ホスト/ポートを開き（`https://host:port/`）、次の手掛かりで用途を判別する: ページタイトル・`Server`/`X-Powered-By` ヘッダ・ログイン画面のrealm/製品名・フッタの著作権年（古ければ旧環境）・`/`や`/login`のスクショ。`dev`/`stg`/`test`/`old`/`admin`/`jenkins`/`grafana`/`phpmyadmin` などのホスト名・パスは特に検証環境・管理コンソールの疑い。各ホストの用途と判定根拠を artifacts/vhosts.md に1行ずつ書く"
     - "スコープ外のものは攻撃せず「存在の報告」に留め、artifacts に一覧化"
 
 WSTG-INFO-05:
@@ -123,7 +123,7 @@ WSTG-INFO-10:
   steps:
     - "`curl -sI` の応答ヘッダ（`Via`/`X-Cache`/`Server`/`Set-Cookie` の LB 印）から中間装置を推定"
     - "`traceroute`／TTL・応答差から WAF・CDN・リバースプロキシの有無を判断（WAF は不正入力への 403/406 で炙り出す）"
-    - "サブドメイン・ポートから API GW・キャッシュ・DB 管理画面が外部露出していないか確認"
+    - "recon で得たサブドメイン・ポート一覧を突き合わせ、本来内部向けの装置が外から開いていないか見る: `api.`/`gw.`(API GW)、`cache.`/`varnish`・`X-Cache`ヘッダ(キャッシュ)、`8081`/`:9200`(Elasticsearch)・`:5601`(Kibana)・`:15672`(RabbitMQ)・`phpmyadmin`/`adminer`(DB管理)。`curl -sI` で 200/401 が返るものは露出。露出しているホスト:ポートと応答コードを artifacts に記録し、意図しない露出のみ finding に"
     - "推定した構成図を描き、ヒアリング結果と突き合わせて確定（推測のまま報告しない）"
 
 WSTG-CONF-01:
@@ -146,7 +146,7 @@ WSTG-CONF-02:
     - "定番パスを叩く: `curl -s https://target/{server-status,server-info,phpinfo.php,examples/,manual/,test/}`"
     - "ディレクトリリスティングを確認（`curl -s https://target/images/` 等で index が返るか）"
     - "既定管理画面・サンプルアプリ（Tomcat `/manager`、`/docs` など）の有無を確認"
-    - "不要な HTTP メソッド・モジュール・デバッグ機能が有効でないか、応答から判断"
+    - "不要機能が有効でないか応答で確認する: `curl -sI -X OPTIONS https://target/` の `Allow` 行に PUT/DELETE/TRACE が並ばないか、`Server`/`X-Powered-By` に余計なモジュール（`mod_status`・PHP等）が出ないか、`?debug=true`・`X-Debug` 系でデバッグ出力（スタック・SQL・変数ダンプ）が返らないか。有効な不要機能を artifacts に列挙し finding に"
 
 WSTG-CONF-03:
   purpose: "拡張子の扱いによって、ソースや設定ファイルの中身が露出しないかを確認する。"
@@ -221,8 +221,8 @@ WSTG-CONF-09:
   note: "リモートからは判定できない。ホスト側の情報提供が得られない場合は na とし、その旨を書く。"
   steps:
     - "対象サーバに手が届く場合、`ls -la` / `icacls` で Web ルート・設定ファイルの権限を確認"
-    - "設定ファイル・鍵・ログが others 読み取り可、または実行ユーザで書き換え可能でないか見る"
-    - "アップロードディレクトリに実行権限が付いていないか確認"
+    - "手順1の `ls -la` 出力で、設定ファイル・秘密鍵・ログのパーミッションを見る。危険な例: その他ユーザ読取可（`----r--` の others r、例 `-rw-r--r--` の `.env`/`*.key`/`config.php`）、Web実行ユーザ（www-data等）が所有 or 書込可な設定ファイル（改ざん・Webshell設置につながる）。該当ファイルとモード（例 `644 config.php owner=www-data`）を artifacts に控える"
+    - "アップロード保存先ディレクトリ（`uploads/` 等）に実行権が付いていないか見る: `ls -la` でディレクトリ/ファイルに `x`（例 `-rwxr-xr-x` の *.php）が無いか、Web からそのパスのスクリプトが実行されないか（`curl` で設置した無害ファイルが text で返るか実行されるか）。実行可能なら Webshell 設置リスクとして finding に"
     - "この項目はサーバ内部権限が前提。外部からのみの検査時は情報不足として na/ヒアリング扱い"
 
 WSTG-CONF-10:

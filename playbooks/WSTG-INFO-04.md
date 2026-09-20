@@ -21,7 +21,7 @@ WSTG の Test Objectives:
 
 1. `nmap -sV -p- -oN evidence/<活動フォルダ>/artifacts/nmap-allports.txt target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録
 2. 同一 IP の他ホストを `crt.sh`（証明書）とバーチャルホスト総当り（`ffuf -H "Host: FUZZ.target"`）で列挙
-3. 見つかった各アプリのトップを開き、旧環境・検証環境・別部署ツール・管理コンソールを判別
+3. 見つかった各ホスト/ポートを開き（`https://host:port/`）、次の手掛かりで用途を判別する: ページタイトル・`Server`/`X-Powered-By` ヘッダ・ログイン画面のrealm/製品名・フッタの著作権年（古ければ旧環境）・`/`や`/login`のスクショ。`dev`/`stg`/`test`/`old`/`admin`/`jenkins`/`grafana`/`phpmyadmin` などのホスト名・パスは特に検証環境・管理コンソールの疑い。各ホストの用途と判定根拠を artifacts/vhosts.md に1行ずつ書く
 4. スコープ外のものは攻撃せず「存在の報告」に留め、artifacts に一覧化
 
 ## 使用ツール

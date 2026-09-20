@@ -24,7 +24,7 @@ WSTG の Test Objectives:
 1. 定番パスを叩く: `curl -s https://target/{server-status,server-info,phpinfo.php,examples/,manual/,test/}`
 2. ディレクトリリスティングを確認（`curl -s https://target/images/` 等で index が返るか）
 3. 既定管理画面・サンプルアプリ（Tomcat `/manager`、`/docs` など）の有無を確認
-4. 不要な HTTP メソッド・モジュール・デバッグ機能が有効でないか、応答から判断
+4. 不要機能が有効でないか応答で確認する: `curl -sI -X OPTIONS https://target/` の `Allow` 行に PUT/DELETE/TRACE が並ばないか、`Server`/`X-Powered-By` に余計なモジュール（`mod_status`・PHP等）が出ないか、`?debug=true`・`X-Debug` 系でデバッグ出力（スタック・SQL・変数ダンプ）が返らないか。有効な不要機能を artifacts に列挙し finding に
 
 ## 使用ツール
 

@@ -21,7 +21,7 @@ WSTG の Test Objectives:
 
 1. `curl -sI` の応答ヘッダ（`Via`/`X-Cache`/`Server`/`Set-Cookie` の LB 印）から中間装置を推定
 2. `traceroute`／TTL・応答差から WAF・CDN・リバースプロキシの有無を判断（WAF は不正入力への 403/406 で炙り出す）
-3. サブドメイン・ポートから API GW・キャッシュ・DB 管理画面が外部露出していないか確認
+3. recon で得たサブドメイン・ポート一覧を突き合わせ、本来内部向けの装置が外から開いていないか見る: `api.`/`gw.`(API GW)、`cache.`/`varnish`・`X-Cache`ヘッダ(キャッシュ)、`8081`/`:9200`(Elasticsearch)・`:5601`(Kibana)・`:15672`(RabbitMQ)・`phpmyadmin`/`adminer`(DB管理)。`curl -sI` で 200/401 が返るものは露出。露出しているホスト:ポートと応答コードを artifacts に記録し、意図しない露出のみ finding に
 4. 推定した構成図を描き、ヒアリング結果と突き合わせて確定（推測のまま報告しない）
 
 ## 使用ツール
