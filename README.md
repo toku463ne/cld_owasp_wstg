@@ -84,18 +84,34 @@ uv run scripts/new_activity.py recon-osint --target example.com
 **コマンド出力や画面の観察を「結果:」直後の ` ``` ` ブロックにそのまま貼る**。target は置換済み。
 このファイル自体を残す（＝エビデンス本体。テンポラリではない）。
 
-```text
-=== WSTG-INFO-01 | Conduct Search Engine Discovery ... ===
--- 手順1 [コマンド] --------------------------------------------------
-# whois で組織名・登録者・ネームサーバを確認する
+Markdown としてプレビューしても読めるように、見出しは「表題 / WSTG-ID / 手順」だけに使い、
+使い方や判定基準の注釈は引用・箇条書きに抑えてある。
+
+````text
+## WSTG-INFO-01 | Conduct Search Engine Discovery ...
+
+- カード: `playbooks/WSTG-INFO-01.md`
+- 目的: ...
+- 判定基準 pass = ... / fail = ...
+
+### 手順1 [コマンド]
+
+whois で組織名・登録者・ネームサーバを確認する
+
+```sh
 $ whois example.com
+```
+
 結果:
 ```            ← ここに出力を貼る
 ```
-...
-@verdict info          # pass | fail | info | na | todo
+
+### 判定
+
+@verdict info          ← pass | fail | info | na | todo
+
 @finding whois で登録者・NSを確認。露出情報なし。（要約のみ・生値は貼らない）
-```
+````
 
 記入したら取り込む。`record.md` の `@verdict` / `@finding` が `run.yaml` の `covers:` に転記され、
 `evidence:` はこの `record.md` を指す（raw はこのファイルを見れば分かる）:

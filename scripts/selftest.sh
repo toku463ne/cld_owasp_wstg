@@ -89,15 +89,18 @@ grep -qF -- "mv theharvester.xml theharvester.json ${TDIR}/artifacts/" "${REC}" 
 grep -qF -- "-o ${TDIR}/artifacts/amass-passive.txt" "${REC}" \
   || ng "複数コマンドの出力先が artifacts/ に置換されていない（amass）"
 # record.md 単体で判定できるよう、目的と pass/fail 基準が各セクションに埋まっていること
-grep -q "^# 目的: " "${REC}" && grep -q "^# 判定基準  pass = " "${REC}" \
+grep -q "^- 目的: " "${REC}" && grep -q "^- 判定基準 pass = " "${REC}" \
   || ng "record.md に判定基準（目的・pass/fail）が埋め込まれていない"
+# Markdown の見出しは「表題・WSTG-ID・手順/判定」だけ（注釈が見出しとして強調されない）
+grep -E "^#" "${REC}" | grep -vE "^(# 実施記録 |## WSTG-|### )" \
+  && ng "record.md の注釈が見出し（#）になっている" || true
 # 実施者の記入を模擬（結果を貼り、verdict/finding を記入）して capture
 "${PY[@]}" - "${REC}" <<'PYEOF'
 import sys
 p=sys.argv[1]; t=open(p).read()
-t=t.replace("$ whois ex.test\n結果:\n```\n```",
-            "$ whois ex.test\n結果:\n```\nDomain Name: EX.TEST\n```",1)
-t=t.replace("@verdict todo\n@finding \n","@verdict info\n@finding whois 確認済み。\n",1)
+t=t.replace("$ whois ex.test\n```\n\n結果:\n```\n```",
+            "$ whois ex.test\n```\n\n結果:\n```\nDomain Name: EX.TEST\n```",1)
+t=t.replace("@verdict todo\n\n@finding \n","@verdict info\n\n@finding whois 確認済み。\n",1)
 open(p,"w").write(t)
 PYEOF
 "${PY[@]}" scripts/capture.py "${TDIR}" >/dev/null

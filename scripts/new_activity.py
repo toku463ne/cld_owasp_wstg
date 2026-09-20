@@ -109,9 +109,6 @@ def extract_commands(steps: list, target: str | None) -> list:
     return cmds
 
 
-RULE = "-" * 60
-
-
 def render_record(activity: dict, tests: dict, criteria: dict, target: str | None,
                   date: str, tester: str, act_dir: str) -> str:
     """カードの手順を Q&A 形式に並べた「実施記録」を作る。
@@ -119,53 +116,63 @@ def render_record(activity: dict, tests: dict, criteria: dict, target: str | Non
     各手順が1問。[コマンド] は `$` 行をそのまま実行し、[手動/ブラウザ] は指示どおり
     操作して、いずれも「結果:」直後の ``` ブロックに raw 出力・観察をそのまま貼る。
     このファイル自体を残す（＝エビデンス）。判定は末尾の @verdict / @finding に書く。
+
+    Markdown として読まれる前提で、注釈（使い方・目的・判定基準）は引用やリストに
+    抑え、見出しは「表題・WSTG-ID・手順」だけに使う（注釈が本文より目立たないように）。
     """
     tgt = target or "target"
     out = [
-        f"# 実施記録 ({activity['id']} / {tgt})",
-        "#",
-        "# ★ このファイルはそのまま残すエビデンスです（テンポラリではありません）。",
-        "#   各手順を実施し、コマンド出力や画面の観察を「結果:」直後の ``` ブロックに貼る。",
-        "#     [コマンド]     … $ 行をそのまま実行して出力を貼る（target 置換済み）",
-        "#     [手動/ブラウザ] … 指示どおり操作し、観察・URL・スクショのパスを貼る",
-        "#   コマンドはリポジトリルートで実行する（$ 行の保存先パスはこのフォルダの",
-        "#   artifacts/ を指すように置換済み。出力ファイルはそこに残す）。",
-        "#   判定は各 WSTG-ID 末尾の @verdict（pass|fail|info|na|todo）と @finding に記入。",
-        f"#   記入後、判定を run.yaml/CSV に反映: uv run scripts/capture.py {act_dir}",
-        "#",
-        f"# activity : {activity['id']} — {activity.get('title','')}",
-        f"# target   : {tgt}",
-        f"# tester   : {tester}",
-        f"# date     : {iso_date(date)}",
+        f"# 実施記録 — {activity['id']} / {tgt}",
         "",
+        f"- activity: `{activity['id']}` — {activity.get('title','')}",
+        f"- target: `{tgt}`",
+        f"- tester: {tester}",
+        f"- date: {iso_date(date)}",
+        "",
+        "> **このファイルはそのまま残すエビデンスです（テンポラリではありません）。**",
+        ">",
+        "> - 各手順を実施し、コマンド出力や画面の観察を「結果:」直後のコードブロックにそのまま貼る。",
+        "> - `[コマンド]` … `$` 行をそのまま実行して出力を貼る（target 置換済み）。",
+        "> - `[手動/ブラウザ]` … 指示どおり操作し、観察・URL・スクショのパスを貼る。",
+        "> - コマンドはリポジトリルートで実行する（保存先はこのフォルダの `artifacts/` を指すように",
+        ">   置換済み。出力ファイルはそこに残す）。",
+        "> - 判定は各 WSTG-ID 末尾の `@verdict`（pass|fail|info|na|todo）と `@finding` に記入する。",
+        f"> - 記入後、判定を run.yaml/CSV に反映: `uv run scripts/capture.py {act_dir}`",
     ]
     for cov in activity.get("covers", []):
         wid = cov["id"]
         title = tests.get(wid, {}).get("title", "")
         c = criteria.get(wid, {})
         steps = c.get("steps", [])
-        out += ["", f"=== {wid} | {title} ===", f"# カード: playbooks/{wid}.md"]
+        out += ["", f"## {wid} | {title}", "", f"- カード: `playbooks/{wid}.md`"]
         # 判定に必要な文脈をここに埋め込む（record.md 単体で「何を見て問題なしと
         # 判断したか」が分かるように）。詳細はカードを参照。
         if c.get("purpose"):
-            out.append(f"# 目的: {c['purpose']}")
+            out.append(f"- 目的: {c['purpose']}")
         if c.get("pass") or c.get("fail"):
-            out.append(f"# 判定基準  pass = {c.get('pass', '（カード参照）')}")
-            out.append(f"#           fail = {c.get('fail', '（カード参照）')}")
-        out.append("# → scope はヘッダの target。上の基準で下の結果を見て末尾の @verdict を決める。")
-        out.append("")
+            out.append(f"- 判定基準 pass = {c.get('pass', '（カード参照）')}")
+            out.append(f"- 判定基準 fail = {c.get('fail', '（カード参照）')}")
+        out.append("- scope はヘッダの target。上の基準で下の結果を見て末尾の `@verdict` を決める。")
         if not steps:
-            out.append("# （手順未登録。カードを参照して実施し、結果を書く）")
+            out += ["", "（手順未登録。カードを参照して実施し、結果を書く）"]
         for idx, step in enumerate(steps, 1):
             cmds = extract_commands([step], target)
             kind = "コマンド" if cmds else "手動/ブラウザ"
-            out.append(f"-- 手順{idx} [{kind}] {RULE}")
-            out.append(f"# {sub_outdir(sub_target(step, target), act_dir)}")
-            for cmd in cmds:
-                out.append(f"$ {sub_outdir(cmd, act_dir)}")
-            out += ["結果:", "```", "```", ""]
-        out += ["# --- 判定（上の pass/fail 基準で。無所見なら pass、未実施は todo のまま）---",
-                "@verdict todo", "@finding ", ""]
+            out += ["", f"### 手順{idx} [{kind}]", ""]
+            out.append(sub_outdir(sub_target(step, target), act_dir))
+            if cmds:
+                out += ["", "```sh"]
+                out += [f"$ {sub_outdir(cmd, act_dir)}" for cmd in cmds]
+                out.append("```")
+            out += ["", "結果:", "```", "```"]
+        out += ["", "### 判定",
+                "",
+                "上の pass/fail 基準で。無所見なら pass、未実施は todo のまま。",
+                "",
+                "@verdict todo",
+                "",
+                "@finding ",
+                ""]
     return "\n".join(out) + "\n"
 
 

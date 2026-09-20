@@ -7,7 +7,7 @@ record.md には手順ごとの結果（コマンド出力・画面の観察）�
 このファイル自体がエビデンス本体なので、ここでは中身を分解・コピーはしない。
 やることは「WSTG-ID ごとの @verdict / @finding を run.yaml の covers: に転記する」だけ:
 
-  - 各 `=== WSTG-XXX | ... ===` セクションの @verdict と @finding を読む
+  - 各 `## WSTG-XXX | ...` セクション（旧形式の `=== ... ===` も可）の @verdict と @finding を読む
   - run.yaml の covers: の該当 id ブロックの verdict / finding / evidence 行を部分置換する
     （evidence にはこの record.md のパスを入れ、raw はそこを見れば分かるようにする）
 
@@ -30,14 +30,17 @@ def yaml_dq(text: str) -> str:
 
 
 def parse_record(text: str) -> list:
-    """record.md を WSTG-ID ごとの (id, verdict, finding, results_written) に分解する。"""
+    """record.md を WSTG-ID ごとの (id, verdict, finding, results_written) に分解する。
+
+    セクション見出しは `## WSTG-XXX | ...`（旧 `=== WSTG-XXX | ... ===` も受ける）。
+    """
     lines = text.split("\n")
     sections: list = []
     cur = None
     i, n = 0, len(lines)
     while i < n:
         line = lines[i]
-        m = re.match(r"^===\s+(WSTG-[A-Z]+-\d+)\b", line)
+        m = re.match(r"^(?:#{1,6}|===)\s+(WSTG-[A-Z]+-\d+)\b", line)
         if m:
             cur = {"id": m.group(1), "verdict": None, "finding": None, "results": 0}
             sections.append(cur)
@@ -65,7 +68,7 @@ def parse_record(text: str) -> list:
         if m and cur is not None:
             buf = [m.group(1).strip()]
             i += 1
-            while i < n and not lines[i].startswith(("@", "===")):
+            while i < n and not lines[i].startswith(("@", "===", "#")):
                 if lines[i].strip() == "":
                     break
                 buf.append(lines[i].strip())
