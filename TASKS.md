@@ -24,7 +24,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 対象に触れずに分かることを集め、以降のスコープと入力を確定させる。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y amass dnsutils theharvester whois`
+- apt: `sudo apt install -y amass curl dnsutils theharvester whois`
 
 ### 1. `recon-osint` — 外部 OSINT・公開情報の収集
 
