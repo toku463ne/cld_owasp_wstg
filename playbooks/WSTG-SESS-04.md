@@ -23,7 +23,7 @@ WSTG の Test Objectives:
 
 1. セッション ID・トークンが URL・ログ・Referer・隠しフィールドに露出しないか Burp の HTTP 履歴で確認
 2. ブラウザ開発者ツールで localStorage/sessionStorage にセッション情報が平文保存されないか確認
-3. エラーページ・デバッグ出力にセッション変数が漏れないか確認
+3. わざとエラーを誘発し（不正な型・存在しないID・巨大値・壊れたJSON）、返るエラーページ・スタックトレース・デバッグ出力に セッションID/トークン/内部変数が載らないか確認する（応答本文を `grep -iE "session|token|PHPSESSID|JSESSIONID|csrf"` 相当で走査）。載る＝ログ・画面経由の漏えい
 4. TLS で保護されていても、URL 露出はブラウザ履歴/プロキシログに残る点を finding に添える
 
 ## 使用ツール
