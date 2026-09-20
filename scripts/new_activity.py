@@ -91,11 +91,19 @@ def sub_outdir(text: str, act_dir: str) -> str:
     return text.replace("OUTDIR", f"{act_dir}/artifacts")
 
 
+# for/while ループ（複数サブドメインを一括処理する等）を1つの実行コマンドとして拾う。
+# 先頭が for/while で、ループ本体に CLI バイナリが現れ、target か OUTDIR を参照するもの。
+LOOP_KEYWORDS = {"for", "while"}
+
+
 def extract_commands(steps: list, target: str | None) -> list:
     """手順の `backtick` から、実際に走らせる CLI コマンドだけを抜き出す。
 
-    採用条件: 先頭語が CLI_BINARIES に含まれ、かつ target を参照していること
-    （`curl` 単独のような不完全な言及や、dork/ペイロードの backtick を除く）。
+    採用条件（いずれか）:
+      - 先頭語が CLI_BINARIES に含まれ、かつ target を参照している
+        （`curl` 単独のような不完全な言及や、dork/ペイロードの backtick を除く）
+      - 先頭語が for/while のループで、本体に CLI バイナリが現れ、
+        target か OUTDIR（＝出力先）を参照している（サブドメインの一括処理など）
     """
     cmds = []
     for step in steps or []:
@@ -104,8 +112,12 @@ def extract_commands(steps: list, target: str | None) -> list:
             toks = span.split()
             if not toks:
                 continue
+            low = span.lower()
             binary = toks[0].split("/")[-1].lower()
-            if binary in CLI_BINARIES and "target" in span.lower():
+            if binary in CLI_BINARIES and "target" in low:
+                cmds.append(sub_target(span, target))
+            elif binary in LOOP_KEYWORDS and ("target" in low or "OUTDIR" in span) \
+                    and any(re.search(rf"\b{re.escape(b)}\b", low) for b in CLI_BINARIES):
                 cmds.append(sub_target(span, target))
     return cmds
 

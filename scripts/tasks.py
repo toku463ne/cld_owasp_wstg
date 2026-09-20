@@ -102,7 +102,10 @@ def phase_tool_names(acts_in_phase: list, criteria: dict) -> list:
         for cov in a.get("covers", []):
             steps = criteria.get(cov["id"], {}).get("steps", [])
             for cmd in extract_commands(steps, None):
-                names.append(cmd.split()[0].split("/")[-1])  # 先頭バイナリ名
+                # for/while ループだと先頭が while で本体の dig 等を取りこぼすので、
+                # コマンド内の全トークンのバイナリ名を見る（未知語は classify で手動扱い）。
+                for tok in re.findall(r"[A-Za-z0-9_.-]+", cmd):
+                    names.append(tok.split("/")[-1])
     return names
 
 

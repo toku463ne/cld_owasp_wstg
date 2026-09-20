@@ -94,6 +94,11 @@ grep -qF -- "head -c 400 ${TDIR}/artifacts/crtsh.json" "${REC}" \
 grep -qF -- "wc -l ${TDIR}/artifacts/subfinder.txt" "${REC}" \
   || ng "テキスト出力コマンドに行数確認が付いていない"
 grep -qF -- "artifacts/ex.test" "${REC}" && ng "target 名を出力ファイルと誤認している" || true
+# for/while ループも $ 実行コマンドとして拾い、tee の出力先の確認まで並ぶこと（CONF-10）
+grep -qF -- "\$ while read -r h; do echo" "${REC}" \
+  || ng "for/while ループが $ 実行コマンドとして拾われていない"
+grep -qF -- "wc -l ${TDIR}/artifacts/cname-check.txt" "${REC}" \
+  || ng "ループの tee 出力先に確認コマンドが付いていない"
 # 各手順に「結果に何を貼るか」の指示があること（手動/ブラウザを含む）
 [ "$(grep -c "^> 貼るもの: " "${REC}")" -ge 5 ] \
   || ng "各手順に「貼るもの:」の指示が入っていない"

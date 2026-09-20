@@ -20,7 +20,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. サブドメインを列挙（`subfinder`/`crt.sh`）し、各 CNAME を `dig CNAME sub.target.co.jp` で確認
+1. サブドメインの各 CNAME をまとめて引く。手順4で作った evidence/<活動フォルダ>/artifacts/subfinder.txt を入力に `while read -r h; do echo "$h -> $(dig +short CNAME $h | head -1)"; done < evidence/<活動フォルダ>/artifacts/subfinder.txt | tee evidence/<活動フォルダ>/artifacts/cname-check.txt` を実行する（`->` の右が埋まっている行＝CNAME を持つサブドメインが乗っ取り確認の対象。空欄は A/AAAA 直指定なので対象外。crt.sh で拾った分も subfinder.txt に足してから回す）
 2. CNAME 先が未登録のクラウドサービス（S3/GitHub Pages/Heroku 等）を指していないか確認
 3. 疑わしいものはサービスの「該当リソースが存在しない」旨のエラー画面が出るかで判定
 4. 乗っ取り可能性がある場合も実際の取得は行わず、CNAME と応答を証跡に留める
@@ -28,8 +28,8 @@ WSTG の Test Objectives:
 ## 使用ツール
 
 - subfinder
-- crt.sh
 - dig
+- crt.sh
 
 ## 判定基準（pass / fail の見分け）
 

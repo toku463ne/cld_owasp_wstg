@@ -231,7 +231,7 @@ WSTG-CONF-10:
   fail: "解放済みのホスティング先を指す CNAME/A があり、第三者が同名リソースを取得して掌握できる。"
   note: "実際の乗っ取りは行わない。到達性とエラー応答（NoSuchBucket 等）で判断し、証拠として記録する。"
   steps:
-    - "サブドメインを列挙（`subfinder`/`crt.sh`）し、各 CNAME を `dig CNAME sub.target.co.jp` で確認"
+    - "サブドメインの各 CNAME をまとめて引く。手順4で作った OUTDIR/subfinder.txt を入力に `while read -r h; do echo \"$h -> $(dig +short CNAME $h | head -1)\"; done < OUTDIR/subfinder.txt | tee OUTDIR/cname-check.txt` を実行する（`->` の右が埋まっている行＝CNAME を持つサブドメインが乗っ取り確認の対象。空欄は A/AAAA 直指定なので対象外。crt.sh で拾った分も subfinder.txt に足してから回す）"
     - "CNAME 先が未登録のクラウドサービス（S3/GitHub Pages/Heroku 等）を指していないか確認"
     - "疑わしいものはサービスの「該当リソースが存在しない」旨のエラー画面が出るかで判定"
     - "乗っ取り可能性がある場合も実際の取得は行わず、CNAME と応答を証跡に留める"
