@@ -21,15 +21,17 @@ WSTG の Test Objectives:
 ## 手順
 
 1. サブドメインの各 CNAME をまとめて引く。手順4で作った evidence/<活動フォルダ>/artifacts/subfinder.txt を入力に `while read -r h; do echo "$h -> $(dig +short CNAME $h | head -1)"; done < evidence/<活動フォルダ>/artifacts/subfinder.txt | tee evidence/<活動フォルダ>/artifacts/cname-check.txt` を実行する（`->` の右が埋まっている行＝CNAME を持つサブドメインが乗っ取り確認の対象。空欄は A/AAAA 直指定なので対象外。crt.sh で拾った分も subfinder.txt に足してから回す）
-2. CNAME 先が未登録のクラウドサービス（S3/GitHub Pages/Heroku 等）を指していないか確認
-3. 疑わしいものはサービスの「該当リソースが存在しない」旨のエラー画面が出るかで判定
-4. 乗っ取り可能性がある場合も実際の取得は行わず、CNAME と応答を証跡に留める
+2. cname-check.txt で `->` の右が埋まっている行の CNAME 先が、乗っ取り可能なサービスのフィンガープリントに一致するか照合する。典型: `*.s3.amazonaws.com`(S3) / `*.github.io`(GitHub Pages) / `*.herokudns.com`・`*.herokuapp.com`(Heroku) / `*.azurewebsites.net`(Azure) / `*.cloudfront.net`(CloudFront) / `*.fastly.net` / `*.pantheonsite.io` / `*.ghost.io` 等。該当する CNAME を持つサブドメインだけを「要確認リスト」として artifacts/takeover-candidates.md に書き出す（1件も該当しなければ「該当なし」と明記し、この時点で pass 相当）
+3. 要確認リストの各サブドメインを `curl -s https://<sub>/` とブラウザで開き、サービス既定の「リソースが存在しない」エラーが返るか見る。乗っ取り可能な典型応答: S3=`NoSuchBucket`、GitHub Pages=`There isn’t a GitHub Pages site here`、Heroku=`No such app`、Azure=`404 Web Site not found`、Fastly=`Fastly error: unknown domain`。このエラーが出る＝第三者が同名リソースを登録して掌握できる状態（fail）。正常なコンテンツが返る＝実在リソース（この観点は pass）。応答本体・ステータス・スクショを artifacts/ に残す
+4. 乗っ取り可能と判断しても、実際の取得（バケット作成・リポジトリ/アプリ登録等）は行わない。CNAME・エラー応答本体・ステータスを証跡（artifacts/）に残し、finding には該当サブドメイン名と「どのサービスの未登録リソースを指すか」を要約で書く（生の CNAME 先ホスト名は evidence 参照に留める）
 
 ## 使用ツール
 
 - subfinder
 - dig
 - crt.sh
+- curl
+- ブラウザ
 
 ## 判定基準（pass / fail の見分け）
 
