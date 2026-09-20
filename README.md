@@ -104,7 +104,9 @@ sudo curl -sI https://github.com | head -1
 - **DNS とポートスキャンはプロキシを通らない**。`dig` / `nmap` の名前解決・スキャンは直接出るので、
   そこが塞がっているならプロキシとは別に経路の手当てが要る
 - **amass v5 は外向き UDP/53 が無いと起動しない**（このため手順は `subfinder` に差し替えてある。
-  subfinder は HTTPS の API だけで完結するのでプロキシ配下でも動く）。engine が起動時に bgp.tools を
+  subfinder は HTTPS の API 主体で UDP/53 は要らないが、環境変数のプロキシを見ないので
+  `-proxy "$https_proxy"` を明示する。付けないと全ソースが timeout して0件になる
+  ＝実測で `-proxy` なし0件/約90秒・あり28件/約32秒）。engine が起動時に bgp.tools を
   自前のリゾルバ（公開 DNS）で解決するため、53 が塞がれた社内網では
   `Failed to start the engine: failed to obtain the BGPTools IP address` となり、
   `amass enum` は 60 秒でタイムアウトする（`amass engine` を単体起動すると生のエラーが見える）。
