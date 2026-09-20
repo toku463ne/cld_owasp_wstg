@@ -23,8 +23,11 @@ WSTG の Test Objectives:
 2. `theHarvester -d target.co.jp -b duckduckgo,crtsh,otx,hackertarget -p -f theharvester.xml && mv theharvester.xml theharvester.json evidence/<活動フォルダ>/artifacts/` で露出メール・サブドメイン・ホストを収集（`-p` は /etc/theHarvester/proxies.yaml のプロキシを使う指定。プロキシ不要の環境では外す。4.11 は -f のパスを無視してカレントに .xml/.json を書くので mv で artifacts/ へ移す。`-b all` で全ソース）
 3. theHarvester が 0 件だったら、各ソースの疎通を単体で確認して「本当に何も無い」のか「収集に失敗した」のかを切り分ける: `curl -s 'https://crt.sh/?q=%25.target.co.jp&output=json' -o evidence/<活動フォルダ>/artifacts/crtsh.json` と `curl -s 'https://api.hackertarget.com/hostsearch/?q=target.co.jp' -o evidence/<活動フォルダ>/artifacts/hackertarget-hosts.txt`。JSON やホスト一覧が返るならソースは生きている＝theHarvester 側の問題なので、この2ファイルを収集結果として採用する（OTX は `https://otx.alienvault.com/api/v1/indicators/domain/target.co.jp/passive_dns` だが匿名アクセス不可で API キーが要る）
 4. crt.sh（`https://crt.sh/?q=%25.target.co.jp`）と `subfinder -d target.co.jp -all -proxy "$https_proxy" -o evidence/<活動フォルダ>/artifacts/subfinder.txt` で公開・失念サブドメインを列挙（`-all` は無料ソースを総当り。subfinder は環境変数のプロキシを見ないので `-proxy` を明示する。プロキシ不要の環境では `-proxy` を外す）
-5. Google と Bing で次の dork を1本ずつ回す。各 dork は狙いが違うので、クエリ・結果（件数 or `該当なし`）・スクショを **1本ずつ** 記録する（`did not match any documents` = そのdorkでは露出が見つからなかった＝この観点は問題なし）: ① `site:target.co.jp ext:xls OR ext:pdf OR ext:conf` … インデックスされた業務/設定ファイルの露出 / ② `intitle:index.of site:target.co.jp` … ディレクトリ一覧（オープンディレクトリ）の露出 / ③ `inurl:admin site:target.co.jp` … 管理画面・管理系パスの露出 / ④ `site:target.co.jp "error" OR "exception"` … エラー/スタックトレースの露出。4本すべて `該当なし` なら dork 観点は pass、1本でも機微なヒットがあれば fail 側の材料
-6. 上記④のうち **ヒットがあったもの** の URL・スニペットを artifacts/dorking-hits.md に1行ずつ記録し、機微情報を含む行に [creds]/[internal] 等のタグを付ける。さらに Wayback Machine（web.archive.org）で、今は消えている旧版に①〜④の露出が残っていないか確認する（過去に出ていたものは削除依頼の対象）
+5. dork① 業務/設定ファイルの露出: `site:target.co.jp ext:xls OR ext:pdf OR ext:conf` をブラウザで検索（.doc/.docx/.xlsx/.csv/.bak/.sql 等も同様に）。Google と Bing の両方で検索し、結果（件数 or `該当なし`）とスクショを記録する（`did not match any documents` = このdorkでは露出なし＝問題なし）。ヒットがあれば URL・スニペットを artifacts/dorking-hits.md に記録し [creds]/[internal] 等のタグを付ける
+6. dork② ディレクトリ一覧（オープンディレクトリ）の露出: `intitle:index.of site:target.co.jp` を検索。Google と Bing の両方で検索し、結果（件数 or `該当なし`）とスクショを記録する（`did not match any documents` = このdorkでは露出なし＝問題なし）。ヒットがあれば URL・スニペットを artifacts/dorking-hits.md に記録し [creds]/[internal] 等のタグを付ける
+7. dork③ 管理画面・管理系パスの露出: `inurl:admin site:target.co.jp` を検索（`login`/`phpmyadmin`/`wp-admin` 等でも同様に）。Google と Bing の両方で検索し、結果（件数 or `該当なし`）とスクショを記録する（`did not match any documents` = このdorkでは露出なし＝問題なし）。ヒットがあれば URL・スニペットを artifacts/dorking-hits.md に記録し [creds]/[internal] 等のタグを付ける
+8. dork④ エラー/スタックトレースの露出: `site:target.co.jp "error" OR "exception" OR "stack trace"` を検索。Google と Bing の両方で検索し、結果（件数 or `該当なし`）とスクショを記録する（`did not match any documents` = このdorkでは露出なし＝問題なし）。ヒットがあれば URL・スニペットを artifacts/dorking-hits.md に記録し [creds]/[internal] 等のタグを付ける
+9. dork①〜④の総合判定と過去分の確認: 4本すべて `該当なし` なら dork 観点は pass、1本でも機微なヒットがあれば fail 側の材料。加えて Wayback Machine（web.archive.org）で、今は消えている旧版に①〜④の露出が残っていないか確認する（過去に出ていたものは削除依頼の対象）
 
 ## 使用ツール
 
@@ -34,6 +37,7 @@ WSTG の Test Objectives:
 - crt.sh
 - subfinder
 - Google/Bing dorking
+- ブラウザ
 - Wayback Machine
 
 ## 判定基準（pass / fail の見分け）
