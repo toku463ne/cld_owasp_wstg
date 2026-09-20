@@ -95,8 +95,11 @@ sudo curl -sI https://github.com | head -1
   プロキシが github を通さない環境では、ラッパーではなく amass 本体を直接実行して
   このチェックを飛ばす（`head -40 "$(command -v amass)"` で本体のパスを確認）。
   libpostal は住所パース用で `enum -passive` のサブドメイン列挙には要らない
-- **theHarvester** は `/etc/theHarvester/proxies.yaml`（`http: ["proxy.example.local:3128"]`）を
-  読むが、**`-p` を付けたときだけ**有効
+- **theHarvester は環境変数を見ない**（内部の aiohttp が `trust_env` を有効にしていない）。
+  `/etc/theHarvester/proxies.yaml` に `http:` のリストでプロキシを書き、**`-p` を付けて実行する**。
+  付け忘れると全ソースが0件になり（crtsh は `Expected object or value`）、
+  「何も無い」と見分けがつかない。起動時の `Read proxies.yaml from ...` は `-p` の有無に
+  関わらず出るので、動作証拠にならない
 - **Burp 経由**にするなら `https_proxy=http://127.0.0.1:8080`（Burp CA を入れていなければ `curl -k`）
 - **DNS とポートスキャンはプロキシを通らない**。`dig` / `nmap` の名前解決・スキャンは直接出るので、
   そこが塞がっているならプロキシとは別に経路の手当てが要る
