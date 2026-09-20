@@ -72,13 +72,29 @@ Acquire::https::Proxy "$PROXY";
 EOF
 git config --global http.proxy "$PROXY"
 printf 'proxy = %s\n' "$PROXY" >> ~/.curlrc
-echo 'Defaults env_keep += "http_proxy https_proxy no_proxy HTTP_PROXY HTTPS_PROXY NO_PROXY"' \
-  | sudo tee /etc/sudoers.d/proxy
 
-curl -sI https://crt.sh | head -1   # 疎通確認
+# sudo は既定で環境変数を捨てる（env_reset）。内部で sudo を呼ぶツール用に必須
+echo "Defaults env_keep += \"http_proxy https_proxy ftp_proxy no_proxy HTTP_PROXY HTTPS_PROXY NO_PROXY\"" \
+  | sudo tee /etc/sudoers.d/proxy
+sudo chmod 440 /etc/sudoers.d/proxy
+sudo visudo -c                      # 構文チェック（壊すと sudo が使えなくなるので必ず）
+
+# 保険: root 側にも直接持たせる（sudo 経由の curl が env を見ない実装のとき）
+printf 'proxy = %s\n' "$PROXY" | sudo tee /root/.curlrc >/dev/null
+sudo chmod 600 /root/.curlrc
+
+curl -sI https://crt.sh | head -1   # 疎通確認（一般ユーザ）
+sudo env | grep -i proxy            # 疎通確認（sudo に環境変数が渡っているか）
+sudo curl -sI https://github.com | head -1
 ```
 
 - **`sudo` は環境変数を落とす**。`sudo -E nmap ...` で実行するか、上の `env_keep` を入れる
+- **amass は内部で `sudo` を呼ぶ**。Kali のラッパーが起動時に libpostal データを
+  `sudo curl` で github から取りに行くため、`env_keep` が無いと必ずここで固まる
+  （`curl: (28) Failed to connect to github.com:443` + `[sudo] password for ...`）。
+  プロキシが github を通さない環境では、ラッパーではなく amass 本体を直接実行して
+  このチェックを飛ばす（`head -40 "$(command -v amass)"` で本体のパスを確認）。
+  libpostal は住所パース用で `enum -passive` のサブドメイン列挙には要らない
 - **theHarvester** は `/etc/theHarvester/proxies.yaml`（`http: ["proxy.example.local:3128"]`）を
   読むが、**`-p` を付けたときだけ**有効
 - **Burp 経由**にするなら `https_proxy=http://127.0.0.1:8080`（Burp CA を入れていなければ `curl -k`）
