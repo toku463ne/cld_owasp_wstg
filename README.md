@@ -48,6 +48,47 @@ uv を入れられない会社PC では `pip install pyyaml` して `python scri
 原文が無くても、`matrix/wstg_tests.yaml` と `playbooks/` は生成済みなので
 日々の運用（アクティビティ作成〜CSV 出力）は動く。原文が要るのは再生成のときだけ。
 
+## プロキシ配下での準備
+
+社内プロキシ越しに検査する場合、`amass` / `theHarvester` / `curl` などが外に出られずに
+「0 件」と見分けのつかない失敗をする。実施前に環境変数を通しておく。
+
+```bash
+PROXY="http://proxy.example.local:3128"   # 認証ありなら http://user:pass@host:port
+NOPROXY="localhost,127.0.0.1,::1,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,.local"
+
+# 大文字しか見ないツール（Go 製の amass / httpx など）があるので両方入れる
+cat >> ~/.bashrc <<EOF
+export http_proxy=$PROXY https_proxy=$PROXY ftp_proxy=$PROXY
+export HTTP_PROXY=\$http_proxy HTTPS_PROXY=\$https_proxy
+export no_proxy=$NOPROXY NO_PROXY=$NOPROXY
+EOF
+. ~/.bashrc && env | grep -i proxy
+
+# root / apt / git / curl は別に要る
+sudo tee /etc/apt/apt.conf.d/95proxy >/dev/null <<EOF
+Acquire::http::Proxy "$PROXY";
+Acquire::https::Proxy "$PROXY";
+EOF
+git config --global http.proxy "$PROXY"
+printf 'proxy = %s\n' "$PROXY" >> ~/.curlrc
+echo 'Defaults env_keep += "http_proxy https_proxy no_proxy HTTP_PROXY HTTPS_PROXY NO_PROXY"' \
+  | sudo tee /etc/sudoers.d/proxy
+
+curl -sI https://crt.sh | head -1   # 疎通確認
+```
+
+- **`sudo` は環境変数を落とす**。`sudo -E nmap ...` で実行するか、上の `env_keep` を入れる
+- **theHarvester** は `/etc/theHarvester/proxies.yaml`（`http: ["proxy.example.local:3128"]`）を
+  読むが、**`-p` を付けたときだけ**有効
+- **Burp 経由**にするなら `https_proxy=http://127.0.0.1:8080`（Burp CA を入れていなければ `curl -k`）
+- **DNS とポートスキャンはプロキシを通らない**。`dig` / `nmap` / `amass` の名前解決は直接出るので、
+  そこが塞がっているならプロキシとは別に経路の手当てが要る
+- **検査対象が社内 IP のときは `no_proxy` に入れる**（入れないとプロキシに飛んで失敗する）
+
+ツールが 0 件を返したときは、まず疎通を疑う。「何も無い」と「収集に失敗した」は別で、
+後者を `pass` にしてはいけない（`playbooks/WSTG-INFO-01.md` の疎通確認の手順を参照）。
+
 ## 日々の流れ
 
 `TASKS.md` を上から消化していく。1本のアクティビティで踏むのは 1〜2、

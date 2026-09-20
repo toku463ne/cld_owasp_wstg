@@ -196,6 +196,10 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
     w("- [ ] `uv sync` — Python 環境を用意（uv が無い会社PCでは `pip install pyyaml`）")
     w("- [ ] `./scripts/selftest.sh` — ツールが動くことを確認")
     w("- [ ] （原文を読みたいとき）`./scripts/fetch_wstg.sh`")
+    w("- [ ] プロキシ配下なら外向き疎通を確認: `env | grep -i proxy` と "
+      "`curl -sI https://crt.sh | head -1`")
+    w("      - 通らないなら README「プロキシ配下での準備」を先に済ませる"
+      "（`sudo` は `-E` か `env_keep`、DNS はプロキシを通らない）")
     w("- 実施できるアクティビティ ID の一覧: `uv run scripts/new_activity.py`（引数なし）")
     w("- 複数サイトを回すときは各アクティビティで `--target <site>` を付ける")
     w("")

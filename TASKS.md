@@ -13,6 +13,8 @@
 - [ ] `uv sync` — Python 環境を用意（uv が無い会社PCでは `pip install pyyaml`）
 - [ ] `./scripts/selftest.sh` — ツールが動くことを確認
 - [ ] （原文を読みたいとき）`./scripts/fetch_wstg.sh`
+- [ ] プロキシ配下なら外向き疎通を確認: `env | grep -i proxy` と `curl -sI https://crt.sh | head -1`
+      - 通らないなら README「プロキシ配下での準備」を先に済ませる（`sudo` は `-E` か `env_keep`、DNS はプロキシを通らない）
 - 実施できるアクティビティ ID の一覧: `uv run scripts/new_activity.py`（引数なし）
 - 複数サイトを回すときは各アクティビティで `--target <site>` を付ける
 
