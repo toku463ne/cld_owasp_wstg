@@ -32,8 +32,8 @@ WSTG-INFO-01:
     - "`theHarvester -d target.co.jp -b duckduckgo,crtsh,otx,hackertarget -p -f theharvester.xml && mv theharvester.xml theharvester.json OUTDIR/` で露出メール・サブドメイン・ホストを収集（`-p` は /etc/theHarvester/proxies.yaml のプロキシを使う指定。プロキシ不要の環境では外す。4.11 は -f のパスを無視してカレントに .xml/.json を書くので mv で artifacts/ へ移す。`-b all` で全ソース）"
     - "theHarvester が 0 件だったら、各ソースの疎通を単体で確認して「本当に何も無い」のか「収集に失敗した」のかを切り分ける: `curl -s 'https://crt.sh/?q=%25.target.co.jp&output=json' -o OUTDIR/crtsh.json` と `curl -s 'https://api.hackertarget.com/hostsearch/?q=target.co.jp' -o OUTDIR/hackertarget-hosts.txt`。JSON やホスト一覧が返るならソースは生きている＝theHarvester 側の問題なので、この2ファイルを収集結果として採用する（OTX は `https://otx.alienvault.com/api/v1/indicators/domain/target.co.jp/passive_dns` だが匿名アクセス不可で API キーが要る）"
     - "crt.sh（`https://crt.sh/?q=%25.target.co.jp`）と `subfinder -d target.co.jp -all -proxy \"$https_proxy\" -o OUTDIR/subfinder.txt` で公開・失念サブドメインを列挙（`-all` は無料ソースを総当り。subfinder は環境変数のプロキシを見ないので `-proxy` を明示する。プロキシ不要の環境では `-proxy` を外す）"
-    - "Google/Bing で dork を回す: `site:target.co.jp ext:xls OR ext:pdf OR ext:conf`・`intitle:index.of`・`inurl:admin`・`\"error\"|\"exception\"`。Wayback Machine（web.archive.org）で消えた旧版も確認"
-    - "ヒットした URL・スニペットを artifacts/dorking-hits.md に記録し、機微情報を含む行に [creds]/[internal] 等のタグを付ける"
+    - "Google と Bing で次の dork を1本ずつ回す。各 dork は狙いが違うので、クエリ・結果（件数 or `該当なし`）・スクショを **1本ずつ** 記録する（`did not match any documents` = そのdorkでは露出が見つからなかった＝この観点は問題なし）: ① `site:target.co.jp ext:xls OR ext:pdf OR ext:conf` … インデックスされた業務/設定ファイルの露出 / ② `intitle:index.of site:target.co.jp` … ディレクトリ一覧（オープンディレクトリ）の露出 / ③ `inurl:admin site:target.co.jp` … 管理画面・管理系パスの露出 / ④ `site:target.co.jp \"error\" OR \"exception\"` … エラー/スタックトレースの露出。4本すべて `該当なし` なら dork 観点は pass、1本でも機微なヒットがあれば fail 側の材料"
+    - "上記④のうち **ヒットがあったもの** の URL・スニペットを artifacts/dorking-hits.md に1行ずつ記録し、機微情報を含む行に [creds]/[internal] 等のタグを付ける。さらに Wayback Machine（web.archive.org）で、今は消えている旧版に①〜④の露出が残っていないか確認する（過去に出ていたものは削除依頼の対象）"
 
 WSTG-INFO-02:
   purpose: "Web サーバの種類とバージョンがどこまで外部から判別できるかを確認する。"
