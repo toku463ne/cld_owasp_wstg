@@ -48,6 +48,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
 - apt: `sudo apt install -y awscli curl dirsearch dnsutils dnsx ffuf gobuster httpx-toolkit ncat nikto nmap ripgrep sslyze testssl.sh wget whatweb`
+- 個別: `sudo npm install -g retire`
 - 個別: `go install github.com/haccer/subjack@latest`
 - Kali 同梱 / Burp 内（導入不要）: Burp Repeater, Burp Suite
 

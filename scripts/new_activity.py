@@ -49,7 +49,7 @@ CLI_BINARIES = {
     "ffuf", "gobuster",
     "sqlmap", "testssl.sh", "sslyze", "nikto", "whatweb", "httpx", "dig", "nslookup",
     "ncat", "nc", "hydra", "dotdotpwn", "wfuzz", "retire", "git-dumper", "aws",
-    "padbuster",
+    "padbuster", "grep",
 }
 
 
@@ -100,8 +100,9 @@ def extract_commands(steps: list, target: str | None) -> list:
     """手順の `backtick` から、実際に走らせる CLI コマンドだけを抜き出す。
 
     採用条件（いずれか）:
-      - 先頭語が CLI_BINARIES に含まれ、かつ target を参照している
-        （`curl` 単独のような不完全な言及や、dork/ペイロードの backtick を除く）
+      - 先頭語が CLI_BINARIES に含まれ、かつ target か OUTDIR（＝出力先）を参照している
+        （`curl` 単独のような不完全な言及や、dork/ペイロードの backtick を除く。
+        OUTDIR を書く grep 等の後処理コマンドもここで拾う）
       - 先頭語が for/while のループで、本体に CLI バイナリが現れ、
         target か OUTDIR（＝出力先）を参照している（サブドメインの一括処理など）
     """
@@ -114,7 +115,7 @@ def extract_commands(steps: list, target: str | None) -> list:
                 continue
             low = span.lower()
             binary = toks[0].split("/")[-1].lower()
-            if binary in CLI_BINARIES and "target" in low:
+            if binary in CLI_BINARIES and ("target" in low or "OUTDIR" in span):
                 cmds.append(sub_target(span, target))
             elif binary in LOOP_KEYWORDS and ("target" in low or "OUTDIR" in span) \
                     and any(re.search(rf"\b{re.escape(b)}\b", low) for b in CLI_BINARIES):

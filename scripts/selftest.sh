@@ -99,6 +99,11 @@ grep -qF -- "\$ while read -r h; do echo" "${REC}" \
   || ng "for/while ループが $ 実行コマンドとして拾われていない"
 grep -qF -- "wc -l ${TDIR}/artifacts/cname-check.txt" "${REC}" \
   || ng "ループの tee 出力先に確認コマンドが付いていない"
+# target を含まず OUTDIR に書く後処理コマンド（grep 等）も $ 実行として拾うこと（CONF-10 #2）
+grep -qF -- "\$ grep -iaE" "${REC}" \
+  || ng "OUTDIR に書く grep 後処理コマンドが $ 実行として拾われていない"
+grep -qF -- "tee ${TDIR}/artifacts/takeover-candidates.md" "${REC}" \
+  || ng "grep の tee 出力先が artifacts/ に置換されていない"
 # 各手順に「結果に何を貼るか」の指示があること（手動/ブラウザを含む）
 [ "$(grep -c "^> 貼るもの: " "${REC}")" -ge 5 ] \
   || ng "各手順に「貼るもの:」の指示が入っていない"
