@@ -45,7 +45,8 @@ ARTIFACT_TEMPLATES = REPO_ROOT / "templates" / "artifacts"
 # GUI（Burp 等）は対象外。判定は「先頭語が CLI で、かつ target を参照している」こと
 # （`curl` 単独のような不完全な言及を除くため）。
 CLI_BINARIES = {
-    "whois", "theharvester", "amass", "nmap", "curl", "wget", "ffuf", "gobuster",
+    "whois", "theharvester", "amass", "subfinder", "nmap", "curl", "wget",
+    "ffuf", "gobuster",
     "sqlmap", "testssl.sh", "sslyze", "nikto", "whatweb", "httpx", "dig", "nslookup",
     "ncat", "nc", "hydra", "dotdotpwn", "wfuzz", "retire", "git-dumper", "aws",
     "padbuster",

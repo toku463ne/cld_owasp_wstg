@@ -12,7 +12,7 @@
 
 | activity_id | 概要 | 主なツール | primary | secondary |
 |---|---|---|---|---|
-| `recon-osint` | 外部 OSINT・公開情報の収集 | theHarvester, crt.sh, whois, Google/Bing dorking, amass | WSTG-INFO-01 | WSTG-CONF-10 |
+| `recon-osint` | 外部 OSINT・公開情報の収集 | theHarvester, crt.sh, whois, Google/Bing dorking, subfinder | WSTG-INFO-01 | WSTG-CONF-10 |
 | `fingerprint-stack` | サーバ・フレームワークのフィンガープリント | nmap -sV, whatweb, Wappalyzer, httpx | WSTG-INFO-02, WSTG-INFO-08 | WSTG-CONF-01, WSTG-CONF-02 |
 | `tls-scan` | TLS 設定スキャン | testssl.sh, sslyze, nmap --script ssl-enum-ciphers | WSTG-CRYP-01, WSTG-CONF-07 | WSTG-CONF-01 |
 | `http-methods` | HTTP メソッドの列挙と検証 | curl, nmap http-methods NSE, ncat, Burp Repeater | WSTG-CONF-06 | WSTG-INPV-03 |
@@ -207,7 +207,7 @@
 
 検索エンジン・証明書透明性ログ・whois から、対象の公開露出面とサブドメインを洗い出す。
 
-- ツール: theHarvester, crt.sh, whois, Google/Bing dorking, amass
+- ツール: theHarvester, crt.sh, whois, Google/Bing dorking, subfinder
 - 想定成果物: `artifacts/subdomains.txt`, `artifacts/dorking-hits.md`, `cmd/whois.txt`
 - カバー:
   - WSTG-INFO-01 (primary) Conduct Search Engine Discovery Reconnaissance for Information Leakage — 検索エンジンに残った情報漏えいの有無

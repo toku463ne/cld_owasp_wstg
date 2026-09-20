@@ -43,7 +43,8 @@ DONE, DOING, TODO = "完了", "実施中", "未着手"
 # 分類は「小文字化した完全一致」→「先頭トークン一致」の順で引く。
 APT_PKG = {
     "whois": "whois", "dig": "dnsutils", "nslookup": "dnsutils",
-    "theharvester": "theharvester", "amass": "amass", "nmap": "nmap",
+    "theharvester": "theharvester", "amass": "amass", "subfinder": "subfinder",
+    "nmap": "nmap",
     "ncat": "ncat", "nc": "netcat-traditional", "curl": "curl", "wget": "wget",
     "ffuf": "ffuf", "gobuster": "gobuster", "dirsearch": "dirsearch",
     "sqlmap": "sqlmap", "nikto": "nikto", "whatweb": "whatweb",

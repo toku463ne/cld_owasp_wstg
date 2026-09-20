@@ -50,7 +50,7 @@ activities:
     depends_on: []
     impact: low
     summary: 検索エンジン・証明書透明性ログ・whois から、対象の公開露出面とサブドメインを洗い出す。
-    tools: [theHarvester, "crt.sh", whois, "Google/Bing dorking", amass]
+    tools: [theHarvester, "crt.sh", whois, "Google/Bing dorking", subfinder]
     outputs: [artifacts/subdomains.txt, artifacts/dorking-hits.md, cmd/whois.txt]
     covers:
       - {id: WSTG-INFO-01, role: primary, note: "検索エンジンに残った情報漏えいの有無"}

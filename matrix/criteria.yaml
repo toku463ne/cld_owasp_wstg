@@ -26,12 +26,12 @@ WSTG-INFO-01:
   purpose: "検索エンジンや公開アーカイブに、対象組織が意図せず晒した情報が残っていないかを確認する。"
   pass: "検索結果に機微情報（資格情報・内部URL・設定ファイル・個人情報）が出てこない。"
   fail: "dork でヒットした結果に、内部ホスト名・エラーメッセージ・認証情報・非公開ドキュメントが含まれる。"
-  note: "キャッシュにしか残っていない場合も指摘対象。削除依頼（Search Console 等）まで助言する。theHarvester は -f を付けないと画面と ~/.local/share/theHarvester/stash.sqlite にしか残らない。4.11 は -f のパスを os.path.basename で切ってカレントに書く（サブフォルダ指定は無視）ため、上の手順は生成後に mv で artifacts/ へ移す。crt.sh は API 不調で \"Expected object or value\" が出ることがある（その時はブラウザで https://crt.sh/?q=%25.target.co.jp を確認）。「何も出ない」ことと「スキャンに失敗した」ことは別。ソースごとの成否（例: crtsh の例外）を見て、成功した上で無ければ pass、失敗しているなら再実行する。実測では theHarvester が全ソース0件でも crt.sh / hackertarget は curl だと普通に返ることがある（上の疎通確認の手順）。その場合は curl の結果を収集結果として採用し、theHarvester の空 XML/JSON を「情報なし」の根拠にしない。hackertarget は無料枠の日次上限に当たると本文が API count exceeded になる。OTX は匿名アクセス不可なので、使うなら /etc/theHarvester/api-keys.yaml に API キーを入れる。amass v5 は engine 常駐型で、起動時に bgp.tools を自前のリゾルバ（公開 DNS）で解決する。外向き UDP/53 が塞がれた環境（プロキシ必須の社内網など）では \"failed to obtain the BGPTools IP address\" で engine が起動せず、enum は 60 秒でタイムアウトする（v5.1.1 の config.yaml にリゾルバ指定は無く、amass engine -h にも -r は無い）。その環境では amass を諦めて手順3の crt.sh / hackertarget を採用してよい。record.md にはエラーをそのまま貼り、「amass は engine エラーのため未使用」と理由を残す（ツールが動かないことは所見ではない）。"
+  note: "キャッシュにしか残っていない場合も指摘対象。削除依頼（Search Console 等）まで助言する。theHarvester は -f を付けないと画面と ~/.local/share/theHarvester/stash.sqlite にしか残らない。4.11 は -f のパスを os.path.basename で切ってカレントに書く（サブフォルダ指定は無視）ため、上の手順は生成後に mv で artifacts/ へ移す。crt.sh は API 不調で \"Expected object or value\" が出ることがある（その時はブラウザで https://crt.sh/?q=%25.target.co.jp を確認）。「何も出ない」ことと「スキャンに失敗した」ことは別。ソースごとの成否（例: crtsh の例外）を見て、成功した上で無ければ pass、失敗しているなら再実行する。実測では theHarvester が全ソース0件でも crt.sh / hackertarget は curl だと普通に返ることがある（上の疎通確認の手順）。その場合は curl の結果を収集結果として採用し、theHarvester の空 XML/JSON を「情報なし」の根拠にしない。hackertarget は無料枠の日次上限に当たると本文が API count exceeded になる。OTX は匿名アクセス不可なので、使うなら /etc/theHarvester/api-keys.yaml に API キーを入れる。サブドメイン列挙は amass から subfinder に差し替えてある。amass v5 は engine 常駐型で、起動時に bgp.tools を自前のリゾルバ（公開 DNS）で解決するため、外向き UDP/53 が塞がれた環境（プロキシ必須の社内網など）では \"failed to obtain the BGPTools IP address\" で engine が起動せず、enum は 60 秒でタイムアウトする（v5.1.1 の config.yaml にリゾルバ指定は無く、amass engine -h にも -r は無い）。subfinder は HTTPS の API だけで完結するのでこの制約を受けない。それでもツールが起動しないときは手順3の crt.sh / hackertarget を採用してよい。record.md にはエラーをそのまま貼り、「<ツール名> はエラーのため未使用」と理由を残す（ツールが動かないことは所見ではない）。"
   steps:
     - "`whois target.co.jp` で組織名・登録者・ネームサーバを確認し、名寄せの起点にする"
     - "`theHarvester -d target.co.jp -b duckduckgo,crtsh,otx,hackertarget -f theharvester.xml && mv theharvester.xml theharvester.json OUTDIR/` で露出メール・サブドメイン・ホストを収集（4.11 は -f のパスを無視してカレントに .xml/.json を書くので mv で artifacts/ へ移す。`-b all` で全ソース）"
     - "theHarvester が 0 件だったら、各ソースの疎通を単体で確認して「本当に何も無い」のか「収集に失敗した」のかを切り分ける: `curl -s 'https://crt.sh/?q=%25.target.co.jp&output=json' -o OUTDIR/crtsh.json` と `curl -s 'https://api.hackertarget.com/hostsearch/?q=target.co.jp' -o OUTDIR/hackertarget-hosts.txt`。JSON やホスト一覧が返るならソースは生きている＝theHarvester 側の問題なので、この2ファイルを収集結果として採用する（OTX は `https://otx.alienvault.com/api/v1/indicators/domain/target.co.jp/passive_dns` だが匿名アクセス不可で API キーが要る）"
-    - "crt.sh（`https://crt.sh/?q=%25.target.co.jp`）と `amass enum -passive -d target.co.jp -o OUTDIR/amass-passive.txt` で公開・失念サブドメインを列挙"
+    - "crt.sh（`https://crt.sh/?q=%25.target.co.jp`）と `subfinder -d target.co.jp -all -o OUTDIR/subfinder.txt` で公開・失念サブドメインを列挙（subfinder は API 主体で HTTPS_PROXY を見るためプロキシ配下でも動く。`-all` は無料ソースを総当り）"
     - "Google/Bing で dork を回す: `site:target.co.jp ext:xls OR ext:pdf OR ext:conf`・`intitle:index.of`・`inurl:admin`・`\"error\"|\"exception\"`。Wayback Machine（web.archive.org）で消えた旧版も確認"
     - "ヒットした URL・スニペットを artifacts/dorking-hits.md に記録し、機微情報を含む行に [creds]/[internal] 等のタグを付ける"
 
@@ -228,7 +228,7 @@ WSTG-CONF-10:
   fail: "解放済みのホスティング先を指す CNAME/A があり、第三者が同名リソースを取得して掌握できる。"
   note: "実際の乗っ取りは行わない。到達性とエラー応答（NoSuchBucket 等）で判断し、証拠として記録する。"
   steps:
-    - "サブドメインを列挙（`amass`/`crt.sh`）し、各 CNAME を `dig CNAME sub.target.co.jp` で確認"
+    - "サブドメインを列挙（`subfinder`/`crt.sh`）し、各 CNAME を `dig CNAME sub.target.co.jp` で確認"
     - "CNAME 先が未登録のクラウドサービス（S3/GitHub Pages/Heroku 等）を指していないか確認"
     - "疑わしいものはサービスの「該当リソースが存在しない」旨のエラー画面が出るかで判定"
     - "乗っ取り可能性がある場合も実際の取得は行わず、CNAME と応答を証跡に留める"

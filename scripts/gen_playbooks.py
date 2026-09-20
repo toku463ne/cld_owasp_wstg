@@ -86,7 +86,8 @@ def condense_steps(how_to_test: str) -> list[str]:
 # 「## 使用ツール」を手順から機械的に導出する（手順に出ないツールは載せない）。
 # 正規表現は小文字化した手順テキストに対して照合する。上から順に評価する。
 TOOL_PATTERNS = [
-    (r"theharvester", "theHarvester"), (r"crt\.sh", "crt.sh"), (r"\bamass\b", "amass"),
+    (r"theharvester", "theHarvester"), (r"crt\.sh", "crt.sh"),
+    (r"subfinder", "subfinder"), (r"\bamass\b", "amass"),
     (r"\bwhois\b", "whois"), (r"\bnslookup\b", "nslookup"), (r"\bdig\b", "dig"),
     (r"wayback|web\.archive", "Wayback Machine"), (r"\bdork|site:", "Google/Bing dorking"),
     (r"\bcurl\b", "curl"), (r"\bwget\b", "wget"), (r"\bnmap\b", "nmap"),

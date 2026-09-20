@@ -86,8 +86,8 @@ grep -q "^\$ whois ex.test" "${REC}" && grep -q "\[コマンド\]" "${REC}" && g
 grep -q "OUTDIR" "${REC}" && ng "record.md に OUTDIR プレースホルダが残っている" || true
 grep -qF -- "mv theharvester.xml theharvester.json ${TDIR}/artifacts/" "${REC}" \
   || ng "theHarvester の出力を artifacts/ へ移す手順になっていない"
-grep -qF -- "-o ${TDIR}/artifacts/amass-passive.txt" "${REC}" \
-  || ng "複数コマンドの出力先が artifacts/ に置換されていない（amass）"
+grep -qF -- "-o ${TDIR}/artifacts/subfinder.txt" "${REC}" \
+  || ng "複数コマンドの出力先が artifacts/ に置換されていない（subfinder）"
 # record.md 単体で判定できるよう、目的と pass/fail 基準が各セクションに埋まっていること
 grep -q "^- 目的: " "${REC}" && grep -q "^- 判定基準 pass = " "${REC}" \
   || ng "record.md に判定基準（目的・pass/fail）が埋め込まれていない"

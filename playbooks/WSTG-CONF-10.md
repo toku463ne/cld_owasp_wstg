@@ -20,14 +20,14 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. サブドメインを列挙（`amass`/`crt.sh`）し、各 CNAME を `dig CNAME sub.target.co.jp` で確認
+1. サブドメインを列挙（`subfinder`/`crt.sh`）し、各 CNAME を `dig CNAME sub.target.co.jp` で確認
 2. CNAME 先が未登録のクラウドサービス（S3/GitHub Pages/Heroku 等）を指していないか確認
 3. 疑わしいものはサービスの「該当リソースが存在しない」旨のエラー画面が出るかで判定
 4. 乗っ取り可能性がある場合も実際の取得は行わず、CNAME と応答を証跡に留める
 
 ## 使用ツール
 
-- amass
+- subfinder
 - crt.sh
 - dig
 

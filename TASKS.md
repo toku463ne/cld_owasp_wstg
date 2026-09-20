@@ -26,7 +26,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 対象に触れずに分かることを集め、以降のスコープと入力を確定させる。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y amass curl dnsutils theharvester whois`
+- apt: `sudo apt install -y curl dnsutils subfinder theharvester whois`
 
 ### 1. `recon-osint` — 外部 OSINT・公開情報の収集
 
@@ -36,7 +36,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 - カード: [WSTG-INFO-01](playbooks/WSTG-INFO-01.md), [WSTG-CONF-10](playbooks/WSTG-CONF-10.md)
 
 - [ ] `uv run scripts/new_activity.py recon-osint` で `record.md`（実施記録）を作る（複数サイトは `--target <site>`）
-- [ ] `record.md` の各手順（2 項目・theHarvester, crt.sh, whois, Google/Bing dorking, amass）を実施し、コマンド出力や画面の観察を「結果:」に貼る ← このファイルがエビデンス本体
+- [ ] `record.md` の各手順（2 項目・theHarvester, crt.sh, whois, Google/Bing dorking, subfinder）を実施し、コマンド出力や画面の観察を「結果:」に貼る ← このファイルがエビデンス本体
       - `[コマンド]` は `$` 行を実行、`[手動/ブラウザ]` は指示どおり操作
       - 直接実行して `cmd/` にも残したいときは `uv run scripts/run_cmd.py evidence/recon-osint-<yyyymmdd> -- <コマンド>`
 - [ ] `record.md` に WSTG-ID ごとの `@verdict`（pass|fail|info|na|todo）と `@finding`（要約のみ）を記入

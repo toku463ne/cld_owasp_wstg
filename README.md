@@ -98,14 +98,15 @@ sudo curl -sI https://github.com | head -1
 - **theHarvester** は `/etc/theHarvester/proxies.yaml`（`http: ["proxy.example.local:3128"]`）を
   読むが、**`-p` を付けたときだけ**有効
 - **Burp 経由**にするなら `https_proxy=http://127.0.0.1:8080`（Burp CA を入れていなければ `curl -k`）
-- **DNS とポートスキャンはプロキシを通らない**。`dig` / `nmap` / `amass` の名前解決は直接出るので、
+- **DNS とポートスキャンはプロキシを通らない**。`dig` / `nmap` の名前解決・スキャンは直接出るので、
   そこが塞がっているならプロキシとは別に経路の手当てが要る
-- **amass v5 は外向き UDP/53 が無いと起動しない**。engine が起動時に bgp.tools を
+- **amass v5 は外向き UDP/53 が無いと起動しない**（このため手順は `subfinder` に差し替えてある。
+  subfinder は HTTPS の API だけで完結するのでプロキシ配下でも動く）。engine が起動時に bgp.tools を
   自前のリゾルバ（公開 DNS）で解決するため、53 が塞がれた社内網では
   `Failed to start the engine: failed to obtain the BGPTools IP address` となり、
   `amass enum` は 60 秒でタイムアウトする（`amass engine` を単体起動すると生のエラーが見える）。
-  v5.1.1 にリゾルバを差し替える設定は無いので、その環境では amass を使わず
-  crt.sh / hackertarget（`playbooks/WSTG-INFO-01.md` の手順3）で代替する。
+  v5.1.1 にリゾルバを差し替える設定は無い。amass をどうしても使いたい場合以外は
+  `subfinder` と crt.sh / hackertarget（`playbooks/WSTG-INFO-01.md` の手順3）で足りる。
   どうしても要るなら公開 DNS 宛を社内 DNS へ DNAT する手はあるが、DNS の挙動を
   歪めるので amass を回す間だけにし、戻したことを記録に残す
 - **検査対象が社内 IP のときは `no_proxy` に入れる**（入れないとプロキシに飛んで失敗する）
