@@ -26,7 +26,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 対象に触れずに分かることを集め、以降のスコープと入力を確定させる。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y curl dnsutils subfinder theharvester whois`
+- apt: `sudo apt install -y bind9-dnsutils curl subfinder theharvester whois`
 
 ### 1. `recon-osint` — 外部 OSINT・公開情報の収集
 
@@ -47,7 +47,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 外から見えるサービス・設定・残骸を洗い出す。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y awscli curl dirsearch dnsutils ffuf gobuster httpx-toolkit ncat nikto nmap ripgrep sslyze testssl.sh wget whatweb`
+- apt: `sudo apt install -y awscli bind9-dnsutils curl dirsearch ffuf gobuster httpx-toolkit ncat nikto nmap ripgrep sslyze testssl.sh wget whatweb`
 - 個別: `sudo apt install -y npm && sudo npm install -g retire`
 - Kali 同梱 / Burp 内（導入不要）: Burp Repeater, Burp Suite
 
@@ -59,7 +59,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 - カード: [WSTG-INFO-02](playbooks/WSTG-INFO-02.md), [WSTG-INFO-08](playbooks/WSTG-INFO-08.md), [WSTG-CONF-01](playbooks/WSTG-CONF-01.md), [WSTG-CONF-02](playbooks/WSTG-CONF-02.md)
 
 - [ ] `uv run scripts/new_activity.py fingerprint-stack` で `record.md`（実施記録）を作る（複数サイトは `--target <site>`）
-- [ ] `record.md` の各手順（4 項目・nmap -sV, whatweb, Wappalyzer, httpx）を実施し、コマンド出力や画面の観察を「結果:」に貼る ← このファイルがエビデンス本体
+- [ ] `record.md` の各手順（4 項目・nmap -sV, whatweb, Wappalyzer, httpx-toolkit）を実施し、コマンド出力や画面の観察を「結果:」に貼る ← このファイルがエビデンス本体
       - `[コマンド]` は `$` 行を実行、`[手動/ブラウザ]` は指示どおり操作
       - 直接実行して `cmd/` にも残したいときは `uv run scripts/run_cmd.py evidence/fingerprint-stack-<yyyymmdd> -- <コマンド>`
 - [ ] `record.md` に WSTG-ID ごとの `@verdict`（pass|fail|info|na|todo）と `@finding`（要約のみ）を記入
@@ -360,10 +360,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 洗い出した入力点に対して注入系・クライアント側の検証を行う。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y curl interactsh padbuster sqlmap testssl.sh`
+- apt: `sudo apt install -y curl padbuster sqlmap testssl.sh`
 - 個別: `sudo apt install -y npm && sudo npm install -g retire`
 - 個別: `sudo apt install -y npm && sudo npm install -g wscat`
-- 個別: `git clone https://github.com/epinna/tplmap`
+- 個別: `sudo apt install -y golang-go && go install github.com/projectdiscovery/interactsh/cmd/interactsh-client@latest && export PATH="$PATH:$(go env GOPATH)/bin"`
 - Kali 同梱 / Burp 内（導入不要）: Burp Collaborator, Burp HTTP Request Smuggler, Burp Intruder, Burp Suite, DOM Invader, InQL
 
 ### 22. `xss-probe` — XSS・HTML インジェクションの検証
@@ -416,7 +416,7 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
 - カード: [WSTG-INPV-05](playbooks/WSTG-INPV-05.md), [WSTG-INPV-06](playbooks/WSTG-INPV-06.md), [WSTG-INPV-07](playbooks/WSTG-INPV-07.md), [WSTG-INPV-08](playbooks/WSTG-INPV-08.md), [WSTG-INPV-09](playbooks/WSTG-INPV-09.md), [WSTG-INPV-10](playbooks/WSTG-INPV-10.md), [WSTG-INPV-11](playbooks/WSTG-INPV-11.md), [WSTG-INPV-12](playbooks/WSTG-INPV-12.md), [WSTG-INPV-13](playbooks/WSTG-INPV-13.md), [WSTG-INPV-18](playbooks/WSTG-INPV-18.md), [WSTG-ERRH-01](playbooks/WSTG-ERRH-01.md)
 
 - [ ] `uv run scripts/new_activity.py injection-fuzz-server` で `record.md`（実施記録）を作る（複数サイトは `--target <site>`）
-- [ ] `record.md` の各手順（11 項目・Burp Intruder, sqlmap, tplmap, 手動 payload）を実施し、コマンド出力や画面の観察を「結果:」に貼る ← このファイルがエビデンス本体
+- [ ] `record.md` の各手順（11 項目・Burp Intruder, sqlmap, 手動 payload）を実施し、コマンド出力や画面の観察を「結果:」に貼る ← このファイルがエビデンス本体
       - `[コマンド]` は `$` 行を実行、`[手動/ブラウザ]` は指示どおり操作
       - 直接実行して `cmd/` にも残したいときは `uv run scripts/run_cmd.py evidence/injection-fuzz-server-<yyyymmdd> -- <コマンド>`
 - [ ] `record.md` に WSTG-ID ごとの `@verdict`（pass|fail|info|na|todo）と `@finding`（要約のみ）を記入
@@ -444,7 +444,7 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - カード: [WSTG-INPV-19](playbooks/WSTG-INPV-19.md)
 
 - [ ] `uv run scripts/new_activity.py ssrf-probe` で `record.md`（実施記録）を作る（複数サイトは `--target <site>`）
-- [ ] `record.md` の各手順（1 項目・Burp Collaborator, interactsh, curl）を実施し、コマンド出力や画面の観察を「結果:」に貼る ← このファイルがエビデンス本体
+- [ ] `record.md` の各手順（1 項目・curl, interactsh-client, Burp Collaborator）を実施し、コマンド出力や画面の観察を「結果:」に貼る ← このファイルがエビデンス本体
       - `[コマンド]` は `$` 行を実行、`[手動/ブラウザ]` は指示どおり操作
       - 直接実行して `cmd/` にも残したいときは `uv run scripts/run_cmd.py evidence/ssrf-probe-<yyyymmdd> -- <コマンド>`
 - [ ] `record.md` に WSTG-ID ごとの `@verdict`（pass|fail|info|na|todo）と `@finding`（要約のみ）を記入

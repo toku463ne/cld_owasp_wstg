@@ -63,7 +63,7 @@ activities:
     depends_on: [recon-osint]
     impact: low
     summary: ポート/サービス/ヘッダ/既知の指紋から、OS・Web サーバ・ミドルウェア・アプリ基盤を特定する。
-    tools: ["nmap -sV", whatweb, Wappalyzer, httpx]
+    tools: ["nmap -sV", whatweb, Wappalyzer, httpx-toolkit]
     outputs: [cmd/nmap-sv.txt, cmd/whatweb.txt, artifacts/stack-summary.md]
     covers:
       - {id: WSTG-INFO-02, role: primary}
@@ -386,7 +386,7 @@ activities:
     depends_on: [burp-crawl-authn]
     impact: high
     summary: 収集済みエントリポイントに対し、SQL/LDAP/XML/SSI/XPath/IMAP-SMTP/コード/コマンド/書式文字列/SSTI を横断的に試す。
-    tools: [Burp Intruder, sqlmap, tplmap, 手動 payload]
+    tools: [Burp Intruder, sqlmap, 手動 payload]
     outputs: [cmd/sqlmap.txt, artifacts/injection-findings.md]
     covers:
       - {id: WSTG-INPV-05, role: primary}
@@ -423,7 +423,7 @@ activities:
     depends_on: [burp-crawl-authn]
     impact: medium
     summary: URL・ホスト名・ファイル参照を受けるパラメータを列挙し、外向き/内向きの到達性を確認する。
-    tools: [Burp Collaborator, "interactsh", curl]
+    tools: [curl, "interactsh-client", Burp Collaborator]
     outputs: [artifacts/ssrf-findings.md, cmd/ssrf-probe.txt]
     covers:
       - {id: WSTG-INPV-19, role: primary}

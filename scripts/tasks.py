@@ -37,13 +37,13 @@ DONE, DOING, TODO = "完了", "実施中", "未着手"
 
 # ツール名 → Kali でのセットアップ。フェーズ単位で「未導入分の apt」を案内するため。
 #   APT_PKG … `sudo apt install -y <pkg...>` にまとめる
-#   OTHER   … apt 以外（pipx / npm / git）。個別コマンドをそのまま出す。Kali 標準で入らない
-#             ランタイム（go 等）を要するツールは避け、apt/pipx/npm で入るもので置き換える
+#   OTHER   … apt 以外（pipx / npm / go / git）。個別コマンドをそのまま出す。ランタイム
+#             （npm / go）は Kali 既定イメージに無いので、その導入も含めて1行で出す
 #   BUILTIN … Kali 同梱 or Burp 内（インストール不要。名前だけ挙げる）
 #   MANUAL  … 手動・ブラウザ・ヒアリング等（インストール不要）
 # 分類は「小文字化した完全一致」→「先頭トークン一致」の順で引く。
 APT_PKG = {
-    "whois": "whois", "dig": "dnsutils", "nslookup": "dnsutils",
+    "whois": "whois", "dig": "bind9-dnsutils", "nslookup": "bind9-dnsutils",
     "theharvester": "theharvester", "amass": "amass", "subfinder": "subfinder",
     "nmap": "nmap",
     "ncat": "ncat", "nc": "netcat-traditional", "curl": "curl", "wget": "wget",
@@ -51,18 +51,32 @@ APT_PKG = {
     "sqlmap": "sqlmap", "nikto": "nikto", "whatweb": "whatweb",
     "testssl.sh": "testssl.sh", "sslyze": "sslyze", "hydra": "hydra",
     "dotdotpwn": "dotdotpwn", "wfuzz": "wfuzz", "padbuster": "padbuster",
-    "httpx": "httpx-toolkit", "dnsx": "dnsx", "interactsh": "interactsh",
+    "httpx": "httpx-toolkit", "httpx-toolkit": "httpx-toolkit", "dnsx": "dnsx",
+    "subjack": "subjack",
     "aws": "awscli", "awscli": "awscli", "grep/ripgrep": "ripgrep",
 }
+# nmap / ncat / nikto は 2025 年の nmap ライセンス変更で main → non-free に移った。
+# Kali 既定の sources.list（main contrib non-free non-free-firmware）ならそのまま入るが、
+# main だけに絞った社内ミラーでは「Unable to locate package nmap」になる。
 # npm 系は Kali 既定イメージに npm が無く `sudo: npm: command not found` で止まるため、
 # apt での導入まで含めて1行で出す。
 NPM_I = "sudo apt install -y npm && sudo npm install -g"
+# go 系も同様。`go install` の出力先（~/go/bin）は既定の PATH に無いので併せて案内する。
+GO_I = "sudo apt install -y golang-go && go install"
+GO_PATH = 'export PATH="$PATH:$(go env GOPATH)/bin"'
 OTHER_CMD = {
     "retire": f"{NPM_I} retire", "retire.js": f"{NPM_I} retire",
     "git-dumper": "pipx install git-dumper",
-    "tplmap": "git clone https://github.com/epinna/tplmap",
     "wscat": f"{NPM_I} wscat",
+    # interactsh は Kali にパッケージが無い（apt install interactsh は失敗する）。
+    "interactsh": (f"{GO_I} github.com/projectdiscovery/interactsh/cmd/"
+                   f"interactsh-client@latest && {GO_PATH}"),
+    "interactsh-client": (f"{GO_I} github.com/projectdiscovery/interactsh/cmd/"
+                          f"interactsh-client@latest && {GO_PATH}"),
 }
+# Kali の burpsuite パッケージは Community 版。Burp Collaborator と
+# Burp HTTP Request Smuggler は Professional が要る（Community では使えない）ので、
+# 該当手順は curl / 自前の外部受信先や手動確認で代替する前提で書く。
 BUILTIN = {
     "burp suite", "burp collaborator", "burp http request smuggler", "burp intruder",
     "burp repeater", "burp sequencer", "dom invader", "inql", "autorize / authmatrix",

@@ -13,7 +13,7 @@
 | activity_id | 概要 | 主なツール | primary | secondary |
 |---|---|---|---|---|
 | `recon-osint` | 外部 OSINT・公開情報の収集 | theHarvester, crt.sh, whois, Google/Bing dorking, subfinder | WSTG-INFO-01 | WSTG-CONF-10 |
-| `fingerprint-stack` | サーバ・フレームワークのフィンガープリント | nmap -sV, whatweb, Wappalyzer, httpx | WSTG-INFO-02, WSTG-INFO-08 | WSTG-CONF-01, WSTG-CONF-02 |
+| `fingerprint-stack` | サーバ・フレームワークのフィンガープリント | nmap -sV, whatweb, Wappalyzer, httpx-toolkit | WSTG-INFO-02, WSTG-INFO-08 | WSTG-CONF-01, WSTG-CONF-02 |
 | `tls-scan` | TLS 設定スキャン | testssl.sh, sslyze, nmap --script ssl-enum-ciphers | WSTG-CRYP-01, WSTG-CONF-07 | WSTG-CONF-01 |
 | `http-methods` | HTTP メソッドの列挙と検証 | curl, nmap http-methods NSE, ncat, Burp Repeater | WSTG-CONF-06 | WSTG-INPV-03 |
 | `headers-review` | レスポンスヘッダ一括精査（匿名 + 認証済み） | curl, Burp Suite, securityheaders.io 相当の手動チェック | WSTG-SESS-02, WSTG-CONF-07, WSTG-CLNT-09, WSTG-ATHN-06, WSTG-CLNT-07 | WSTG-CRYP-03 |
@@ -35,9 +35,9 @@
 | `xss-probe` | XSS・HTML インジェクションの検証 | Burp Suite, DOM Invader, 手動 payload | WSTG-INPV-01, WSTG-INPV-02, WSTG-CLNT-01, WSTG-CLNT-03 | — |
 | `clientside-js-review` | クライアントサイド JS のシンク・ストレージレビュー | ブラウザ開発者ツール, DOM Invader, Retire.js, Burp Suite | WSTG-CLNT-02, WSTG-CLNT-04, WSTG-CLNT-05, WSTG-CLNT-06, WSTG-CLNT-11, WSTG-CLNT-12, WSTG-CLNT-13 | — |
 | `cors-websocket-check` | CORS と WebSocket の検証 | curl, Burp Suite, wscat | WSTG-CLNT-07, WSTG-CLNT-10 | — |
-| `injection-fuzz-server` | サーバサイド・インジェクション系の一括ファジング | Burp Intruder, sqlmap, tplmap, 手動 payload | WSTG-INPV-05, WSTG-INPV-06, WSTG-INPV-07, WSTG-INPV-08, WSTG-INPV-09, WSTG-INPV-10, WSTG-INPV-11, WSTG-INPV-12, WSTG-INPV-13, WSTG-INPV-18 | WSTG-ERRH-01 |
+| `injection-fuzz-server` | サーバサイド・インジェクション系の一括ファジング | Burp Intruder, sqlmap, 手動 payload | WSTG-INPV-05, WSTG-INPV-06, WSTG-INPV-07, WSTG-INPV-08, WSTG-INPV-09, WSTG-INPV-10, WSTG-INPV-11, WSTG-INPV-12, WSTG-INPV-13, WSTG-INPV-18 | WSTG-ERRH-01 |
 | `http-request-tamper` | HTTP リクエスト改変系の検証 | Burp Suite, Burp HTTP Request Smuggler, curl | WSTG-INPV-04, WSTG-INPV-15, WSTG-INPV-16, WSTG-INPV-17 | — |
-| `ssrf-probe` | SSRF の検証 | Burp Collaborator, interactsh, curl | WSTG-INPV-19 | — |
+| `ssrf-probe` | SSRF の検証 | curl, interactsh-client, Burp Collaborator | WSTG-INPV-19 | — |
 | `error-handling-review` | エラーハンドリングのレビュー | Burp Suite, curl, 手動 | WSTG-ERRH-01 | WSTG-ERRH-02, WSTG-INFO-05 |
 | `crypto-review` | 暗号利用のレビュー（パディングオラクル・弱い暗号・平文送出） | padbuster, testssl.sh, Burp Suite, 手動レビュー | WSTG-CRYP-02, WSTG-CRYP-03, WSTG-CRYP-04 | — |
 | `business-logic-walkthrough` | 業務ロジックの通し検証 | Burp Suite, 手動操作, 業務仕様書 | WSTG-BUSL-01, WSTG-BUSL-02, WSTG-BUSL-03, WSTG-BUSL-04, WSTG-BUSL-05, WSTG-BUSL-06, WSTG-BUSL-07, WSTG-INPV-14 | — |
@@ -217,7 +217,7 @@
 
 ポート/サービス/ヘッダ/既知の指紋から、OS・Web サーバ・ミドルウェア・アプリ基盤を特定する。
 
-- ツール: nmap -sV, whatweb, Wappalyzer, httpx
+- ツール: nmap -sV, whatweb, Wappalyzer, httpx-toolkit
 - 想定成果物: `cmd/nmap-sv.txt`, `cmd/whatweb.txt`, `artifacts/stack-summary.md`
 - カバー:
   - WSTG-INFO-02 (primary) Fingerprint Web Server
@@ -472,7 +472,7 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
 
 収集済みエントリポイントに対し、SQL/LDAP/XML/SSI/XPath/IMAP-SMTP/コード/コマンド/書式文字列/SSTI を横断的に試す。
 
-- ツール: Burp Intruder, sqlmap, tplmap, 手動 payload
+- ツール: Burp Intruder, sqlmap, 手動 payload
 - 想定成果物: `cmd/sqlmap.txt`, `artifacts/injection-findings.md`
 - カバー:
   - WSTG-INPV-05 (primary) Testing for SQL Injection
@@ -503,7 +503,7 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
 
 URL・ホスト名・ファイル参照を受けるパラメータを列挙し、外向き/内向きの到達性を確認する。
 
-- ツール: Burp Collaborator, interactsh, curl
+- ツール: curl, interactsh-client, Burp Collaborator
 - 想定成果物: `artifacts/ssrf-findings.md`, `cmd/ssrf-probe.txt`
 - カバー:
   - WSTG-INPV-19 (primary) Testing for Server-Side Request Forgery
