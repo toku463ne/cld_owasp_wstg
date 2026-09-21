@@ -137,21 +137,41 @@ def main() -> int:
         print("[capture] record.md にまだ記入がありません（@verdict / @finding / 結果を埋めてください）。")
         return 0
 
+    # 「結果は貼ったが @verdict が todo のまま」は更新対象に入るが run.yaml は変わらない。
+    # 件数をまとめて出すと「反映済み」に見えてしまうので、未記入は分けて出す。
+    pending = [wid for wid, verdict, finding, _ in updates
+               if verdict in (None, "todo") and not finding]
     for wid, verdict, finding, ev in updates:
-        mark = verdict or "（判定未記入）"
-        print(f"  {wid}: verdict={mark}  finding={'有' if finding else '—'}")
+        if wid in pending:
+            print(f"  {wid}: 判定未記入（結果のみ）")
+        else:
+            print(f"  {wid}: verdict={verdict or 'todo'}  finding={'有' if finding else '—'}")
 
     if args.dry_run:
-        print(f"[capture] dry-run: covers {len(updates)} 件を更新予定")
+        print(f"[capture] dry-run: covers {len(updates)} 件を反映予定"
+              f"（うち判定未記入 {len(pending)} 件）")
         return 0
 
-    text = run_yaml.read_text(encoding="utf-8")
+    original = run_yaml.read_text(encoding="utf-8")
+    text = original
     for wid, verdict, finding, ev in updates:
         text = set_cover(text, wid, verdict, finding, ev)
-    run_yaml.write_text(text, encoding="utf-8")
+    if text != original:
+        run_yaml.write_text(text, encoding="utf-8")
 
-    print(f"[capture] run.yaml の covers を {len(updates)} 件更新しました（evidence → {rel}）。")
-    print("  次: uv run scripts/export_checklist.py  で CSV に反映（目視レビュー後に共有）")
+    decided = [wid for wid, *_ in updates if wid not in pending]
+    if decided:
+        print(f"[capture] run.yaml の covers を {len(decided)} 件更新しました（evidence → {rel}）。")
+    elif text != original:
+        print(f"[capture] 転記する判定はありません（evidence → {rel} を記録しただけです）。")
+    else:
+        print("[capture] run.yaml に変更はありませんでした。")
+    if pending:
+        print(f"  判定未記入: {', '.join(pending)}")
+        print(f"  → {record} の各 WSTG-ID 末尾の @verdict（pass|fail|info|na）と @finding を記入して、"
+              "もう一度実行してください（todo のままでは CSV も未実施のままです）。")
+    if decided:
+        print("  次: uv run scripts/export_checklist.py  で CSV に反映（目視レビュー後に共有）")
     return 0
 
 

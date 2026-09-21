@@ -53,12 +53,15 @@ APT_PKG = {
     "httpx": "httpx-toolkit", "dnsx": "dnsx", "interactsh": "interactsh",
     "aws": "awscli", "awscli": "awscli", "grep/ripgrep": "ripgrep",
 }
+# npm 系は Kali 既定イメージに npm が無く `sudo: npm: command not found` で止まるため、
+# apt での導入まで含めて1行で出す。
+NPM_I = "sudo apt install -y npm && sudo npm install -g"
 OTHER_CMD = {
-    "retire": "sudo npm install -g retire", "retire.js": "sudo npm install -g retire",
+    "retire": f"{NPM_I} retire", "retire.js": f"{NPM_I} retire",
     "git-dumper": "pipx install git-dumper",
     "subjack": "go install github.com/haccer/subjack@latest",
     "tplmap": "git clone https://github.com/epinna/tplmap",
-    "wscat": "sudo npm install -g wscat",
+    "wscat": f"{NPM_I} wscat",
 }
 BUILTIN = {
     "burp suite", "burp collaborator", "burp http request smuggler", "burp intruder",

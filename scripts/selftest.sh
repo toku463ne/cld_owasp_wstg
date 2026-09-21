@@ -116,6 +116,35 @@ grep -q "^- 目的: " "${REC}" && grep -q "^- 判定基準 pass = " "${REC}" \
 # Markdown の見出しは「表題・WSTG-ID・手順/判定」だけ（注釈が見出しとして強調されない）
 grep -E "^#" "${REC}" | grep -vE "^(# 実施記録 |## WSTG-|### )" \
   && ng "record.md の注釈が見出し（#）になっている" || true
+# 判定の書き方は role 別（secondary に pass を勧めない・primary には info/na も案内する）
+awk '/^## WSTG-INFO-01 /{f=1} /^## WSTG-CONF-10 /{f=0} f&&/^上の pass\/fail 基準で判定する。/{ok=1} END{exit !ok}' \
+  "${REC}" || ng "primary の判定コメントに pass/info/na の案内が無い"
+awk '/^## WSTG-CONF-10 /{f=1} f&&/secondary（入力・補強）/{ok=1} END{exit !ok}' "${REC}" \
+  || ng "secondary の cover に role 別の判定コメントが出ていない"
+awk '/^## WSTG-CONF-10 /{f=1} f&&/^上の pass\/fail 基準で判定する。/{bad=1} END{exit bad}' "${REC}" \
+  || ng "secondary に「無所見なら pass」系の案内が出ている（primary 未実施でも CSV が pass になる）"
+grep -q "^- 役割: secondary" "${REC}" || ng "secondary の cover に役割の注記が無い"
+ok "判定コメントが role 別（secondary で pass を勧めない）"
+
+# 結果だけ貼って判定未記入なら、run.yaml は変わらず「未記入」と案内されること
+"${PY[@]}" - "${REC}" <<'PENDEOF'
+import sys
+p=sys.argv[1]; t=open(p).read()
+t=t.replace("結果:\n```\n```", "結果:\n```\n(pending)\n```", 1)
+open(p,"w").write(t)
+PENDEOF
+"${PY[@]}" scripts/capture.py "${TDIR}" > "${TMP}/capture1.txt"
+grep -q "判定未記入" "${TMP}/capture1.txt" || ng "判定未記入が「更新しました」に紛れている"
+grep -q "更新しました" "${TMP}/capture1.txt" && ng "判定を転記していないのに更新件数を報告している" || true
+grep -q "export_checklist" "${TMP}/capture1.txt" && ng "未記入のまま CSV 出力を勧めている" || true
+"${PY[@]}" -c "
+import yaml
+c={x['id']:x for x in yaml.safe_load(open('${TDIR}/run.yaml'))['covers']}
+assert c['WSTG-INFO-01']['verdict']=='todo', '未記入なのに verdict が動いた'
+assert c['WSTG-INFO-01']['evidence']=='record.md', 'evidence の記録だけは入る'
+" || ng "結果のみの取り込みで covers が想定外に変わる"
+ok "capture: 結果のみ（判定未記入）は判定を動かさず、次の一手を案内"
+
 # 実施者の記入を模擬（結果を貼り、verdict/finding を記入）して capture
 "${PY[@]}" - "${REC}" <<'PYEOF'
 import sys
@@ -203,6 +232,10 @@ grep -q "^\*\*準備（このフェーズで使う Kali ツール" TASKS.md \
   && grep -Eq "apt install -y .*whois" TASKS.md \
   || ng "フェーズ単位の Kali ツール準備が TASKS.md に出ていない"
 ok "フェーズ単位の Kali ツール準備（apt 一括）"
+# npm 系は Kali に npm が無いので、apt での導入まで案内に含める
+grep -qF "sudo apt install -y npm && sudo npm install -g retire" TASKS.md \
+  || ng "npm 系ツールの案内に npm の導入が含まれていない（sudo: npm: command not found になる）"
+ok "npm 系ツールは apt 前提込みで案内"
 "${PY[@]}" scripts/tasks.py --root "${TMP}/ev" > "${TMP}/progress.txt" || ng "進捗表示が落ちる"
 grep -q "次にやること" "${TMP}/progress.txt" || ng "次にやることが出ない"
 grep -q "実施中\|完了" "${TMP}/progress.txt" || ng "進捗が反映されない"

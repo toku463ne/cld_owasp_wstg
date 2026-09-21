@@ -222,6 +222,7 @@ def render_record(activity: dict, tests: dict, criteria: dict, target: str | Non
     ]
     for cov in activity.get("covers", []):
         wid = cov["id"]
+        role = cov.get("role", "primary")
         title = tests.get(wid, {}).get("title", "")
         c = criteria.get(wid, {})
         steps = c.get("steps", [])
@@ -233,6 +234,8 @@ def render_record(activity: dict, tests: dict, criteria: dict, target: str | Non
         if c.get("pass") or c.get("fail"):
             out.append(f"- 判定基準 pass = {c.get('pass', '（カード参照）')}")
             out.append(f"- 判定基準 fail = {c.get('fail', '（カード参照）')}")
+        if role == "secondary":
+            out.append("- 役割: secondary（このアクティビティは入力の収集。確定判定は別アクティビティ）")
         out.append("- scope はヘッダの target。上の基準で下の結果を見て末尾の `@verdict` を決める。")
         if not steps:
             out += ["", "（手順未登録。カードを参照して実施し、結果を書く）"]
@@ -253,9 +256,23 @@ def render_record(activity: dict, tests: dict, criteria: dict, target: str | Non
             else:
                 out += ["", HINT_MANUAL]
             out += ["", "結果:", "```", "```"]
+        # 判定の書き方は role で変わる。secondary（入力・補強）で pass を付けると、
+        # primary のアクティビティが未実施でも CSV が pass になってしまう
+        # （export_checklist.py は verdict が1件でもあれば初期値の todo を捨てる）。
+        if role == "secondary":
+            verdict_note = (
+                "この項目はここでは secondary（入力・補強）。**単独で pass にしない。**"
+                "収集できていれば info、その場で明確な問題が見えたときだけ fail、対象外は na。"
+                "pass/fail の確定は、この ID を primary に持つアクティビティで行う。未実施は todo のまま。"
+            )
+        else:
+            verdict_note = (
+                "上の pass/fail 基準で判定する。基準に触れる所見が無ければ pass、"
+                "結果は取れたが判断材料が足りなければ info、対象外なら na。未実施は todo のまま。"
+            )
         out += ["", "### 判定",
                 "",
-                "上の pass/fail 基準で。無所見なら pass、未実施は todo のまま。",
+                verdict_note,
                 "",
                 "@verdict todo",
                 "",
