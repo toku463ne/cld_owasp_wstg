@@ -47,9 +47,8 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 外から見えるサービス・設定・残骸を洗い出す。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y awscli curl dirsearch dnsutils dnsx ffuf gobuster httpx-toolkit ncat nikto nmap ripgrep sslyze testssl.sh wget whatweb`
+- apt: `sudo apt install -y awscli curl dirsearch dnsutils ffuf gobuster httpx-toolkit ncat nikto nmap ripgrep sslyze testssl.sh wget whatweb`
 - 個別: `sudo apt install -y npm && sudo npm install -g retire`
-- 個別: `go install github.com/haccer/subjack@latest`
 - Kali 同梱 / Burp 内（導入不要）: Burp Repeater, Burp Suite
 
 ### 2. `fingerprint-stack` — サーバ・フレームワークのフィンガープリント
@@ -144,7 +143,7 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 - カード: [WSTG-CONF-11](playbooks/WSTG-CONF-11.md), [WSTG-CONF-10](playbooks/WSTG-CONF-10.md)
 
 - [ ] `uv run scripts/new_activity.py cloud-and-takeover` で `record.md`（実施記録）を作る（複数サイトは `--target <site>`）
-- [ ] `record.md` の各手順（2 項目・curl, aws cli, subjack, dnsx）を実施し、コマンド出力や画面の観察を「結果:」に貼る ← このファイルがエビデンス本体
+- [ ] `record.md` の各手順（2 項目・dig, curl, grep, aws cli）を実施し、コマンド出力や画面の観察を「結果:」に貼る ← このファイルがエビデンス本体
       - `[コマンド]` は `$` 行を実行、`[手動/ブラウザ]` は指示どおり操作
       - 直接実行して `cmd/` にも残したいときは `uv run scripts/run_cmd.py evidence/cloud-and-takeover-<yyyymmdd> -- <コマンド>`
 - [ ] `record.md` に WSTG-ID ごとの `@verdict`（pass|fail|info|na|todo）と `@finding`（要約のみ）を記入

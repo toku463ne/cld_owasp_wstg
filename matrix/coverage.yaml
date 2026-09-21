@@ -210,7 +210,7 @@ activities:
     depends_on: [recon-osint]
     impact: medium
     summary: 公開バケット等のストレージ露出と、宙に浮いた DNS レコードによる乗っ取り可能性を確認する。
-    tools: [curl, "aws cli", subjack, dnsx]
+    tools: [dig, curl, grep, "aws cli"]
     outputs: [cmd/curl-bucket.txt, artifacts/dangling-dns.md]
     covers:
       - {id: WSTG-CONF-11, role: primary}

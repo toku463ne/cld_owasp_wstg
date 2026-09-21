@@ -37,7 +37,8 @@ DONE, DOING, TODO = "完了", "実施中", "未着手"
 
 # ツール名 → Kali でのセットアップ。フェーズ単位で「未導入分の apt」を案内するため。
 #   APT_PKG … `sudo apt install -y <pkg...>` にまとめる
-#   OTHER   … apt 以外（pipx / npm / go / git）。個別コマンドをそのまま出す
+#   OTHER   … apt 以外（pipx / npm / git）。個別コマンドをそのまま出す。Kali 標準で入らない
+#             ランタイム（go 等）を要するツールは避け、apt/pipx/npm で入るもので置き換える
 #   BUILTIN … Kali 同梱 or Burp 内（インストール不要。名前だけ挙げる）
 #   MANUAL  … 手動・ブラウザ・ヒアリング等（インストール不要）
 # 分類は「小文字化した完全一致」→「先頭トークン一致」の順で引く。
@@ -59,7 +60,6 @@ NPM_I = "sudo apt install -y npm && sudo npm install -g"
 OTHER_CMD = {
     "retire": f"{NPM_I} retire", "retire.js": f"{NPM_I} retire",
     "git-dumper": "pipx install git-dumper",
-    "subjack": "go install github.com/haccer/subjack@latest",
     "tplmap": "git clone https://github.com/epinna/tplmap",
     "wscat": f"{NPM_I} wscat",
 }

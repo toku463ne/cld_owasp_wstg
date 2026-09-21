@@ -23,7 +23,7 @@
 | `session-capture` | セッション取得とログイン/ログアウト解析 | Burp Suite, Burp Sequencer, curl | WSTG-SESS-01, WSTG-SESS-02, WSTG-SESS-03, WSTG-SESS-06, WSTG-SESS-07 | WSTG-SESS-09 |
 | `backup-unref` | 旧・バックアップ・未参照ファイルの探索 | ffuf, dirsearch, nikto | WSTG-CONF-03, WSTG-CONF-04 | — |
 | `server-config-review` | サーバ／プラットフォーム構成レビュー | 手動レビュー, ls -l / icacls, nikto, CIS Benchmark チェックリスト | WSTG-CONF-01, WSTG-CONF-02, WSTG-CONF-09 | — |
-| `cloud-and-takeover` | クラウドストレージ・サブドメイン乗っ取りの確認 | curl, aws cli, subjack, dnsx | WSTG-CONF-11, WSTG-CONF-10 | — |
+| `cloud-and-takeover` | クラウドストレージ・サブドメイン乗っ取りの確認 | dig, curl, grep, aws cli | WSTG-CONF-11, WSTG-CONF-10 | — |
 | `ria-legacy-check` | RIA クロスドメインポリシーとレガシー Flash の確認 | curl, 手動レビュー | WSTG-CONF-08, WSTG-CLNT-08 | — |
 | `identity-model-review` | ロール定義・登録・払い出しプロセスのレビュー | 手動レビュー, ヒアリング, Burp Suite | WSTG-IDNT-01, WSTG-IDNT-02, WSTG-IDNT-03, WSTG-IDNT-05 | — |
 | `account-enum-probe` | アカウント列挙とロックアウトの検証 | Burp Intruder, ffuf, curl | WSTG-IDNT-04, WSTG-ATHN-03 | WSTG-IDNT-05 |
@@ -332,7 +332,7 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 
 公開バケット等のストレージ露出と、宙に浮いた DNS レコードによる乗っ取り可能性を確認する。
 
-- ツール: curl, aws cli, subjack, dnsx
+- ツール: dig, curl, grep, aws cli
 - 想定成果物: `cmd/curl-bucket.txt`, `artifacts/dangling-dns.md`
 - カバー:
   - WSTG-CONF-11 (primary) Test Cloud Storage
