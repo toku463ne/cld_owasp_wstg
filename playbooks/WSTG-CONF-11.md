@@ -19,14 +19,16 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. アプリが参照するストレージ URL（`*.s3.amazonaws.com` / `*.blob.core.windows.net` 等）を JS/HTML から抽出
-2. バケット/コンテナに匿名アクセスできるか（`curl -s https://bucket.s3.amazonaws.com/`）確認
-3. 一覧・読み取り・書き込み（`aws s3 ls --no-sign-request` 相当）の可否を、許可範囲内で確認
+1. アプリが参照するストレージ URL を HTML/JS から抽出: `curl -s https://target/ -o evidence/<活動フォルダ>/artifacts/index.html; grep -oiE 'src="[^"]+\.js[^"]*' evidence/<活動フォルダ>/artifacts/index.html | sed -E 's/^src="//I' | while read -r j; do case "$j" in http*) curl -s "$j";; /*) curl -s "https://target$j";; *) curl -s "https://target/$j";; esac; done > evidence/<活動フォルダ>/artifacts/app-js.txt; grep -rhoiE 'https?://[A-Za-z0-9._-]+\.(s3[A-Za-z0-9.-]*\.amazonaws\.com|s3\.amazonaws\.com|blob\.core\.windows\.net|storage\.googleapis\.com)[A-Za-z0-9._~:/?#@!$&*+,;=%-]*' evidence/<活動フォルダ>/artifacts/index.html evidence/<活動フォルダ>/artifacts/app-js.txt | sort -u | tee evidence/<活動フォルダ>/artifacts/storage-urls.txt`。動的生成 URL は取りこぼすので、SPA では Burp/ZAP のサイトマップで補う
+2. 抽出した各ストレージのホストルートに匿名アクセスできるか確認: `while read -r u; do b=$(echo "$u" | sed -E 's#(https?://[^/]+).*#\1/#'); echo "===== $b ====="; curl -s -m 10 -o /dev/null -w 'code %{http_code}\n' "$b"; curl -s -m 10 "$b" | head -c 300; echo; done < evidence/<活動フォルダ>/artifacts/storage-urls.txt | tee evidence/<活動フォルダ>/artifacts/storage-anon.txt`。`ListBucketResult`/ディレクトリ一覧が返る、または 200 で中身が見えるものは匿名読取可
+3. S3 ホスト名からバケット名を割り出し、匿名で一覧できるか確認: `grep -oiE '[a-z0-9.-]+\.s3[a-z0-9.-]*\.amazonaws\.com' evidence/<活動フォルダ>/artifacts/storage-urls.txt | sed -E 's#\.s3.*##' | sort -u | while read -r b; do echo "===== $b ====="; aws s3 ls --no-sign-request "s3://$b" 2>&1 | head -20; done | tee evidence/<活動フォルダ>/artifacts/s3-list.txt`。書き込み可否（`aws s3 cp` 相当）は破壊的になり得るので、許可範囲を確認してから手動で試す
 4. 公開が業務上意図されたものか切り分け、意図しない公開のみ finding にする
 
 ## 使用ツール
 
 - curl
+- Burp Suite
+- OWASP ZAP
 - AWS CLI
 
 ## 判定基準（pass / fail の見分け）
