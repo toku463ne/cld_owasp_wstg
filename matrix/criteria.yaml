@@ -56,10 +56,10 @@ WSTG-INFO-03:
   fail: "robots.txt の Disallow が管理画面・バックアップ等の場所を教えている、または sitemap に非公開 URL が載っている。"
   note: "Disallow はクロール抑止であってアクセス制御ではない、という説明を必ず添える。"
   steps:
-    - "`curl -s https://target/robots.txt` `sitemap.xml` `.well-known/security.txt` を取得"
+    - "主要な公開ファイルを保存: `curl -s https://target/robots.txt -o OUTDIR/robots.txt; curl -s https://target/sitemap.xml -o OUTDIR/sitemap.xml; curl -s https://target/.well-known/security.txt -o OUTDIR/security.txt`"
     - "`curl -s https://target/.well-known/` 配下、`humans.txt`、`crossdomain.xml` も確認"
-    - "robots.txt の Disallow 行を1件ずつブラウザ/ curl で開き、非公開領域を指していないか見る"
-    - "sitemap に載る URL を認証なしで開き、非公開のはずの画面が列挙されていないか確認"
+    - "robots.txt の Disallow 行が指す領域が認証なしで開くか確認: `grep -i '^Disallow:' OUTDIR/robots.txt | awk '{print $2}' | while read -r pth; do echo \"$pth -> $(curl -s -o /dev/null -w '%{http_code}' https://target$pth)\"; done | tee OUTDIR/robots-disallow-check.txt`。200 が返る行＝認証なしで到達可能なので中身を精査（非公開のはずの領域なら finding）"
+    - "sitemap の URL が認証なしで開けるか確認: `grep -oiE '<loc>[^<]+' OUTDIR/sitemap.xml | sed -E 's#</?loc>##gI' | while read -r u; do echo \"$u -> $(curl -s -o /dev/null -w '%{http_code}' \"$u\")\"; done | tee OUTDIR/sitemap-check.txt`。非公開のはずの画面が 200 で列挙されていれば finding"
 
 WSTG-INFO-04:
   purpose: "同一ホスト・同一 IP 上に、対象アプリ以外のアプリや管理系インスタンスが同居していないかを洗い出す。"
@@ -112,7 +112,7 @@ WSTG-INFO-08:
   note: "フロント側のライブラリ（jQuery 等）は Retire.js で確認できる。Retire.js は実行時に github から脆弱性DB（jsrepository.json）を取りに行くため、プロキシ必須／外向き通信が絞られた環境では更新に失敗することがある（amass の libpostal と同じ構図）。`--path` は既にダウンロード済みのローカル JS を走査するので、DB さえ取得できれば対象への通信は不要。更新できないときは事前に DB を取得しておくか、下の NVD API での照合に回す。CMS・フレームワーク側の CVE 照合はブラウザ不要で、NVD の cpes/2.0（製品名+バージョン → cpeName）→ cves/2.0（cpeName → CVE 一覧）を curl で引く（API キー無しは 30 秒 5 リクエストまで。0 件の読み替えは WSTG-INFO-02 の note と同じ）。"
   steps:
     - "`whatweb --log-json=OUTDIR/whatweb.json https://target/` と ブラウザ拡張 Wappalyzer でフレームワーク/CMS を推定"
-    - "Cookie 名（`JSESSIONID`/`ASP.NET_SessionId`/`laravel_session` 等）・URL パス・ヘッダから基盤を特定"
+    - "応答ヘッダと Cookie を保存して基盤を推定: `curl -sD OUTDIR/headers.txt -o /dev/null https://target/ && grep -iE '^(set-cookie|x-powered-by|server|x-aspnet-version|x-generator):' OUTDIR/headers.txt`。Cookie 名（`JSESSIONID`=Java / `ASP.NET_SessionId`=.NET / `laravel_session`=Laravel / `ci_session`=CodeIgniter）・`X-Powered-By`・URL パスから基盤を特定"
     - "取得したフロント JS を `retire --path <JSフォルダ> --outputformat json --outputpath OUTDIR/retire.json`（Retire.js）で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認"
     - "手順1・2 で特定した CMS/フレームワークごとに CPE 名を引く（retire.js が CVE まで出したフロント JS は不要）: `curl -s --get --data-urlencode \"keywordSearch=wordpress 6.4.2\" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o OUTDIR/nvd-cpe-cms.json` → `jq -r '.totalResults, (.products[].cpe.cpeName)' OUTDIR/nvd-cpe-cms.json`"
     - "その cpeName で CVE を一覧し、finding にバージョン根拠（どこで判ったか）を添える: `curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0?virtualMatchString=cpe:2.3:a:wordpress:wordpress:6.4.2&resultsPerPage=100' -o OUTDIR/nvd-cve-cms.json` → `jq -r '.vulnerabilities[].cve | [.id, (.metrics.cvssMetricV31[0].cvssData.baseScore // \"-\" | tostring), .descriptions[0].value[0:100]] | @tsv' OUTDIR/nvd-cve-cms.json`"
@@ -123,8 +123,8 @@ WSTG-INFO-10:
   fail: "本来内部にあるべき構成要素（管理系 API・キャッシュ・DB 管理画面）が外部から直接見えている。"
   note: "構成推定はヒアリングと突き合わせる。推測のまま報告しない。"
   steps:
-    - "`curl -sI` の応答ヘッダ（`Via`/`X-Cache`/`Server`/`Set-Cookie` の LB 印）から中間装置を推定"
-    - "`traceroute`／TTL・応答差から WAF・CDN・リバースプロキシの有無を判断（WAF は不正入力への 403/406 で炙り出す）"
+    - "応答ヘッダを保存して中間装置の印を探す: `curl -sD OUTDIR/resp-headers.txt -o /dev/null https://target/ && grep -iE '^(via|x-cache|x-served-by|server|set-cookie|x-forwarded-for|cf-ray|x-varnish|x-amz-cf-id):' OUTDIR/resp-headers.txt`。ヒットしたヘッダ（`Via`/`X-Cache`=キャッシュ・LB、`cf-ray`=Cloudflare 等）から中間装置を推定"
+    - "経路上のホップを観測: `traceroute -w2 -q1 target | tee OUTDIR/traceroute.txt`（TTL・応答差から CDN/リバースプロキシの位置を推定）。WAF の有無は後続 INPV 系での不正入力への 403/406 で炙り出す"
     - "recon で得たサブドメイン・ポート一覧を突き合わせ、本来内部向けの装置が外から開いていないか見る: `api.`/`gw.`(API GW)、`cache.`/`varnish`・`X-Cache`ヘッダ(キャッシュ)、`8081`/`:9200`(Elasticsearch)・`:5601`(Kibana)・`:15672`(RabbitMQ)・`phpmyadmin`/`adminer`(DB管理)。`curl -sI` で 200/401 が返るものは露出。露出しているホスト:ポートと応答コードを artifacts に記録し、意図しない露出のみ finding に"
     - "推定した構成図を描き、ヒアリング結果と突き合わせて確定（推測のまま報告しない）"
 
@@ -147,7 +147,7 @@ WSTG-CONF-02:
   steps:
     - "定番パスを叩く: `curl -s https://target/{server-status,server-info,phpinfo.php,examples/,manual/,test/}`"
     - "ディレクトリリスティングを確認（`curl -s https://target/images/` 等で index が返るか）"
-    - "既定管理画面・サンプルアプリ（Tomcat `/manager`、`/docs` など）の有無を確認"
+    - "既定管理画面・サンプルアプリの有無を確認: `for pth in manager manager/html docs examples host-manager admin-console web-console; do echo \"$pth -> $(curl -s -o /dev/null -w '%{http_code}' https://target/$pth/)\"; done | tee OUTDIR/default-apps.txt`。200/401/403 が返るパスは存在（Tomcat `/manager` 等）。既定資格情報の可否は別途確認"
     - "不要機能が有効でないか応答で確認する: `curl -sI -X OPTIONS https://target/` の `Allow` 行に PUT/DELETE/TRACE が並ばないか、`Server`/`X-Powered-By` に余計なモジュール（`mod_status`・PHP等）が出ないか、`?debug=true`・`X-Debug` 系でデバッグ出力（スタック・SQL・変数ダンプ）が返らないか。有効な不要機能を artifacts に列挙し finding に"
 
 WSTG-CONF-03:
@@ -168,7 +168,7 @@ WSTG-CONF-04:
   note: ".git/config が取れたらリポジトリ全体を復元できる可能性がある。重大度は高く扱う。"
   steps:
     - "`ffuf -w wordlist -u https://target/FUZZ -e .bak,.old,.zip,.tar.gz,.swp,~ -o OUTDIR/ffuf-backup.json -of json` で旧版/バックアップを総当り"
-    - "既知ファイル名に付随する残骸（`login.php.bak` `.index.php.swp`）を狙って確認"
+    - "既知ファイルの残骸を狙って取得: `for f in login.php.bak .login.php.swp index.php~ config.php.bak .env.bak web.config.old; do echo \"$f -> $(curl -s -o /dev/null -w '%{http_code}' https://target/$f)\"; done | tee OUTDIR/backup-residue.txt`。200 で中身が返るものは取得して evidence に、要約のみ finding に"
     - "リポジトリメタデータ `curl -s https://target/.git/config` `/.svn/entries` を確認（取れたら重大）"
     - "`.git/` が取れる場合は git-dumper 等で復元可否を検証し、重大度・影響範囲を finding に明記"
 
@@ -179,7 +179,7 @@ WSTG-CONF-05:
   note: "パスを秘匿しているだけの状態は fail 寄り。列挙で見つかる時点で保護になっていない。"
   steps:
     - "`ffuf -w admin-wordlist -u https://target/FUZZ -o OUTDIR/ffuf-admin.json -of json`（`/admin /manager /wp-admin /phpmyadmin` 等）で管理画面を探索"
-    - "インフラ側管理（`nmap` で 8080/8443/9990/10000 等の管理ポート）も併せて確認"
+    - "インフラ側の管理ポートも確認: `nmap -Pn -sV -p8080,8443,9990,10000,7001,8161,9000,9090 -oN OUTDIR/nmap-mgmt.txt target`。open のポートの製品・バージョンを控え、管理コンソールなら手順3の認証確認へ"
     - "見つけた管理画面の認証（既定資格情報・接続元制限・MFA）を確認。既定資格情報は必ず試す"
     - "「パスを秘匿しているだけ」で列挙で出てくる状態は保護不十分として扱う"
 
@@ -190,7 +190,7 @@ WSTG-CONF-06:
   note: "OPTIONS の応答は自己申告にすぎない。実際に各メソッドを投げて確認する。"
   steps:
     - "`curl -sX OPTIONS https://target/ -i` で Allow ヘッダを確認（自己申告なので鵜呑みにしない）"
-    - "各メソッドを実際に投げる: `curl -sX PUT` `DELETE` `TRACE` `CONNECT` して応答コード・挙動を見る"
+    - "各メソッドを投げて応答コードを記録: `for m in OPTIONS TRACE PUT DELETE PATCH CONNECT; do echo \"$m -> $(curl -s -o /dev/null -w '%{http_code}' -X $m https://target/)\"; done | tee OUTDIR/http-methods.txt`。405/501 は拒否、200/204 で通るメソッド（特に PUT/DELETE/TRACE）は挙動を手順3で精査"
     - "`PUT` でファイル設置、`TRACE` で XST、任意メソッドで認可迂回ができないか検証"
     - "`X-HTTP-Method-Override: DELETE` 等のヘッダで本来拒否されるメソッドに化けられないか試す"
 

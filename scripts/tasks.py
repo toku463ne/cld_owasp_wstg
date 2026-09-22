@@ -54,7 +54,7 @@ APT_PKG = {
     "httpx": "httpx-toolkit", "httpx-toolkit": "httpx-toolkit", "dnsx": "dnsx",
     "subjack": "subjack",
     "aws": "awscli", "awscli": "awscli", "grep/ripgrep": "ripgrep",
-    "jq": "jq", "searchsploit": "exploitdb",
+    "jq": "jq", "searchsploit": "exploitdb", "traceroute": "traceroute",
 }
 # nmap / ncat / nikto は 2025 年の nmap ライセンス変更で main → non-free に移った。
 # Kali 既定の sources.list（main contrib non-free non-free-firmware）ならそのまま入るが、

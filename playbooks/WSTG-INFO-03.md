@@ -20,10 +20,10 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `curl -s https://target/robots.txt` `sitemap.xml` `.well-known/security.txt` を取得
+1. 主要な公開ファイルを保存: `curl -s https://target/robots.txt -o evidence/<活動フォルダ>/artifacts/robots.txt; curl -s https://target/sitemap.xml -o evidence/<活動フォルダ>/artifacts/sitemap.xml; curl -s https://target/.well-known/security.txt -o evidence/<活動フォルダ>/artifacts/security.txt`
 2. `curl -s https://target/.well-known/` 配下、`humans.txt`、`crossdomain.xml` も確認
-3. robots.txt の Disallow 行を1件ずつブラウザ/ curl で開き、非公開領域を指していないか見る
-4. sitemap に載る URL を認証なしで開き、非公開のはずの画面が列挙されていないか確認
+3. robots.txt の Disallow 行が指す領域が認証なしで開くか確認: `grep -i '^Disallow:' evidence/<活動フォルダ>/artifacts/robots.txt | awk '{print $2}' | while read -r pth; do echo "$pth -> $(curl -s -o /dev/null -w '%{http_code}' https://target$pth)"; done | tee evidence/<活動フォルダ>/artifacts/robots-disallow-check.txt`。200 が返る行＝認証なしで到達可能なので中身を精査（非公開のはずの領域なら finding）
+4. sitemap の URL が認証なしで開けるか確認: `grep -oiE '<loc>[^<]+' evidence/<活動フォルダ>/artifacts/sitemap.xml | sed -E 's#</?loc>##gI' | while read -r u; do echo "$u -> $(curl -s -o /dev/null -w '%{http_code}' "$u")"; done | tee evidence/<活動フォルダ>/artifacts/sitemap-check.txt`。非公開のはずの画面が 200 で列挙されていれば finding
 
 ## 使用ツール
 

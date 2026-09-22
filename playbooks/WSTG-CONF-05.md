@@ -20,7 +20,7 @@ WSTG の Test Objectives:
 ## 手順
 
 1. `ffuf -w admin-wordlist -u https://target/FUZZ -o evidence/<活動フォルダ>/artifacts/ffuf-admin.json -of json`（`/admin /manager /wp-admin /phpmyadmin` 等）で管理画面を探索
-2. インフラ側管理（`nmap` で 8080/8443/9990/10000 等の管理ポート）も併せて確認
+2. インフラ側の管理ポートも確認: `nmap -Pn -sV -p8080,8443,9990,10000,7001,8161,9000,9090 -oN evidence/<活動フォルダ>/artifacts/nmap-mgmt.txt target`。open のポートの製品・バージョンを控え、管理コンソールなら手順3の認証確認へ
 3. 見つけた管理画面の認証（既定資格情報・接続元制限・MFA）を確認。既定資格情報は必ず試す
 4. 「パスを秘匿しているだけ」で列挙で出てくる状態は保護不十分として扱う
 

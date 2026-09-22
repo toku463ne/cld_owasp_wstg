@@ -23,7 +23,7 @@ WSTG の Test Objectives:
 ## 手順
 
 1. `curl -sX OPTIONS https://target/ -i` で Allow ヘッダを確認（自己申告なので鵜呑みにしない）
-2. 各メソッドを実際に投げる: `curl -sX PUT` `DELETE` `TRACE` `CONNECT` して応答コード・挙動を見る
+2. 各メソッドを投げて応答コードを記録: `for m in OPTIONS TRACE PUT DELETE PATCH CONNECT; do echo "$m -> $(curl -s -o /dev/null -w '%{http_code}' -X $m https://target/)"; done | tee evidence/<活動フォルダ>/artifacts/http-methods.txt`。405/501 は拒否、200/204 で通るメソッド（特に PUT/DELETE/TRACE）は挙動を手順3で精査
 3. `PUT` でファイル設置、`TRACE` で XST、任意メソッドで認可迂回ができないか検証
 4. `X-HTTP-Method-Override: DELETE` 等のヘッダで本来拒否されるメソッドに化けられないか試す
 

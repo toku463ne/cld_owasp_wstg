@@ -116,6 +116,9 @@ grep -qF -- "$ curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0" "${FRE
   || ng "CVE 照合が NVD API（curl）の $ 実行コマンドになっていない"
 grep -qF -- "$ jq -r '.totalResults'" "${FREC}" \
   || ng "jq が $ 実行コマンドとして拾われていない"
+# 受動観測（ヘッダ/Cookie 取得）が手動から curl コマンドに変わっていること（INFO-08 #2）
+grep -qF -- "$ curl -sD ${FDIR}/artifacts/headers.txt -o /dev/null https://ex.test/" "${FREC}" \
+  || ng "ヘッダ/Cookie 取得が curl の $ 実行コマンドになっていない"
 # 各手順に「結果に何を貼るか」の指示があること（手動/ブラウザを含む）
 [ "$(grep -c "^> 貼るもの: " "${REC}")" -ge 5 ] \
   || ng "各手順に「貼るもの:」の指示が入っていない"

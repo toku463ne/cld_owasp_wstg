@@ -23,7 +23,7 @@ WSTG の Test Objectives:
 
 1. 定番パスを叩く: `curl -s https://target/{server-status,server-info,phpinfo.php,examples/,manual/,test/}`
 2. ディレクトリリスティングを確認（`curl -s https://target/images/` 等で index が返るか）
-3. 既定管理画面・サンプルアプリ（Tomcat `/manager`、`/docs` など）の有無を確認
+3. 既定管理画面・サンプルアプリの有無を確認: `for pth in manager manager/html docs examples host-manager admin-console web-console; do echo "$pth -> $(curl -s -o /dev/null -w '%{http_code}' https://target/$pth/)"; done | tee evidence/<活動フォルダ>/artifacts/default-apps.txt`。200/401/403 が返るパスは存在（Tomcat `/manager` 等）。既定資格情報の可否は別途確認
 4. 不要機能が有効でないか応答で確認する: `curl -sI -X OPTIONS https://target/` の `Allow` 行に PUT/DELETE/TRACE が並ばないか、`Server`/`X-Powered-By` に余計なモジュール（`mod_status`・PHP等）が出ないか、`?debug=true`・`X-Debug` 系でデバッグ出力（スタック・SQL・変数ダンプ）が返らないか。有効な不要機能を artifacts に列挙し finding に
 
 ## 使用ツール

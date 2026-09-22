@@ -182,7 +182,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 認証済みでアプリ全体を歩き、入力点と構造を地図にする。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y curl ffuf`
+- apt: `sudo apt install -y curl ffuf nmap traceroute`
 - Kali 同梱 / Burp 内（導入不要）: Burp Suite, OWASP ZAP
 
 ### 11. `burp-crawl-authn` — 認証済みクロールとエントリポイント洗い出し

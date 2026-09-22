@@ -19,14 +19,15 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `curl -sI` の応答ヘッダ（`Via`/`X-Cache`/`Server`/`Set-Cookie` の LB 印）から中間装置を推定
-2. `traceroute`／TTL・応答差から WAF・CDN・リバースプロキシの有無を判断（WAF は不正入力への 403/406 で炙り出す）
+1. 応答ヘッダを保存して中間装置の印を探す: `curl -sD evidence/<活動フォルダ>/artifacts/resp-headers.txt -o /dev/null https://target/ && grep -iE '^(via|x-cache|x-served-by|server|set-cookie|x-forwarded-for|cf-ray|x-varnish|x-amz-cf-id):' evidence/<活動フォルダ>/artifacts/resp-headers.txt`。ヒットしたヘッダ（`Via`/`X-Cache`=キャッシュ・LB、`cf-ray`=Cloudflare 等）から中間装置を推定
+2. 経路上のホップを観測: `traceroute -w2 -q1 target | tee evidence/<活動フォルダ>/artifacts/traceroute.txt`（TTL・応答差から CDN/リバースプロキシの位置を推定）。WAF の有無は後続 INPV 系での不正入力への 403/406 で炙り出す
 3. recon で得たサブドメイン・ポート一覧を突き合わせ、本来内部向けの装置が外から開いていないか見る: `api.`/`gw.`(API GW)、`cache.`/`varnish`・`X-Cache`ヘッダ(キャッシュ)、`8081`/`:9200`(Elasticsearch)・`:5601`(Kibana)・`:15672`(RabbitMQ)・`phpmyadmin`/`adminer`(DB管理)。`curl -sI` で 200/401 が返るものは露出。露出しているホスト:ポートと応答コードを artifacts に記録し、意図しない露出のみ finding に
 4. 推定した構成図を描き、ヒアリング結果と突き合わせて確定（推測のまま報告しない）
 
 ## 使用ツール
 
 - curl
+- traceroute
 
 ## 判定基準（pass / fail の見分け）
 
