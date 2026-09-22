@@ -191,43 +191,44 @@ printf 'not a png' > "${TMP}/nope.txt"
   && ng "PNG でないデータを保存してしまう" || true
 ok "save_shot: 画像を artifacts/ に保存し record.html に <img> 参照（非PNGは拒否）"
 
-# serve_record.py: 配信と /api/capture（不正wid拒否・ツール無しは ok:false）を検査（スレッドで起動）
-"${PY[@]}" - "${TDIR}" <<'SRV'
+# serve_record.py: evidence ルートを統一配信し、/<フォルダ>/... で索引・record・capture・delete を検査
+"${PY[@]}" - "${TMP}/ev" "recon-osint-ex.test-20260101" <<'SRV'
 import sys, threading, json, urllib.request
 from pathlib import Path
 sys.path.insert(0, "scripts")
 import serve_record
-httpd = serve_record.build_server(Path(sys.argv[1]), "127.0.0.1", 0)
+root, folder = sys.argv[1], sys.argv[2]
+httpd = serve_record.build_server(Path(root), "127.0.0.1", 0)
 port = httpd.server_address[1]
 threading.Thread(target=httpd.serve_forever, daemon=True).start()
-def post(obj):
-    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/capture",
+def post(route, obj):
+    req = urllib.request.Request(f"http://127.0.0.1:{port}/{folder}{route}",
         data=json.dumps(obj).encode(), headers={"Content-Type": "application/json"}, method="POST")
     return json.load(urllib.request.urlopen(req, timeout=30))
 try:
-    r = urllib.request.urlopen(f"http://127.0.0.1:{port}/record.html", timeout=5)
+    # 索引（/）にこのアクティビティが載る
+    idx = urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5).read().decode()
+    assert "実施記録 — 索引" in idx and folder in idx, "索引にアクティビティが出ない"
+    # /<フォルダ>/record.html を配信
+    r = urllib.request.urlopen(f"http://127.0.0.1:{port}/{folder}/record.html", timeout=5)
     assert r.status == 200 and b"WSTG_EVIDENCE" in r.read(), "record.html を配信していない"
-    assert post({"wid": "nope", "step": 1, "delay": 0})["ok"] is False, "不正 wid を弾かない"
-    # 正しい wid でもサンドボックスには撮影ツールが無いので ok:false（＝API 経路は生きている）
-    assert post({"wid": "WSTG-INFO-01", "step": 1, "delay": 0})["ok"] is False
+    assert post("/api/capture", {"wid": "nope", "step": 1, "delay": 0})["ok"] is False, "不正 wid を弾かない"
+    # 撮影ツールが無い環境なので ok:false（＝API 経路は生きている）
+    assert post("/api/capture", {"wid": "WSTG-INFO-01", "step": 1, "delay": 0})["ok"] is False
     # delete_shot: 直前の save_shot テストで作った shot を消せる。traversal/非shot は拒否
-    def dpost(obj):
-        req = urllib.request.Request(f"http://127.0.0.1:{port}/api/delete_shot",
-            data=json.dumps(obj).encode(), headers={"Content-Type": "application/json"}, method="POST")
-        return json.load(urllib.request.urlopen(req, timeout=10))
-    assert dpost({"path": "../../etc/passwd"})["ok"] is False, "traversal を許した"
-    assert dpost({"path": "run.yaml"})["ok"] is False, "shot 以外を消せてしまう"
+    assert post("/api/delete_shot", {"path": "../../etc/passwd"})["ok"] is False, "traversal を許した"
+    assert post("/api/delete_shot", {"path": "run.yaml"})["ok"] is False, "shot 以外を消せてしまう"
     import glob, os
-    shots = glob.glob(os.path.join(sys.argv[1], "artifacts", "shot-WSTG-INFO-01-*.png"))
+    shots = glob.glob(os.path.join(root, folder, "artifacts", "shot-WSTG-INFO-01-*.png"))
     assert shots, "削除対象の shot が無い（save_shot テストが先に走る前提）"
     rel = "artifacts/" + os.path.basename(shots[0])
-    assert dpost({"path": rel})["ok"] is True, "shot を削除できない"
+    assert post("/api/delete_shot", {"path": rel})["ok"] is True, "shot を削除できない"
     assert not os.path.exists(shots[0]), "shot が消えていない"
 finally:
     httpd.shutdown(); httpd.server_close()
 SRV
 [ $? -eq 0 ] || ng "serve_record の配信 / capture API が想定通りでない"
-ok "serve_record: 配信・capture API・delete_shot（traversal拒否・shot削除）"
+ok "serve_record: 統一配信（索引・/<フォルダ>/record・capture・delete）"
 
 # fingerprint-stack: NVD 照合が curl/jq、受動観測が curl、確認コマンドは重複しないこと
 "${PY[@]}" scripts/new_activity.py fingerprint-stack --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null

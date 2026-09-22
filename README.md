@@ -243,10 +243,11 @@ uv run scripts/gen_record.py evidence/recon-osint-example.com-20260913
 
 - Firefox は `file://` の `<iframe>` で同フォルダのファイルを表示できる（Kali 既定）。
   Chromium 系で枠が空になる場合や、**手順ごとの『スクショを撮る』ボタンを使いたい場合**は、
-  ローカルサーバ経由で開く:
+  ローカルサーバ経由で開く。1つのサーバで `evidence/` 全体を配信し、トップの索引から
+  全アクティビティを辿れる（アクティビティごとにサーバを立てなくてよい）:
   ```bash
-  uv run scripts/serve_record.py evidence/recon-osint-example.com-20260913 --open
-  # -> http://127.0.0.1:8765/record.html（127.0.0.1 のみ待受）
+  uv run scripts/serve_record.py --open        # 索引 http://127.0.0.1:8765/（127.0.0.1 のみ待受）
+  uv run scripts/serve_record.py evidence/recon-osint-example.com-20260913 --open  # そのページを直接開く
   ```
   http 配信になるので Chrome でも iframe/img が確実に表示され、各手順の
   『📷 この手順のスクショを撮る』が有効になる（サーバが save_shot --grab を実行→その手順の直下に画像）。

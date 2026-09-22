@@ -236,9 +236,11 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
     w("ので、`.txt` を手で編集したらリロードで反映される（`evidence.js` の作り直しは不要）。")
     w("")
     w("- **スクショの撮影・削除ボタンを使う／Chrome で確実に表示する**には、ローカルサーバ経由で開く。")
-    w("  どのアクティビティでも同じで、`fingerprint-stack` でも `recon-osint` でも効く:")
-    w("  `uv run scripts/serve_record.py evidence/<activity>-<yyyymmdd> --open`")
-    w("  （127.0.0.1 のみ待受。起動時に record.html を最新化するので `git pull` 後は再起動するだけ）")
+    w("  1つのサーバで `evidence/` 全体を配信し、トップの索引から全アクティビティを辿れる")
+    w("  （アクティビティごとに立てなくてよい。判定サマリ付き）:")
+    w("  `uv run scripts/serve_record.py --open`（索引）／"
+      "`uv run scripts/serve_record.py evidence/<activity>-<yyyymmdd> --open`（直接開く）")
+    w("  （127.0.0.1 のみ待受。GET のたびに最新化するので findings.md/run.yaml の手編集はリロードで反映）")
     w("- 手順ごとの『📷 この手順のスクショを撮る』→ 上部の待ち時間(秒)の間に対象ウィンドウを前面へ→範囲選択。")
     w("  間違えたら各画像の『🗑 削除』で消せる（`artifacts/shot-*.png` のみ）。")
     w("- CLI で撮るなら: `uv run scripts/save_shot.py evidence/<activity>-<yyyymmdd> --wid <WSTG-ID> [--step n] --grab --delay 3`")
@@ -277,7 +279,7 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
         w("- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入")
         w(f"- [ ] `uv run scripts/gen_record.py evidence/{a['id']}-<yyyymmdd>` で `record.html` を最新化して確認")
         w(f"      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/{a['id']}-<yyyymmdd> --open`"
-          "（閲覧だけなら record.html を直接開く）")
+          "（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）")
         w("")
 
     w("## 仕上げ")
