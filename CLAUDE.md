@@ -52,7 +52,7 @@ docs/owasp（原文） ─▶ wstg_tests.yaml ─┬─▶ coverage.{yaml,md}（
 coverage.yaml ─┬─▶ TASKS.md（実施順）
                └─▶ new_activity.py ─▶ evidence/*/{run.yaml, record.html, cmd/, artifacts/}
                      run_activity.py ─▶ criteria.yaml の手順を bash 実行
-                        ├─▶ cmd/<WSTG-ID>-s<n>.txt（純粋なエビデンス）
+                        ├─▶ cmd/<WSTG-ID>-s<n>-c<k>.txt（コマンドごとの純粋なエビデンス）
                         ├─▶ run.yaml の commands: に追記
                         └─▶ evidence.js（gen_record.py も同じ）
                      record.html ◀─(表示)─ evidence.js（cmd/・artifacts/ を読む）
@@ -64,7 +64,7 @@ coverage.yaml ─┬─▶ TASKS.md（実施順）
 `new_activity.py` はフォルダ一式（`run.yaml`・静的ビューア `record.html`・`cmd/`・`artifacts/`・
 手動手順の `manual-*.txt` ひな型）を作る。`run_activity.py` は `criteria.yaml` の手順のうち
 「コマンド手順」（`backtick` で target/OUTDIR を参照する `$` 実行コマンド）を bash で実行し、
-出力を `cmd/<WSTG-ID>-s<n>.txt` に丸ごと残す（＝純粋なエビデンス。ドキュメントには埋め込まない）。
+出力をコマンドごとに `cmd/<WSTG-ID>-s<n>-c<k>.txt` に残す（＝純粋なエビデンス。ドキュメントには埋め込まない）。
 `gen_record.py` は実行せず、`run.yaml` と既存のエビデンスから `record.html`／`evidence.js` を
 作り直すだけ。**エビデンスは cmd/・artifacts/、判定は run.yaml にあるので、上流を更新して
 手順が変わっても `gen_record.py` で作り直すだけでよく、過去のエビデンスをコピーし直さずに済む。**

@@ -9,7 +9,7 @@
 
 やること:
   1. criteria.yaml の手順のうち「コマンド手順」を bash -c で実行し、
-     出力を <dir>/cmd/<WSTG-ID>-s<n>.txt に丸ごと保存する（＝純粋なエビデンス）。
+     出力をコマンドごとに <dir>/cmd/<WSTG-ID>-s<n>-c<k>.txt に保存する（＝純粋なエビデンス）。
      手順のコマンドはパイプ・ループ・$() を含むので、シェル経由で実行する。
   2. run.yaml の commands: に実行記録（cmd/出力パス/終了コード/所要秒）を追記する。
   3. record.html が読む evidence.js を作り直す（cmd/・artifacts/ の中身を表示に反映）。
@@ -48,30 +48,31 @@ def select_steps(steps: list, only: str | None) -> list:
     return picked
 
 
-def run_one(step: dict, activity_dir: Path, timeout: int | None) -> dict:
-    """1手順のコマンド列（本体＋確認コマンド）をシェルで実行し、出力を保存する。"""
-    out_rel = step["output"]                       # cmd/<WSTG-ID>-s<n>.txt
+def run_command(run: dict, step: dict, activity_dir: Path, timeout: int | None) -> dict:
+    """手順内の1コマンドをシェルで実行し、そのコマンド専用のファイルに出力を保存する。
+
+    コマンドごとに別ファイル（cmd/<WSTG-ID>-s<n>-c<k>.txt）に落とすことで、
+    record.html が「コマンドの説明→コマンド→その結果」を1対1で並べられる。
+    """
+    out_rel = run["output"]
     out_path = activity_dir / out_rel
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    script = "\n".join(step["commands"] + step["checks"])
     started = _dt.datetime.now().astimezone()
     t0 = time.monotonic()
 
     header = [
-        f"# {step['wid']} 手順{step['idx']}",
+        f"# {step['wid']} 手順{step['idx']} / {run['role']}",
         f"# started : {started.isoformat(timespec='seconds')}",
         f"# cwd     : {Path.cwd()}",
+        f"$ {run['cmd']}",
         "# " + "-" * 68,
     ]
     exit_code = None
     with out_path.open("w", encoding="utf-8", errors="replace") as fh:
         fh.write("\n".join(header) + "\n")
-        for cmd in step["commands"] + step["checks"]:
-            fh.write(f"$ {cmd}\n")
-        fh.write("# " + "-" * 68 + "\n")
         fh.flush()
         try:
-            proc = subprocess.Popen(["bash", "-c", script], stdout=subprocess.PIPE,
+            proc = subprocess.Popen(["bash", "-c", run["cmd"]], stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1)
             assert proc.stdout is not None
             for line in proc.stdout:
@@ -81,7 +82,7 @@ def run_one(step: dict, activity_dir: Path, timeout: int | None) -> dict:
         except subprocess.TimeoutExpired:
             proc.kill(); proc.wait()
             fh.write(f"\n[run_activity] timeout after {timeout}s\n")
-            print(f"[run_activity] タイムアウト（{timeout}s）: {step['wid']} 手順{step['idx']}", file=sys.stderr)
+            print(f"[run_activity] タイムアウト（{timeout}s）: {out_rel}", file=sys.stderr)
             exit_code = 124
         except FileNotFoundError:
             fh.write("[run_activity] bash が見つかりません\n")
@@ -96,7 +97,7 @@ def run_one(step: dict, activity_dir: Path, timeout: int | None) -> dict:
         fh.write(f"# {'-' * 68}\n# exit_code: {exit_code}  duration_sec: {duration}\n")
 
     return {
-        "cmd": " ; ".join(step["commands"]),
+        "cmd": run["cmd"],
         "output": out_rel,
         "started_at": started.isoformat(timespec="seconds"),
         "duration_sec": duration,
@@ -125,7 +126,7 @@ def main() -> int:
     if args.list:
         for s in steps:
             mark = "cmd " if s["kind"] == "cmd" else "手動"
-            print(f"  [{mark}] {s['wid']}:{s['idx']}  {s['text'][:70]}")
+            print(f"  [{mark}] {s['wid']}:{s['idx']}  {s['desc'][:70]}")
         return 0
 
     todo = select_steps(steps, args.only)
@@ -136,24 +137,25 @@ def main() -> int:
 
     if args.dry_run:
         for s in todo:
-            print(f"[dry-run] {s['wid']}:{s['idx']} -> {s['output']}")
-            for cmd in s["commands"] + s["checks"]:
-                print(f"    $ {cmd}")
+            print(f"[dry-run] {s['wid']}:{s['idx']}  {s['desc'][:70]}")
+            for r in s["runs"]:
+                print(f"    $ {r['cmd']}   -> {r['output']}")
         return 0
 
     run_yaml = activity_dir / "run.yaml"
     ran, failed = 0, 0
     for s in todo:
-        print(f"\n===== {s['wid']} 手順{s['idx']} =====")
-        entry = run_one(s, activity_dir, args.timeout)
-        append_command(run_yaml, entry)
-        ran += 1
-        if entry["exit_code"]:
-            failed += 1
-        print(f"[run_activity] 保存: {activity_dir / entry['output']}  (exit={entry['exit_code']}, {entry['duration_sec']}s)")
+        print(f"\n===== {s['wid']} 手順{s['idx']}：{s['desc'][:60]} =====")
+        for r in s["runs"]:
+            entry = run_command(r, s, activity_dir, args.timeout)
+            append_command(run_yaml, entry)
+            ran += 1
+            if entry["exit_code"]:
+                failed += 1
+            print(f"[run_activity] 保存: {activity_dir / entry['output']}  (exit={entry['exit_code']}, {entry['duration_sec']}s)")
 
     refresh_record(activity_dir)
-    print(f"\n[run_activity] {ran} 手順を実行（うち非0終了 {failed}）。evidence.js を更新しました。")
+    print(f"\n[run_activity] {ran} コマンドを実行（うち非0終了 {failed}）。evidence.js を更新しました。")
     print(f"  表示: {activity_dir / 'record.html'} をブラウザで開く")
     print(f"  判定: {run_yaml} の covers に verdict / finding を記入 → "
           f"uv run scripts/gen_record.py {activity_dir}")

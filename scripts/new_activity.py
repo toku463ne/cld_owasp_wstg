@@ -105,7 +105,8 @@ RECORD_HTML = r"""<!DOCTYPE html>
   .finding{margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--line);
            background:var(--pre);border-radius:0 6px 6px 0;font-size:.9rem;}
   .step{margin:14px 0 0;padding-top:10px;border-top:1px dashed var(--line);}
-  .step .t{font-size:.9rem;margin:0 0 6px;}
+  .step .t{font-size:.95rem;font-weight:600;margin:0 0 8px;}
+  .cap{font-size:.82rem;color:var(--mut);margin:10px 0 2px;}
   pre{margin:6px 0;padding:10px 12px;border-radius:8px;overflow:auto;
       font:.82rem/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
       white-space:pre-wrap;word-break:break-word;}
@@ -154,25 +155,28 @@ RECORD_HTML = r"""<!DOCTYPE html>
 
     (it.steps || []).forEach(function (st) {
       var s = el("div", "step");
+      // 手順の枠は「簡単な説明」だけ（生コマンドは入れない）
       var t = el("p", "t");
       t.appendChild(el("span", "badge k-" + st.kind, st.kind === "cmd" ? "コマンド" : "手動"));
-      t.appendChild(document.createTextNode(" 手順" + st.idx + "： " + st.text));
+      t.appendChild(document.createTextNode(" 手順" + st.idx + "： " + (st.desc || "")));
       s.appendChild(t);
-      if (st.commands && st.commands.length) {
-        var pc = el("pre", "cmd", st.commands.map(function (c) { return "$ " + c; }).join("\n"));
-        s.appendChild(pc);
-      }
-      if (st.output && st.output.trim()) {
-        s.appendChild(el("pre", "out", st.output + (st.truncated ? "\n…(以下略。全文は " + st.output_path + ")" : "")));
-        var rc = el("div", (st.exit_code ? "rc bad" : "rc"),
-          "→ " + st.output_path + (st.exit_code != null ? "  (exit " + st.exit_code + ")" : "")
-          + (st.ran_at ? "  " + st.ran_at : ""));
-        s.appendChild(rc);
-      } else {
-        s.appendChild(el("p", "empty", st.kind === "cmd"
-          ? "未実行（uv run scripts/run_activity.py でこの手順を実行）"
-          : "未記入（" + st.output_path + " に観察を書く）"));
-      }
+
+      (st.runs || []).forEach(function (r) {
+        // 各コマンドの前に「そのコマンドの説明」、コマンドのすぐ下に「そのコマンドの結果」
+        if (r.role === "check") s.appendChild(el("div", "cap", "取得できたかの確認（サイズ・行数・先頭）"));
+        else if (r.role === "manual") s.appendChild(el("div", "cap", "手動での観察を書く"));
+        if (r.cmd) s.appendChild(el("pre", "cmd", "$ " + r.cmd));
+        if (r.output && r.output.trim()) {
+          s.appendChild(el("pre", "out", r.output + (r.truncated ? "\n…(以下略。全文は " + r.output_path + ")" : "")));
+          s.appendChild(el("div", (r.exit_code ? "rc bad" : "rc"),
+            "→ " + r.output_path + (r.exit_code != null ? "  (exit " + r.exit_code + ")" : "")
+            + (r.ran_at ? "  " + r.ran_at : "")));
+        } else {
+          s.appendChild(el("p", "empty", r.role === "manual"
+            ? "未記入（" + r.output_path + " に観察を書く）"
+            : "未実行（uv run scripts/run_activity.py でこのコマンドを実行）"));
+        }
+      });
       box.appendChild(s);
     });
     app.appendChild(box);
@@ -304,12 +308,39 @@ def verify_commands(cmd: str, act_dir: str) -> list:
 
 # ---- 実施記録の中身（手順の平坦リスト）: 生成・実行・表示で共有する唯一の定義 ----
 
+def _is_cmd_span(span: str) -> bool:
+    """backtick の中身が「実行コマンド」か（先頭語が CLI バイナリ / for・while）。"""
+    toks = span.strip().split()
+    if not toks:
+        return False
+    binary = toks[0].split("/")[-1].lower()
+    return binary in CLI_BINARIES or binary in LOOP_KEYWORDS
+
+
+def step_desc(text: str) -> str:
+    """手順文から「実行コマンドの backtick」を除いた簡単な説明を作る。
+
+    `-p` や `JSESSIONID` のような短いインラインコードは残す（説明に必要）。
+    生の長いコマンド行だけを外し、宙に浮いた先頭の助詞・記号を整える。
+    """
+    def repl(m):
+        return "" if _is_cmd_span(m.group(1)) else m.group(0)
+    out = re.sub(r"`([^`]+)`", repl, text)
+    out = re.sub(r"（\s*）", "", out)          # 空になった括弧を落とす
+    out = re.sub(r"\s*[とや]\s*(?=[)）])", "", out)   # 「A と 」の宙に浮いた接続助詞
+    out = re.sub(r"[ \t]+", " ", out)
+    out = re.sub(r"\s*[:：]\s*[とや]\s*", "： ", out)  # 「: と 」のような残骸を詰める
+    out = re.sub(r"^[はでをにがと、。：:\s]+", "", out)  # 宙に浮いた先頭の助詞・記号
+    out = re.sub(r"[\s、。：:のとや]+$", "", out)      # 末尾の宙に浮いた助詞・記号
+    return out.strip()
+
+
 def iter_steps(activity: dict, criteria: dict, target, act_dir: str) -> list:
     """アクティビティの手順を WSTG-ID 順・手順番号順に平らに並べて返す。
 
     record.html / evidence.js の生成（gen_record.py）と wrapper 実行（run_activity.py）が
-    同じ手順・同じ出力パスを共有するための唯一の定義。1手順 = 1エビデンスファイル:
-      - コマンド手順 … `cmd/<WSTG-ID>-s<n>.txt`（wrapper が実行して出力を保存）
+    同じ手順・同じ出力パスを共有するための唯一の定義。1コマンド = 1エビデンスファイル:
+      - コマンド手順 … `cmd/<WSTG-ID>-s<n>-c<k>.txt`（手順内の k 番目のコマンドの出力）
       - 手動手順     … `artifacts/manual-<WSTG-ID>-s<n>.txt`（人が観察を書く）
     OUTDIR / target は act_dir の実パス・対象に置換済みで返す。
     """
@@ -324,16 +355,24 @@ def iter_steps(activity: dict, criteria: dict, target, act_dir: str) -> list:
                 for chk in verify_commands(cmd, act_dir):
                     if chk not in checks:
                         checks.append(chk)
+            text = sub_outdir(sub_target(step, target), act_dir)
+            # 手順内のコマンドを「本体（main）→確認（check）」の順に、1つずつ出力先を割り当てる
+            runs = []
+            for k, cmd in enumerate(cmds + checks, 1):
+                runs.append({
+                    "cmd": cmd,
+                    "role": "main" if k <= len(cmds) else "check",
+                    "output": f"cmd/{wid}-s{idx}-c{k}.txt",
+                })
             out.append({
                 "wid": wid,
                 "role": cov.get("role", "primary"),
                 "idx": idx,
-                "text": sub_outdir(sub_target(step, target), act_dir),
+                "text": text,
+                "desc": step_desc(text),
                 "kind": "cmd" if cmds else "manual",
-                "commands": cmds,
-                "checks": checks,
-                "output": (f"cmd/{wid}-s{idx}.txt" if cmds
-                           else f"artifacts/manual-{wid}-s{idx}.txt"),
+                "runs": runs,                       # コマンド手順: 1コマンド=1要素
+                "manual_output": (None if cmds else f"artifacts/manual-{wid}-s{idx}.txt"),
             })
     return out
 
@@ -342,7 +381,7 @@ def manual_stub_text(activity: dict, step: dict) -> str:
     """手動手順の観察を書き込むための素の .txt ひな型（これ自体がエビデンス）。"""
     return "\n".join([
         f"# {activity['id']} / {step['wid']} 手順{step['idx']}（手動）",
-        f"# 手順: {step['text']}",
+        f"# 手順: {step['desc']}",
         "# 貼るもの: ① 操作した URL とクリック手順 ② 確認できたこと（無ければ「該当なし」）",
         "#           ③ スクショのパス（artifacts/*.png） ④ 件数・該当箇所",
         "# " + "-" * 68,
@@ -371,6 +410,14 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
         if isinstance(cmd, dict) and cmd.get("output"):
             by_output[cmd["output"]] = cmd
 
+    def read_output(rel: str):
+        """出力ファイルの中身（先頭 EVIDENCE_MAX_CHARS）と切り詰めフラグを返す。"""
+        fpath = activity_dir / rel
+        if not fpath.exists():
+            return "", False
+        raw = fpath.read_text(encoding="utf-8", errors="replace")
+        return raw[:EVIDENCE_MAX_CHARS], len(raw) > EVIDENCE_MAX_CHARS
+
     items: list = []
     grouped: dict = {}
     for step in iter_steps(activity, criteria, target, act_dir):
@@ -382,23 +429,32 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
         cv = covers.get(wid, {})
         steps_out = []
         for step in grouped.get(wid, []):
-            fpath = activity_dir / step["output"]
-            content, truncated = "", False
-            if fpath.exists():
-                raw = fpath.read_text(encoding="utf-8", errors="replace")
-                content = raw[:EVIDENCE_MAX_CHARS]
-                truncated = len(raw) > EVIDENCE_MAX_CHARS
-            rec = by_output.get(step["output"], {})
+            # 1コマンド = 1エビデンス。説明→コマンド→結果 の順に並べられる形で返す。
+            runs_out = []
+            if step["kind"] == "manual":
+                content, truncated = read_output(step["manual_output"])
+                runs_out.append({
+                    "role": "manual", "cmd": None,
+                    "output_path": step["manual_output"],
+                    "output": content, "truncated": truncated,
+                    "exit_code": None, "ran_at": None,
+                })
+            else:
+                for r in step["runs"]:
+                    content, truncated = read_output(r["output"])
+                    rec = by_output.get(r["output"], {})
+                    runs_out.append({
+                        "role": r["role"], "cmd": r["cmd"],
+                        "output_path": r["output"],
+                        "output": content, "truncated": truncated,
+                        "exit_code": rec.get("exit_code"),
+                        "ran_at": rec.get("started_at"),
+                    })
             steps_out.append({
                 "idx": step["idx"],
                 "kind": step["kind"],
-                "text": step["text"],
-                "commands": step["commands"] + step["checks"],
-                "output_path": step["output"],
-                "output": content,
-                "truncated": truncated,
-                "exit_code": rec.get("exit_code"),
-                "ran_at": rec.get("started_at"),
+                "desc": step["desc"],
+                "runs": runs_out,
             })
         items.append({
             "wid": wid,
@@ -527,12 +583,12 @@ def write_manual_stubs(activity: dict, criteria: dict, target,
     for step in iter_steps(activity, criteria, target, act_dir):
         if step["kind"] != "manual":
             continue
-        dest = activity_dir / step["output"]
+        dest = activity_dir / step["manual_output"]
         if dest.exists() and not force:
             continue
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(manual_stub_text(activity, step), encoding="utf-8")
-        made.append(step["output"])
+        made.append(step["manual_output"])
     return made
 
 

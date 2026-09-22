@@ -165,8 +165,10 @@ uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --only 
 uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --dry-run  # 実行内容の確認だけ
 ```
 
-各コマンド手順は `bash` で実行され、出力（本体＋`wc -l`/`head` の確認コマンド）が丸ごと
-`cmd/<WSTG-ID>-s<n>.txt` に残る。これが**純粋なエビデンス**で、ドキュメントには埋め込まない。
+各コマンドは `bash` で1つずつ実行され、その出力が `cmd/<WSTG-ID>-s<n>-c<k>.txt` に残る
+（本体コマンドの後に、取得できたかを見る `wc -l`/`head` の確認コマンドも別ファイルで走る）。
+これが**純粋なエビデンス**で、ドキュメントには埋め込まない。record.html は手順ごとに
+「コマンドの説明 → コマンド → その結果」を1対1で並べて表示する。
 非0終了・空・HTML が返っていたら収集失敗なので、`pass` の根拠にしてはいけない。実行のたびに
 `run.yaml` の `commands:` に記録が追記され、`evidence.js`（表示データ）が作り直される。
 

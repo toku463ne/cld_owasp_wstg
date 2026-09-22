@@ -80,7 +80,7 @@ ok ".md 成果物の雛形生成（templates/artifacts/）"
 cat > "${TMP}/ejs_has.py" <<'HELP'
 import json, sys
 d = json.loads(open(sys.argv[1], encoding="utf-8").read().split("window.WSTG_EVIDENCE = ", 1)[1].rstrip(";\n"))
-cmds = [c for it in d["items"] for st in it["steps"] for c in st["commands"]]
+cmds = [r["cmd"] for it in d["items"] for st in it["steps"] for r in st["runs"] if r.get("cmd")]
 sys.exit(0 if any(sys.argv[2] in c for c in cmds) else 1)
 HELP
 ejs_has () { "${PY[@]}" "${TMP}/ejs_has.py" "$1" "$2"; }
@@ -108,8 +108,18 @@ ejs_has "${EJS}" "grep -iaE" || ng "OUTDIR に書く grep 後処理コマンド�
 ejs_has "${EJS}" "tee ${TDIR}/artifacts/takeover-candidates.md" || ng "grep の tee 出力先が置換されていない"
 # 手動手順は observe を書く .txt ひな型が作られること（dork は手動）
 [ -f "${TDIR}/artifacts/manual-WSTG-INFO-01-s5.txt" ] || ng "手動手順の .txt ひな型が作られない"
+# 手順の枠（desc）は簡単な説明で、生コマンドを含まないこと（コマンドは runs に分離）
+"${PY[@]}" - "${EJS}" <<'DESC'
+import json, sys
+d = json.loads(open(sys.argv[1], encoding="utf-8").read().split("window.WSTG_EVIDENCE = ", 1)[1].rstrip(";\n"))
+for it in d["items"]:
+    for st in it["steps"]:
+        assert "$ " not in st["desc"] and "whois " not in st["desc"], ("desc に生コマンド: " + st["desc"])
+        for r in st["runs"]:
+            assert "output_path" in r, r
+DESC
 # record.html の JS 内の \n が実改行に化けていないこと（RECORD_HTML は raw 文字列）
-grep -qF '.join("\n")' "${TDIR}/record.html" \
+grep -qF '"\n…(以下略' "${TDIR}/record.html" \
   || ng "record.html の JS 内 \\n が実改行に化けている（テンプレートが raw 文字列でない）"
 ok "record.html / evidence.js 生成（target/OUTDIR 置換・手動ひな型）"
 
@@ -121,7 +131,7 @@ FEJS="${FDIR}/evidence.js"
 import json, sys
 d = json.loads(open(sys.argv[1], encoding="utf-8").read().split("window.WSTG_EVIDENCE = ", 1)[1].rstrip(";\n"))
 fdir = sys.argv[2]
-cmds = [c for it in d["items"] for st in it["steps"] for c in st["commands"]]
+cmds = [r["cmd"] for it in d["items"] for st in it["steps"] for r in st["runs"] if r.get("cmd")]
 need = f"head -c 400 {fdir}/artifacts/nvd-cve.json"
 assert sum(1 for c in cmds if need in c) == 1, "確認コマンドが重複している"
 assert any("curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0" in c for c in cmds), "CVE 照合が curl になっていない"
@@ -137,17 +147,17 @@ RDIR="${TMP}/ev/fingerprint-stack-127.0.0.1-9-20260101"
 grep -q '\$ curl -sI https://127.0.0.1:9/' "${TMP}/dry.txt" || ng "run_activity --dry-run が実行コマンドを出さない"
 # 実行（閉じたポート＝オフラインで即失敗。ネットワークに出ない）
 "${PY[@]}" scripts/run_activity.py "${RDIR}" --only WSTG-INFO-02:1 --timeout 8 >/dev/null 2>&1 || true
-[ -s "${RDIR}/cmd/WSTG-INFO-02-s1.txt" ] || ng "run_activity がエビデンスファイルを作らない"
+[ -s "${RDIR}/cmd/WSTG-INFO-02-s1-c1.txt" ] || ng "run_activity がコマンド別エビデンスファイルを作らない"
 "${PY[@]}" -c "
 import yaml
 c=yaml.safe_load(open('${RDIR}/run.yaml'))['commands']
-assert any(x['output']=='cmd/WSTG-INFO-02-s1.txt' for x in c), 'commands: に追記されない'
+assert any(x['output']=='cmd/WSTG-INFO-02-s1-c1.txt' for x in c), 'commands: に追記されない'
 " || ng "run_activity が run.yaml の commands: に追記しない"
 "${PY[@]}" -c "
 import json
 d=json.loads(open('${RDIR}/evidence.js').read().split('window.WSTG_EVIDENCE = ',1)[1].rstrip(';\n'))
-st=d['items'][0]['steps'][0]
-assert st['exit_code'] is not None and st['output'].strip(), st
+r=d['items'][0]['steps'][0]['runs'][0]
+assert r['exit_code'] is not None and r['output'].strip(), r
 " || ng "run_activity 後に evidence.js が実行結果を反映しない"
 ok "run_activity: dry-run 提示・実行でエビデンス/commands/evidence.js を更新"
 
@@ -174,7 +184,7 @@ import json
 d=json.loads(open('${RDIR}/evidence.js').read().split('window.WSTG_EVIDENCE = ',1)[1].rstrip(';\n'))
 it=d['items'][0]
 assert it['verdict']=='fail' and it['finding']=='要約のみ', it
-assert it['steps'][0]['output'].strip(), '再生成で収集済みエビデンスが消えた'
+assert it['steps'][0]['runs'][0]['output'].strip(), '再生成で収集済みエビデンスが消えた'
 " || ng "gen_record が run.yaml の判定を反映しない / エビデンスを失う"
 ok "判定は run.yaml 直記入 → gen_record で反映（再生成でエビデンスを失わない）"
 

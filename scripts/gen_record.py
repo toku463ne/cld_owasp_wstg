@@ -35,8 +35,9 @@ def main() -> int:
 
     data = refresh_record(activity_dir)
     n_items = len(data.get("items", []))
-    n_out = sum(1 for it in data["items"] for st in it["steps"] if st["output"].strip())
-    print(f"[gen_record] {activity_dir / 'record.html'} を更新（{n_items} 項目、出力あり {n_out} 手順）。")
+    n_out = sum(1 for it in data["items"] for st in it["steps"]
+                for r in st["runs"] if r["output"].strip())
+    print(f"[gen_record] {activity_dir / 'record.html'} を更新（{n_items} 項目、出力あり {n_out} コマンド）。")
     print(f"  ブラウザで {activity_dir / 'record.html'} を開いて確認してください。")
     return 0
 
