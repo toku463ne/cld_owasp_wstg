@@ -161,6 +161,18 @@ RECORD_HTML = r"""<!DOCTYPE html>
       cf.appendChild(document.createTextNode(it.fail)); box.appendChild(cf); }
     if (it.finding) box.appendChild(el("div", "finding", "finding: " + it.finding));
 
+    function addShots(parent, imgs) {   // スクショを <img> 参照で並べる（save_shot.py 由来）
+      if (!imgs || !imgs.length) return;
+      parent.appendChild(el("div", "cap", "スクリーンショット"));
+      imgs.forEach(function (src) {
+        var im = document.createElement("img");
+        im.className = "shot"; im.src = src; im.loading = "lazy"; im.alt = src;
+        parent.appendChild(im);
+        parent.appendChild(el("div", "rc", "→ " + src));
+      });
+    }
+    addShots(box, it.images);   // WSTG-ID 全体のスクショはカード上部に
+
     (it.steps || []).forEach(function (st) {
       var s = el("div", "step");
       // 手順の枠は「簡単な説明」だけ（生コマンドは入れない）
@@ -188,18 +200,9 @@ RECORD_HTML = r"""<!DOCTYPE html>
             : "未実行（uv run scripts/run_activity.py でこのコマンドを実行）"));
         }
       });
+      addShots(s, st.images);   // --step で撮ったスクショはその手順の直下に
       box.appendChild(s);
     });
-    // スクショ（save_shot.py が付けた shot-<WID>-*.png）を <img> で参照表示
-    if (it.images && it.images.length) {
-      box.appendChild(el("div", "cap", "スクリーンショット"));
-      it.images.forEach(function (src) {
-        var im = document.createElement("img");
-        im.className = "shot"; im.src = src; im.loading = "lazy"; im.alt = src;
-        box.appendChild(im);
-        box.appendChild(el("div", "rc", "→ " + src));
-      });
-    }
     app.appendChild(box);
   });
 })();
@@ -458,16 +461,25 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
                         "output_path": r["output"],
                         "has_output": has_output(r["output"]),
                     })
+            # この手順のスクショ（--step 付きで撮ったもの: shot-<wid>-s<idx>-*.png）
+            art = activity_dir / "artifacts"
+            step_imgs = sorted(p.relative_to(activity_dir).as_posix()
+                               for p in art.glob(f"shot-{wid}-s{step['idx']}-*.png")) \
+                if art.exists() else []
             steps_out.append({
                 "idx": step["idx"],
                 "kind": step["kind"],
                 "desc": step["desc"],
                 "runs": runs_out,
+                "images": step_imgs,
             })
-        # この WSTG-ID のスクショ（scripts/save_shot.py が付ける名前規約）を <img> 参照用に集める
+        # WSTG-ID 全体のスクショ（手順に紐づかない shot-<wid>-<日時>.png）はカード上部に出す。
+        # 手順に紐づく shot-<wid>-s<n>-*.png は上の step["images"] 側で出すので除く。
         art = activity_dir / "artifacts"
+        step_re = re.compile(rf"^shot-{re.escape(wid)}-s\d+-")
         images = sorted(p.relative_to(activity_dir).as_posix()
-                        for p in art.glob(f"shot-{wid}-*.png")) if art.exists() else []
+                        for p in art.glob(f"shot-{wid}-*.png")
+                        if not step_re.match(p.name)) if art.exists() else []
         items.append({
             "wid": wid,
             "title": tests.get(wid, {}).get("title", ""),

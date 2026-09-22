@@ -182,9 +182,11 @@ uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --dry-r
   # クリップボードの画像から（X11=xclip / Wayland=wl-paste を自動判定）
   uv run scripts/save_shot.py evidence/recon-osint-example.com-20260913 --wid WSTG-INFO-01
   ```
-  `--grab` は flameshot（X11/Wayland 両対応、`sudo apt install -y flameshot`）を最優先に、
-  Wayland は grim+slurp、X11 は maim/scrot/xfce4-screenshooter を自動判定する。
-  クリップボードが空のときは、入っている型を表示して `--grab` を案内する
+  スクショは WSTG-ID のカード上部に出る。`--step <n>` を付けるとその手順の直下に出る。
+  端末が前面でブラウザが隠れるときは `--delay 3` で、待つ間に Alt+Tab で対象を前面へ。
+  `--grab` は X11=maim/scrot/xfce4-screenshooter、Wayland=grim+slurp を自動判定
+  （flameshot は選択画面が出ないことがあるので後回し。`--list-tools` で確認、`--tool` で指定）。
+  クリップボード経由（`--grab` なし）は空のとき入っている型を表示して `--grab` を案内する
   （DE のスクショがファイル保存だとクリップボードには入らない）。
 - 動的入力が要る手順（`hosts.txt`・`cookies.txt` を用意してからのループ等）は、先に入力を置いてから
   `--only` でその手順だけ回す。
