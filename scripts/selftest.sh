@@ -75,112 +75,99 @@ grep -q "WSTG-INFO-01" "${DORK}" && grep -q "| dork |" "${DORK}" \
   || ng "成果物の雛形に WSTG-ID/検索用の見出しが埋まっていない"
 ok ".md 成果物の雛形生成（templates/artifacts/）"
 
-# --target 命名 + 実施記録(record.md) 生成 + capture.py 取り込み
+# --target 命名 + record.html / evidence.js 生成（表示は evidence.js から読む）
+# evidence.js の commands を検索するヘルパ（JSON を読み、全手順のコマンドを平らにする）
+cat > "${TMP}/ejs_has.py" <<'HELP'
+import json, sys
+d = json.loads(open(sys.argv[1], encoding="utf-8").read().split("window.WSTG_EVIDENCE = ", 1)[1].rstrip(";\n"))
+cmds = [c for it in d["items"] for st in it["steps"] for c in st["commands"]]
+sys.exit(0 if any(sys.argv[2] in c for c in cmds) else 1)
+HELP
+ejs_has () { "${PY[@]}" "${TMP}/ejs_has.py" "$1" "$2"; }
+
 "${PY[@]}" scripts/new_activity.py recon-osint --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null
 TDIR="${TMP}/ev/recon-osint-ex.test-20260101"
-REC="${TDIR}/record.md"
-[ -f "${REC}" ] || ng "--target のフォルダ/実施記録(record.md)が作られない"
-grep -q "^\$ whois ex.test" "${REC}" && grep -q "\[コマンド\]" "${REC}" && grep -q "\[手動/ブラウザ\]" "${REC}" \
-  || ng "record.md が Q&A 形式（コマンド/手動 + $ 行）で target 置換されていない"
-# ツールの出力先はエビデンスフォルダの artifacts/ に置換されること（OUTDIR を残さない）
-grep -q "OUTDIR" "${REC}" && ng "record.md に OUTDIR プレースホルダが残っている" || true
-grep -qF -- "mv theharvester.xml theharvester.json ${TDIR}/artifacts/" "${REC}" \
+EJS="${TDIR}/evidence.js"
+[ -f "${TDIR}/record.html" ] && [ -f "${EJS}" ] || ng "record.html / evidence.js が作られない"
+grep -q "OUTDIR" "${EJS}" && ng "evidence.js に OUTDIR プレースホルダが残っている" || true
+# コマンドが target 置換され、出力先が activity の artifacts/ に置換されていること
+ejs_has "${EJS}" "whois ex.test" || ng "コマンドが target 置換されていない（whois）"
+ejs_has "${EJS}" "mv theharvester.xml theharvester.json ${TDIR}/artifacts/" \
   || ng "theHarvester の出力を artifacts/ へ移す手順になっていない"
-grep -qF -- "-o ${TDIR}/artifacts/subfinder.txt" "${REC}" \
+ejs_has "${EJS}" "-o ${TDIR}/artifacts/subfinder.txt" \
   || ng "複数コマンドの出力先が artifacts/ に置換されていない（subfinder）"
-# 出力をファイルに落とすコマンドは、取れているかの確認コマンドまで並ぶこと
-grep -qF -- "head -c 400 ${TDIR}/artifacts/crtsh.json" "${REC}" \
+ejs_has "${EJS}" "head -c 400 ${TDIR}/artifacts/crtsh.json" \
   || ng "ファイル出力コマンドに確認コマンド（サイズ・先頭）が付いていない"
-grep -qF -- "wc -l ${TDIR}/artifacts/subfinder.txt" "${REC}" \
+ejs_has "${EJS}" "wc -l ${TDIR}/artifacts/subfinder.txt" \
   || ng "テキスト出力コマンドに行数確認が付いていない"
-grep -qF -- "artifacts/ex.test" "${REC}" && ng "target 名を出力ファイルと誤認している" || true
-# for/while ループも $ 実行コマンドとして拾い、tee の出力先の確認まで並ぶこと（CONF-10）
-grep -qF -- "\$ while read -r h; do echo" "${REC}" \
-  || ng "for/while ループが $ 実行コマンドとして拾われていない"
-grep -qF -- "wc -l ${TDIR}/artifacts/cname-check.txt" "${REC}" \
-  || ng "ループの tee 出力先に確認コマンドが付いていない"
-# target を含まず OUTDIR に書く後処理コマンド（grep 等）も $ 実行として拾うこと（CONF-10 #2）
-grep -qF -- "\$ grep -iaE" "${REC}" \
-  || ng "OUTDIR に書く grep 後処理コマンドが $ 実行として拾われていない"
-grep -qF -- "tee ${TDIR}/artifacts/takeover-candidates.md" "${REC}" \
-  || ng "grep の tee 出力先が artifacts/ に置換されていない"
-# 同じ出力ファイルを複数のコマンドが触る手順（curl で落として jq で読む: INFO-02 の
-# NVD 照合）でも、確認コマンドは1手順に1回だけ並ぶこと
+ejs_has "${EJS}" "artifacts/ex.test" && ng "target 名を出力ファイルと誤認している" || true
+# for/while ループ・OUTDIR に書く grep 後処理も実行コマンドとして拾うこと（CONF-10）
+ejs_has "${EJS}" "while read -r h; do echo" || ng "for/while ループがコマンドとして拾われていない"
+ejs_has "${EJS}" "wc -l ${TDIR}/artifacts/cname-check.txt" || ng "ループの tee 出力先に確認コマンドが付いていない"
+ejs_has "${EJS}" "grep -iaE" || ng "OUTDIR に書く grep 後処理コマンドが拾われていない"
+ejs_has "${EJS}" "tee ${TDIR}/artifacts/takeover-candidates.md" || ng "grep の tee 出力先が置換されていない"
+# 手動手順は observe を書く .txt ひな型が作られること（dork は手動）
+[ -f "${TDIR}/artifacts/manual-WSTG-INFO-01-s5.txt" ] || ng "手動手順の .txt ひな型が作られない"
+ok "record.html / evidence.js 生成（target/OUTDIR 置換・手動ひな型）"
+
+# fingerprint-stack: NVD 照合が curl/jq、受動観測が curl、確認コマンドは重複しないこと
 "${PY[@]}" scripts/new_activity.py fingerprint-stack --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null
 FDIR="${TMP}/ev/fingerprint-stack-ex.test-20260101"
-FREC="${FDIR}/record.md"
-[ "$(grep -cF -- "head -c 400 ${FDIR}/artifacts/nvd-cve.json" "${FREC}")" -eq 1 ] \
-  || ng "同じ出力ファイルを触る手順で確認コマンドが重複している"
-# バージョン→CVE の照合がブラウザ無し（NVD API を curl/jq で引く）で完結すること
-grep -qF -- "$ curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0" "${FREC}" \
-  || ng "CVE 照合が NVD API（curl）の $ 実行コマンドになっていない"
-grep -qF -- "$ jq -r '.totalResults'" "${FREC}" \
-  || ng "jq が $ 実行コマンドとして拾われていない"
-# 受動観測（ヘッダ/Cookie 取得）が手動から curl コマンドに変わっていること（INFO-08 #2）
-grep -qF -- "$ curl -sD ${FDIR}/artifacts/headers.txt -o /dev/null https://ex.test/" "${FREC}" \
-  || ng "ヘッダ/Cookie 取得が curl の $ 実行コマンドになっていない"
-# 各手順に「結果に何を貼るか」の指示があること（手動/ブラウザを含む）
-[ "$(grep -c "^> 貼るもの: " "${REC}")" -ge 5 ] \
-  || ng "各手順に「貼るもの:」の指示が入っていない"
-grep -q "^> 貼るもの: ① 操作した URL" "${REC}" \
-  || ng "[手動/ブラウザ] の手順に貼るものの指示が無い"
+FEJS="${FDIR}/evidence.js"
+"${PY[@]}" - "${FEJS}" "${FDIR}" <<'DEDUP'
+import json, sys
+d = json.loads(open(sys.argv[1], encoding="utf-8").read().split("window.WSTG_EVIDENCE = ", 1)[1].rstrip(";\n"))
+fdir = sys.argv[2]
+cmds = [c for it in d["items"] for st in it["steps"] for c in st["commands"]]
+need = f"head -c 400 {fdir}/artifacts/nvd-cve.json"
+assert sum(1 for c in cmds if need in c) == 1, "確認コマンドが重複している"
+assert any("curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0" in c for c in cmds), "CVE 照合が curl になっていない"
+assert any(c.startswith("jq -r '.totalResults'") for c in cmds), "jq が実行コマンドになっていない"
+assert any(f"curl -sD {fdir}/artifacts/headers.txt -o /dev/null https://ex.test/" in c for c in cmds), "ヘッダ取得が curl になっていない"
+DEDUP
+ok "NVD 照合(curl/jq)・受動観測(curl)・確認コマンド重複なし（evidence.js）"
 
-# record.md 単体で判定できるよう、目的と pass/fail 基準が各セクションに埋まっていること
-grep -q "^- 目的: " "${REC}" && grep -q "^- 判定基準 pass = " "${REC}" \
-  || ng "record.md に判定基準（目的・pass/fail）が埋め込まれていない"
-# Markdown の見出しは「表題・WSTG-ID・手順/判定」だけ（注釈が見出しとして強調されない）
-grep -E "^#" "${REC}" | grep -vE "^(# 実施記録 |## WSTG-|### )" \
-  && ng "record.md の注釈が見出し（#）になっている" || true
-# 判定の書き方は role 別（secondary に pass を勧めない・primary には info/na も案内する）
-awk '/^## WSTG-INFO-01 /{f=1} /^## WSTG-CONF-10 /{f=0} f&&/^上の pass\/fail 基準で判定する。/{ok=1} END{exit !ok}' \
-  "${REC}" || ng "primary の判定コメントに pass/info/na の案内が無い"
-awk '/^## WSTG-CONF-10 /{f=1} f&&/secondary（入力・補強）/{ok=1} END{exit !ok}' "${REC}" \
-  || ng "secondary の cover に role 別の判定コメントが出ていない"
-awk '/^## WSTG-CONF-10 /{f=1} f&&/^上の pass\/fail 基準で判定する。/{bad=1} END{exit bad}' "${REC}" \
-  || ng "secondary に「無所見なら pass」系の案内が出ている（primary 未実施でも CSV が pass になる）"
-grep -q "^- 役割: secondary" "${REC}" || ng "secondary の cover に役割の注記が無い"
-ok "判定コメントが role 別（secondary で pass を勧めない）"
-
-# 結果だけ貼って判定未記入なら、run.yaml は変わらず「未記入」と案内されること
-"${PY[@]}" - "${REC}" <<'PENDEOF'
-import sys
-p=sys.argv[1]; t=open(p).read()
-t=t.replace("結果:\n```\n```", "結果:\n```\n(pending)\n```", 1)
-open(p,"w").write(t)
-PENDEOF
-"${PY[@]}" scripts/capture.py "${TDIR}" > "${TMP}/capture1.txt"
-grep -q "判定未記入" "${TMP}/capture1.txt" || ng "判定未記入が「更新しました」に紛れている"
-grep -q "更新しました" "${TMP}/capture1.txt" && ng "判定を転記していないのに更新件数を報告している" || true
-grep -q "export_checklist" "${TMP}/capture1.txt" && ng "未記入のまま CSV 出力を勧めている" || true
+# run_activity.py: dry-run で実行コマンドを提示、実行でエビデンス生成＋run.yaml追記＋evidence.js更新
+"${PY[@]}" scripts/new_activity.py fingerprint-stack --target 127.0.0.1:9 --root "${TMP}/ev" --date 20260101 >/dev/null
+RDIR="${TMP}/ev/fingerprint-stack-127.0.0.1-9-20260101"
+"${PY[@]}" scripts/run_activity.py "${RDIR}" --only WSTG-INFO-02:1 --dry-run > "${TMP}/dry.txt"
+grep -q '\$ curl -sI https://127.0.0.1:9/' "${TMP}/dry.txt" || ng "run_activity --dry-run が実行コマンドを出さない"
+# 実行（閉じたポート＝オフラインで即失敗。ネットワークに出ない）
+"${PY[@]}" scripts/run_activity.py "${RDIR}" --only WSTG-INFO-02:1 --timeout 8 >/dev/null 2>&1 || true
+[ -s "${RDIR}/cmd/WSTG-INFO-02-s1.txt" ] || ng "run_activity がエビデンスファイルを作らない"
 "${PY[@]}" -c "
 import yaml
-c={x['id']:x for x in yaml.safe_load(open('${TDIR}/run.yaml'))['covers']}
-assert c['WSTG-INFO-01']['verdict']=='todo', '未記入なのに verdict が動いた'
-assert c['WSTG-INFO-01']['evidence']=='record.md', 'evidence の記録だけは入る'
-" || ng "結果のみの取り込みで covers が想定外に変わる"
-ok "capture: 結果のみ（判定未記入）は判定を動かさず、次の一手を案内"
-
-# 実施者の記入を模擬（結果を貼り、verdict/finding を記入）して capture
-"${PY[@]}" - "${REC}" <<'PYEOF'
-import sys
-p=sys.argv[1]; t=open(p).read()
-t=t.replace("結果:\n```\n```", "結果:\n```\nDomain Name: EX.TEST\n```", 1)   # 手順1(whois)
-t=t.replace("@verdict todo\n\n@finding \n","@verdict info\n\n@finding whois 確認済み。\n",1)
-open(p,"w").write(t)
-PYEOF
-"${PY[@]}" scripts/capture.py "${TDIR}" >/dev/null
-grep -q "Domain Name: EX.TEST" "${REC}" || ng "record.md に貼った raw 結果が保持されない"
+c=yaml.safe_load(open('${RDIR}/run.yaml'))['commands']
+assert any(x['output']=='cmd/WSTG-INFO-02-s1.txt' for x in c), 'commands: に追記されない'
+" || ng "run_activity が run.yaml の commands: に追記しない"
 "${PY[@]}" -c "
-import yaml
-d=yaml.safe_load(open('${TDIR}/run.yaml'))
-assert d['target_scope']=='ex.test', d['target_scope']
-c={x['id']:x for x in d['covers']}
-assert c['WSTG-INFO-01']['verdict']=='info', c['WSTG-INFO-01']
-assert c['WSTG-INFO-01']['finding'], 'finding 未転記'
-assert c['WSTG-INFO-01']['evidence']=='record.md', c['WSTG-INFO-01']
-assert c['WSTG-CONF-10']['verdict']=='todo', '未記入は据え置き'
-" || ng "capture が run.yaml の covers を正しく更新しない"
-ok "record.md(Q&A) 生成 + capture 取り込み（--target 命名・covers 更新・raw 保持）"
+import json
+d=json.loads(open('${RDIR}/evidence.js').read().split('window.WSTG_EVIDENCE = ',1)[1].rstrip(';\n'))
+st=d['items'][0]['steps'][0]
+assert st['exit_code'] is not None and st['output'].strip(), st
+" || ng "run_activity 後に evidence.js が実行結果を反映しない"
+ok "run_activity: dry-run 提示・実行でエビデンス/commands/evidence.js を更新"
+
+# 判定は run.yaml の covers に直接記入 → gen_record.py で record.html に反映（エビデンスは失わない）
+"${PY[@]}" - "${RDIR}" <<'VERDICT'
+import sys, re
+from pathlib import Path
+rp = Path(sys.argv[1]) / "run.yaml"; lines = rp.read_text(encoding="utf-8").split("\n")
+i = next(k for k,l in enumerate(lines) if re.match(r"^\s*-\s*id:\s*WSTG-INFO-02(\s|$|#)", l))
+for k in range(i, i+6):
+    if lines[k].strip().startswith("verdict:"): lines[k] = re.sub(r"verdict:\s*\S+", "verdict: fail", lines[k])
+    if lines[k].strip().startswith("finding:"): lines[k] = '    finding: "要約のみ"'
+rp.write_text("\n".join(lines), encoding="utf-8")
+VERDICT
+"${PY[@]}" scripts/gen_record.py "${RDIR}" >/dev/null
+"${PY[@]}" -c "
+import json
+d=json.loads(open('${RDIR}/evidence.js').read().split('window.WSTG_EVIDENCE = ',1)[1].rstrip(';\n'))
+it=d['items'][0]
+assert it['verdict']=='fail' and it['finding']=='要約のみ', it
+assert it['steps'][0]['output'].strip(), '再生成で収集済みエビデンスが消えた'
+" || ng "gen_record が run.yaml の判定を反映しない / エビデンスを失う"
+ok "判定は run.yaml 直記入 → gen_record で反映（再生成でエビデンスを失わない）"
 
 echo "[4/8] run_cmd.py（実行・保存・追記）"
 "${PY[@]}" scripts/run_cmd.py "${DIR}" --slug selftest -- printf 'selftest\n' >/dev/null

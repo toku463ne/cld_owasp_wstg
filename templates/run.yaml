@@ -23,7 +23,7 @@ tools:
     version: "7.9x"
     type: cli
 
-# CLI：scripts/run_cmd.py が自動追記（exact なコマンド行＋出力先）
+# CLI：scripts/run_activity.py（手順を実行）/ run_cmd.py（単発）が自動追記（コマンド行＋出力先）
 commands:
   - cmd: "nmap -sV -p- <target>"
     output: cmd/nmap-full.txt

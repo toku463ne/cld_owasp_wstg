@@ -226,8 +226,8 @@ def render_card(test, criteria: dict, activities: list, act_defs: dict) -> str:
 
     w("## 記録すべき成果物（run.yaml へ）")
     w("")
-    w("- `commands:` — `scripts/run_cmd.py` 経由で実行したコマンドは自動で残る")
-    w("- `steps:` — GUI（Burp 等）の操作は手記録")
+    w("- `commands:` — `scripts/run_activity.py`（手順を実行）/ `run_cmd.py`（単発）が自動で残す")
+    w("- 手動手順（GUI・Burp 等）の観察は `artifacts/manual-*.txt` に書く")
     if outputs:
         seen = list(dict.fromkeys(outputs))[:5]
         w(f"- `artifacts:` — {', '.join(f'`{o}`' for o in seen)}")

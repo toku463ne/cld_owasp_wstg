@@ -7,21 +7,26 @@
 
 生成物:
     evidence/<activity_id>[-<target>]-<yyyymmdd>/
-      run.yaml       covers: を matrix/coverage.yaml から自動プリフィル（verdict: todo）
-      record.md      手順を Q&A 形式に並べた「実施記録」。各手順の結果をここに貼る＝
-                     このファイル自体がエビデンス本体（テンポラリではない）
-      cmd/           run_cmd.py で直接実行したときの出力先
-      artifacts/     Burp エクスポート・スクショ・ツールの出力ファイル（record.md の
-                     手順に出てくる保存先はここを指すように置換される）。coverage.yaml の
-                     outputs にある .md 成果物は検索しやすい雛形（templates/artifacts/）で自動生成
+      run.yaml       covers: を matrix/coverage.yaml から自動プリフィル（verdict: todo）。
+                     判定（verdict/finding）はこの covers に直接書く（唯一の判定置き場）
+      record.html    実施記録の表示ビューア（静的）。中身は evidence.js から読み込む
+      evidence.js    表示用データ（run_activity.py / gen_record.py が生成・更新する）
+      cmd/           run_activity.py / run_cmd.py が実行したコマンドの出力（＝純粋なエビデンス）
+      artifacts/     ツールの出力ファイル・スクショ・Burp エクスポート、および手動手順の
+                     観察を書く manual-<WSTG-ID>-s<n>.txt（手順の OUTDIR はここに置換される）。
+                     coverage.yaml の outputs の .md 成果物は雛形（templates/artifacts/）で自動生成
       notes.md
 
 収集フロー:
-    1. record.md の各手順を実施する（[コマンド] は $ 行を実行、[手動/ブラウザ] は指示どおり操作）
-    2. コマンド出力・画面の観察を、各手順の「結果:」直後の ``` ブロックにそのまま貼る
-    3. WSTG-ID ごとに @verdict / @finding を記入する
-    4. uv run scripts/capture.py <このフォルダ>  で判定を run.yaml（→CSV）に反映する
+    1. uv run scripts/run_activity.py <このフォルダ>       # コマンド手順を実行→cmd/ に純粋なエビデンス
+    2. 手動手順は artifacts/manual-*.txt に観察を書く（Burp・ヒアリング等）
+    3. run.yaml の covers に verdict / finding を直接記入する（要約のみ。生値は evidence: で参照）
+    4. uv run scripts/gen_record.py <このフォルダ>        # record.html を最新化
+    5. uv run scripts/export_checklist.py                 # run.yaml → CSV（目視レビュー後に共有）
 
+エビデンス本体は cmd/・artifacts/ の各ファイル。record.html はそれを読むだけの表示なので、
+上流（criteria.yaml 等）を更新して手順が変わっても、gen_record.py で作り直せばよく、
+過去のエビデンスを別ファイルからコピーし直す必要がない。
 このスクリプトは evidence/ に「書く」だけで、中身を読み返したり要約したりはしない。
 """
 
@@ -58,6 +63,125 @@ GUI_TOOLS = {"burp suite", "owasp zap", "wappalyzer", "burp sequencer", "burp in
              "burp collaborator", "burp repeater", "graphql voyager", "inql",
              "ブラウザ開発者ツール", "dom invader", "メールクライアント", "手動レビュー",
              "手動操作", "手動", "ヒアリング", "業務仕様書", "手動 payload"}
+
+
+# record.html は静的なビューア（表示専用）。生のエビデンスは cmd/・artifacts/ に置き、
+# 中身は同フォルダの evidence.js（run_activity.py / gen_record.py が生成）から読み込む。
+# file:// で開くと .txt の fetch はブラウザに遮断されるため、<script src> でデータを渡す。
+RECORD_HTML = """<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>実施記録</title>
+<style>
+  :root { --bg:#fff; --fg:#1a1a1a; --mut:#666; --line:#e2e2e2; --card:#fafafa;
+          --pre:#f4f4f4; --cmd:#0b3d2e; --cmdbg:#eaf5ef; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#16181c; --fg:#e6e6e6; --mut:#9aa0a6; --line:#2c2f36; --card:#1d2026;
+            --pre:#111318; --cmd:#8fe3c0; --cmdbg:#12251d; } }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px 16px 80px; background:var(--bg); color:var(--fg);
+         font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;
+         line-height:1.6; max-width:960px; margin-inline:auto; }
+  h1 { font-size:1.4rem; margin:0 0 4px; }
+  .meta { color:var(--mut); font-size:.85rem; margin-bottom:20px; }
+  .item { border:1px solid var(--line); border-radius:10px; padding:16px 18px;
+          margin:18px 0; background:var(--card); }
+  .item h2 { font-size:1.05rem; margin:0 0 8px; display:flex; gap:10px; align-items:center;
+             flex-wrap:wrap; }
+  .badge { font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:999px;
+           border:1px solid var(--line); white-space:nowrap; }
+  .v-pass{background:#e7f6ec;color:#0a7c33;border-color:#bfe6cd;}
+  .v-fail{background:#fdeaea;color:#c62828;border-color:#f3bcbc;}
+  .v-info{background:#eaf2fd;color:#1565c0;border-color:#bcd6f3;}
+  .v-na{background:#eee;color:#666;}
+  .v-todo{background:#fff5e6;color:#b26a00;border-color:#f0d9ad;}
+  .role{color:var(--mut);font-weight:600;}
+  .k-manual{background:#fff5e6;color:#b26a00;border-color:#f0d9ad;}
+  .k-cmd{background:#eaf5ef;color:#0b6b47;border-color:#c2e6d6;}
+  .crit{font-size:.85rem;color:var(--mut);margin:2px 0;}
+  .crit b{color:var(--fg);}
+  .finding{margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--line);
+           background:var(--pre);border-radius:0 6px 6px 0;font-size:.9rem;}
+  .step{margin:14px 0 0;padding-top:10px;border-top:1px dashed var(--line);}
+  .step .t{font-size:.9rem;margin:0 0 6px;}
+  pre{margin:6px 0;padding:10px 12px;border-radius:8px;overflow:auto;
+      font:.82rem/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      white-space:pre-wrap;word-break:break-word;}
+  pre.cmd{background:var(--cmdbg);color:var(--cmd);}
+  pre.out{background:var(--pre);}
+  .rc{font-size:.78rem;color:var(--mut);}
+  .rc.bad{color:#c62828;font-weight:700;}
+  .empty{color:var(--mut);font-style:italic;font-size:.85rem;}
+  .warn{color:#b26a00;}
+</style>
+</head>
+<body>
+<div id="app"><p class="empty">evidence.js を読み込んでいます…</p></div>
+<script src="evidence.js"></script>
+<script>
+(function () {
+  var app = document.getElementById("app");
+  var d = window.WSTG_EVIDENCE;
+  function el(tag, cls, txt) { var e = document.createElement(tag);
+    if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  if (!d) { app.innerHTML = "";
+    app.appendChild(el("p", "warn",
+      "evidence.js が見つかりません。uv run scripts/gen_record.py <このフォルダ> で生成してください。"));
+    return; }
+  app.innerHTML = "";
+  app.appendChild(el("h1", null, "実施記録 — " + d.activity_id + (d.target ? " / " + d.target : "")));
+  var meta = el("div", "meta",
+    [d.title, d.date && ("date " + d.date), d.tester && ("tester " + d.tester),
+     d.generated_at && ("生成 " + d.generated_at)].filter(Boolean).join("  ·  "));
+  app.appendChild(meta);
+
+  (d.items || []).forEach(function (it) {
+    var box = el("div", "item");
+    var h = el("h2");
+    h.appendChild(el("span", null, it.wid));
+    if (it.title) h.appendChild(el("span", "role", it.title));
+    h.appendChild(el("span", "badge v-" + (it.verdict || "todo"), (it.verdict || "todo").toUpperCase()));
+    h.appendChild(el("span", "role", it.role));
+    box.appendChild(h);
+    if (it.purpose) box.appendChild(el("div", "crit", "目的: " + it.purpose));
+    if (it.pass) { var cp = el("div", "crit"); cp.appendChild(el("b", null, "pass ")); 
+      cp.appendChild(document.createTextNode(it.pass)); box.appendChild(cp); }
+    if (it.fail) { var cf = el("div", "crit"); cf.appendChild(el("b", null, "fail "));
+      cf.appendChild(document.createTextNode(it.fail)); box.appendChild(cf); }
+    if (it.finding) box.appendChild(el("div", "finding", "finding: " + it.finding));
+
+    (it.steps || []).forEach(function (st) {
+      var s = el("div", "step");
+      var t = el("p", "t");
+      t.appendChild(el("span", "badge k-" + st.kind, st.kind === "cmd" ? "コマンド" : "手動"));
+      t.appendChild(document.createTextNode(" 手順" + st.idx + "： " + st.text));
+      s.appendChild(t);
+      if (st.commands && st.commands.length) {
+        var pc = el("pre", "cmd", st.commands.map(function (c) { return "$ " + c; }).join("\n"));
+        s.appendChild(pc);
+      }
+      if (st.output && st.output.trim()) {
+        s.appendChild(el("pre", "out", st.output + (st.truncated ? "\n…(以下略。全文は " + st.output_path + ")" : "")));
+        var rc = el("div", (st.exit_code ? "rc bad" : "rc"),
+          "→ " + st.output_path + (st.exit_code != null ? "  (exit " + st.exit_code + ")" : "")
+          + (st.ran_at ? "  " + st.ran_at : ""));
+        s.appendChild(rc);
+      } else {
+        s.appendChild(el("p", "empty", st.kind === "cmd"
+          ? "未実行（uv run scripts/run_activity.py でこの手順を実行）"
+          : "未記入（" + st.output_path + " に観察を書く）"));
+      }
+      box.appendChild(s);
+    });
+    app.appendChild(box);
+  });
+})();
+</script>
+</body>
+</html>
+"""
 
 
 def load_yaml(path: Path) -> dict:
@@ -123,16 +247,6 @@ def extract_commands(steps: list, target: str | None) -> list:
     return cmds
 
 
-# 「結果:」に何を貼るかの指示。手順の種類ごとに1行だけ添える（注釈を増やしすぎない）。
-HINT_CMD = ("> 貼るもの: 上の `$` 行の出力をそのまま。"
-            "何も出力しないコマンドは、その旨と終了コード（`echo $?`）を書く。")
-HINT_CMD_FILE = ("> 貼るもの: 上の `$` 行の出力をそのまま。"
-                 "**最後の確認コマンドの結果（ファイルのサイズ・行数・先頭）まで含める**。"
-                 "0 行・空・HTML が返っているなら収集失敗なので、`pass` の根拠にしない。")
-HINT_MANUAL = ("> 貼るもの: ① 操作した URL とクリック手順 "
-               "② 画面・レスポンスで確認できたこと（無ければ「該当なし」と明記） "
-               "③ スクショのパス（`artifacts/*.png`）④ 件数・該当箇所。")
-
 # 確認コマンドを足さない出力先（バイナリ・画像など先頭を出しても意味がないもの）
 _BINARY_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".pdf", ".zip", ".pcap")
 
@@ -188,102 +302,205 @@ def verify_commands(cmd: str, act_dir: str) -> list:
     return checks
 
 
-def render_record(activity: dict, tests: dict, criteria: dict, target: str | None,
-                  date: str, tester: str, act_dir: str) -> str:
-    """カードの手順を Q&A 形式に並べた「実施記録」を作る。
+# ---- 実施記録の中身（手順の平坦リスト）: 生成・実行・表示で共有する唯一の定義 ----
 
-    各手順が1問。[コマンド] は `$` 行をそのまま実行し、[手動/ブラウザ] は指示どおり
-    操作して、いずれも「結果:」直後の ``` ブロックに raw 出力・観察をそのまま貼る。
-    このファイル自体を残す（＝エビデンス）。判定は末尾の @verdict / @finding に書く。
+def iter_steps(activity: dict, criteria: dict, target, act_dir: str) -> list:
+    """アクティビティの手順を WSTG-ID 順・手順番号順に平らに並べて返す。
 
-    Markdown として読まれる前提で、注釈（使い方・目的・判定基準）は引用やリストに
-    抑え、見出しは「表題・WSTG-ID・手順」だけに使う（注釈が本文より目立たないように）。
+    record.html / evidence.js の生成（gen_record.py）と wrapper 実行（run_activity.py）が
+    同じ手順・同じ出力パスを共有するための唯一の定義。1手順 = 1エビデンスファイル:
+      - コマンド手順 … `cmd/<WSTG-ID>-s<n>.txt`（wrapper が実行して出力を保存）
+      - 手動手順     … `artifacts/manual-<WSTG-ID>-s<n>.txt`（人が観察を書く）
+    OUTDIR / target は act_dir の実パス・対象に置換済みで返す。
     """
-    tgt = target or "target"
-    out = [
-        f"# 実施記録 — {activity['id']} / {tgt}",
-        "",
-        f"- activity: `{activity['id']}` — {activity.get('title','')}",
-        f"- target: `{tgt}`",
-        f"- tester: {tester}",
-        f"- date: {iso_date(date)}",
-        "",
-        "> **このファイルはそのまま残すエビデンスです（テンポラリではありません）。**",
-        ">",
-        "> - 各手順を実施し、コマンド出力や画面の観察を「結果:」直後のコードブロックにそのまま貼る。",
-        "> - `[コマンド]` … `$` 行をそのまま実行して出力を貼る（target 置換済み）。",
-        "> - `[手動/ブラウザ]` … 指示どおり操作し、観察・URL・スクショのパスを貼る。",
-        "> - 各手順の「貼るもの:」に何を残すかが書いてある。空欄のままにしない",
-        ">   （何も出なかったときは「該当なし」と書く。空欄は未実施と区別できない）。",
-        "> - コマンドはリポジトリルートで実行する（保存先はこのフォルダの `artifacts/` を指すように",
-        ">   置換済み。出力ファイルはそこに残す）。",
-        "> - 判定は各 WSTG-ID 末尾の `@verdict`（pass|fail|info|na|todo）と `@finding` に記入する。",
-        f"> - 記入後、判定を run.yaml/CSV に反映: `uv run scripts/capture.py {act_dir}`",
-    ]
+    out = []
     for cov in activity.get("covers", []):
         wid = cov["id"]
-        role = cov.get("role", "primary")
-        title = tests.get(wid, {}).get("title", "")
-        c = criteria.get(wid, {})
-        steps = c.get("steps", [])
-        out += ["", f"## {wid} | {title}", "", f"- カード: `playbooks/{wid}.md`"]
-        # 判定に必要な文脈をここに埋め込む（record.md 単体で「何を見て問題なしと
-        # 判断したか」が分かるように）。詳細はカードを参照。
-        if c.get("purpose"):
-            out.append(f"- 目的: {c['purpose']}")
-        if c.get("pass") or c.get("fail"):
-            out.append(f"- 判定基準 pass = {c.get('pass', '（カード参照）')}")
-            out.append(f"- 判定基準 fail = {c.get('fail', '（カード参照）')}")
-        if role == "secondary":
-            out.append("- 役割: secondary（このアクティビティは入力の収集。確定判定は別アクティビティ）")
-        out.append("- scope はヘッダの target。上の基準で下の結果を見て末尾の `@verdict` を決める。")
-        if not steps:
-            out += ["", "（手順未登録。カードを参照して実施し、結果を書く）"]
-        for idx, step in enumerate(steps, 1):
-            cmds = extract_commands([step], target)
-            kind = "コマンド" if cmds else "手動/ブラウザ"
-            out += ["", f"### 手順{idx} [{kind}]", ""]
-            out.append(sub_outdir(sub_target(step, target), act_dir))
-            if cmds:
-                shown = [sub_outdir(cmd, act_dir) for cmd in cmds]
-                # 同じ出力ファイルを複数のコマンドが触る手順（curl で落として jq で読む等)
-                # では確認コマンドが重複するので、1手順につき1回に畳む
-                checks = []
-                for cmd in shown:
-                    for chk in verify_commands(cmd, act_dir):
-                        if chk not in checks:
-                            checks.append(chk)
-                out += ["", "```sh"]
-                out += [f"$ {cmd}" for cmd in shown]
-                # ファイルに落とすコマンドは、取れているかの確認までを1セットにする
-                out += [f"$ {check}" for check in checks]
-                out.append("```")
-                out += ["", HINT_CMD_FILE if checks else HINT_CMD]
-            else:
-                out += ["", HINT_MANUAL]
-            out += ["", "結果:", "```", "```"]
-        # 判定の書き方は role で変わる。secondary（入力・補強）で pass を付けると、
-        # primary のアクティビティが未実施でも CSV が pass になってしまう
-        # （export_checklist.py は verdict が1件でもあれば初期値の todo を捨てる）。
-        if role == "secondary":
-            verdict_note = (
-                "この項目はここでは secondary（入力・補強）。**単独で pass にしない。**"
-                "収集できていれば info、その場で明確な問題が見えたときだけ fail、対象外は na。"
-                "pass/fail の確定は、この ID を primary に持つアクティビティで行う。未実施は todo のまま。"
-            )
-        else:
-            verdict_note = (
-                "上の pass/fail 基準で判定する。基準に触れる所見が無ければ pass、"
-                "結果は取れたが判断材料が足りなければ info、対象外なら na。未実施は todo のまま。"
-            )
-        out += ["", "### 判定",
-                "",
-                verdict_note,
-                "",
-                "@verdict todo",
-                "",
-                "@finding ",
-                ""]
+        crit = criteria.get(wid, {})
+        for idx, step in enumerate(crit.get("steps", []), 1):
+            cmds = [sub_outdir(cmd, act_dir) for cmd in extract_commands([step], target)]
+            checks = []
+            for cmd in cmds:
+                for chk in verify_commands(cmd, act_dir):
+                    if chk not in checks:
+                        checks.append(chk)
+            out.append({
+                "wid": wid,
+                "role": cov.get("role", "primary"),
+                "idx": idx,
+                "text": sub_outdir(sub_target(step, target), act_dir),
+                "kind": "cmd" if cmds else "manual",
+                "commands": cmds,
+                "checks": checks,
+                "output": (f"cmd/{wid}-s{idx}.txt" if cmds
+                           else f"artifacts/manual-{wid}-s{idx}.txt"),
+            })
+    return out
+
+
+def manual_stub_text(activity: dict, step: dict) -> str:
+    """手動手順の観察を書き込むための素の .txt ひな型（これ自体がエビデンス）。"""
+    return "\n".join([
+        f"# {activity['id']} / {step['wid']} 手順{step['idx']}（手動）",
+        f"# 手順: {step['text']}",
+        "# 貼るもの: ① 操作した URL とクリック手順 ② 確認できたこと（無ければ「該当なし」）",
+        "#           ③ スクショのパス（artifacts/*.png） ④ 件数・該当箇所",
+        "# " + "-" * 68,
+        "",
+    ]) + "\n"
+
+
+def _load_run_yaml(activity_dir: Path) -> dict:
+    """run.yaml を読み込む（表示用の読み取り専用。書き戻しはしない）。"""
+    rp = activity_dir / "run.yaml"
+    return yaml.safe_load(rp.read_text(encoding="utf-8")) if rp.exists() else {}
+
+
+# エビデンスファイルは大きくなり得るので、表示用データには先頭だけ載せる（本体は .txt を見る）
+EVIDENCE_MAX_CHARS = 20000
+
+
+def build_evidence(activity: dict, tests: dict, criteria: dict, target,
+                   activity_dir: Path, act_dir: str) -> dict:
+    """run.yaml（判定・コマンド記録）と各手順の出力ファイルから、表示用データを組む。"""
+    run = _load_run_yaml(activity_dir)
+    covers = {c["id"]: c for c in (run.get("covers") or [])}
+    # commands: の各エントリを output（相対パス）で引けるようにする（最後の実行を採用）
+    by_output: dict = {}
+    for cmd in run.get("commands") or []:
+        if isinstance(cmd, dict) and cmd.get("output"):
+            by_output[cmd["output"]] = cmd
+
+    items: list = []
+    grouped: dict = {}
+    for step in iter_steps(activity, criteria, target, act_dir):
+        grouped.setdefault(step["wid"], []).append(step)
+
+    for cov in activity.get("covers", []):
+        wid = cov["id"]
+        crit = criteria.get(wid, {})
+        cv = covers.get(wid, {})
+        steps_out = []
+        for step in grouped.get(wid, []):
+            fpath = activity_dir / step["output"]
+            content, truncated = "", False
+            if fpath.exists():
+                raw = fpath.read_text(encoding="utf-8", errors="replace")
+                content = raw[:EVIDENCE_MAX_CHARS]
+                truncated = len(raw) > EVIDENCE_MAX_CHARS
+            rec = by_output.get(step["output"], {})
+            steps_out.append({
+                "idx": step["idx"],
+                "kind": step["kind"],
+                "text": step["text"],
+                "commands": step["commands"] + step["checks"],
+                "output_path": step["output"],
+                "output": content,
+                "truncated": truncated,
+                "exit_code": rec.get("exit_code"),
+                "ran_at": rec.get("started_at"),
+            })
+        items.append({
+            "wid": wid,
+            "title": tests.get(wid, {}).get("title", ""),
+            "role": cov.get("role", "primary"),
+            "purpose": crit.get("purpose", ""),
+            "pass": crit.get("pass", ""),
+            "fail": crit.get("fail", ""),
+            "verdict": cv.get("verdict", "todo"),
+            "finding": cv.get("finding", ""),
+            "evidence": cv.get("evidence", ""),
+            "steps": steps_out,
+        })
+
+    return {
+        "activity_id": activity["id"],
+        "title": activity.get("title", ""),
+        "target": target or "",
+        "date": str(run.get("date", "")),   # run.yaml では既に ISO 文字列（PyYAML が date 化する）
+        "tester": run.get("tester", ""),
+        "generated_at": _dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "items": items,
+    }
+
+
+def write_evidence_js(activity_dir: Path, data: dict) -> Path:
+    """evidence.js を書き出す（record.html が <script src> で読み込むデータ）。"""
+    import json
+    path = activity_dir / "evidence.js"
+    path.write_text(
+        "// 自動生成: scripts/run_activity.py / scripts/gen_record.py が更新する。\n"
+        "// 生のエビデンスは cmd/ ・ artifacts/ の各ファイル。ここはその表示用コピー。\n"
+        "window.WSTG_EVIDENCE = "
+        + json.dumps(data, ensure_ascii=False, indent=2) + ";\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def write_record_html(activity_dir: Path, force: bool = False) -> Path:
+    """record.html（表示専用ビューア）を書き出す。中身は evidence.js から読む。"""
+    path = activity_dir / "record.html"
+    if path.exists() and not force:
+        return path
+    path.write_text(RECORD_HTML, encoding="utf-8")
+    return path
+
+
+def _act_dir_str(target_dir: Path) -> str:
+    """コマンド中の OUTDIR を置き換える基準パス（リポジトリ内なら相対、外は絶対）。"""
+    try:
+        return target_dir.resolve().relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return target_dir.as_posix()
+
+
+def resolve_activity(activity_dir: Path):
+    """run.yaml を起点に (activity, tests, criteria, target, act_dir) を引く。
+
+    run_activity.py / gen_record.py が既存フォルダを扱うための入口。
+    """
+    run = _load_run_yaml(activity_dir)
+    aid = run.get("activity_id")
+    if not aid:
+        raise SystemExit(f"run.yaml に activity_id がありません: {activity_dir / 'run.yaml'}\n"
+                         "  uv run scripts/new_activity.py <activity_id> で作り直してください。")
+    coverage = load_yaml(COVERAGE_YAML)
+    activities = {a["id"]: a for a in coverage["activities"]}
+    if aid not in activities:
+        raise SystemExit(f"未知の activity_id: {aid}（coverage.yaml に定義がありません）")
+    tests = {t["id"]: t for t in load_yaml(WSTG_TESTS)["tests"]}
+    criteria = load_yaml(CRITERIA_YAML) if CRITERIA_YAML.exists() else {}
+    target = run.get("target_scope") or None
+    return activities[aid], tests, criteria, target, _act_dir_str(activity_dir)
+
+
+def refresh_record(activity_dir: Path) -> dict:
+    """実行はせず、run.yaml と既存のエビデンスから record.html / evidence.js を最新化する。"""
+    activity, tests, criteria, target, act_dir = resolve_activity(activity_dir)
+    write_manual_stubs(activity, criteria, target, activity_dir, act_dir, force=False)
+    write_record_html(activity_dir, force=False)
+    data = build_evidence(activity, tests, criteria, target, activity_dir, act_dir)
+    write_evidence_js(activity_dir, data)
+    return data
+
+
+def write_manual_stubs(activity: dict, criteria: dict, target,
+                       activity_dir: Path, act_dir: str, force: bool) -> list:
+    """手動手順の観察を書くための .txt ひな型を用意する（既存は壊さない）。"""
+    made = []
+    for step in iter_steps(activity, criteria, target, act_dir):
+        if step["kind"] != "manual":
+            continue
+        dest = activity_dir / step["output"]
+        if dest.exists() and not force:
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(manual_stub_text(activity, step), encoding="utf-8")
+        made.append(step["output"])
+    return made
+
+
     return "\n".join(out) + "\n"
 
 
@@ -462,21 +679,27 @@ def main() -> int:
     except ValueError:
         act_dir = target_dir.as_posix()
 
-    record = target_dir / "record.md"
-    if not record.exists() or args.force:
-        record.write_text(
-            render_record(activity, tests, criteria, args.target, args.date, args.tester, act_dir),
-            encoding="utf-8",
-        )
+    # 手動手順の観察を書く .txt ひな型・表示ビューア・表示データを用意する。
+    # 生のエビデンスは cmd/・artifacts/ の各ファイル。record.html はそれを読むだけ。
+    manual = write_manual_stubs(activity, criteria, args.target, target_dir, act_dir, args.force)
+    write_record_html(target_dir, force=args.force)
+    write_evidence_js(
+        target_dir,
+        build_evidence(activity, tests, criteria, args.target, target_dir, act_dir),
+    )
 
     covered = ", ".join(c["id"] for c in activity.get("covers", []))
     print(f"作成: {target_dir}")
     print(f"  covers ({len(activity.get('covers', []))} 件): {covered}")
     if stubs:
         print(f"  成果物の雛形: {', '.join(stubs)}")
-    print(f"  実施記録: {record}")
-    print("     └ 各手順の「結果:」に出力・観察を貼る（このファイルがエビデンス本体）")
-    print(f"  記入後: uv run scripts/capture.py {target_dir}  で判定を run.yaml/CSV に反映")
+    if manual:
+        print(f"  手動手順のひな型: {len(manual)} 件（artifacts/manual-*.txt に観察を書く）")
+    print(f"  実施記録ビューア: {target_dir / 'record.html'}（evidence.js を読み込む）")
+    print(f"  実行: uv run scripts/run_activity.py {target_dir}"
+          "  でコマンド手順を実行→エビデンスと evidence.js を更新")
+    print(f"  判定: {run_yaml} の covers に verdict / finding を直接記入し、"
+          f"uv run scripts/gen_record.py {target_dir} で record.html を更新")
     return 0
 
 

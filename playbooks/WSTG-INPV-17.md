@@ -38,8 +38,8 @@ WSTG の Test Objectives:
 
 ## 記録すべき成果物（run.yaml へ）
 
-- `commands:` — `scripts/run_cmd.py` 経由で実行したコマンドは自動で残る
-- `steps:` — GUI（Burp 等）の操作は手記録
+- `commands:` — `scripts/run_activity.py`（手順を実行）/ `run_cmd.py`（単発）が自動で残す
+- 手動手順（GUI・Burp 等）の観察は `artifacts/manual-*.txt` に書く
 - `artifacts:` — `artifacts/request-tamper.md`, `cmd/curl-hosthdr.txt`
 - `covers:` — `{id: WSTG-INPV-17, verdict: pass|fail|info|na, finding: 要約, evidence: パス}`
 

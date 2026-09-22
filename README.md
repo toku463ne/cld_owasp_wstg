@@ -24,10 +24,10 @@ matrix/coverage.yaml（アクティビティ定義・実施順）
    │ new_activity.py
    ▼
 evidence/<activity>[-<target>]-<date>/
-   ├ record.md（手順=Q&A。結果を貼る＝エビデンス本体）─ capture.py ─┐
-   ├ cmd/（run_cmd.py で直接実行したときのログ）                     ▼
-   └ run.yaml ─┬─▶ export_checklist.py ─▶ checklist_export.csv ─ 目視レビュー ─▶ Google Sheets
-               └─▶ tasks.py（進捗表示）
+   ├ cmd/ + artifacts/（run_activity.py が手順を実行＝純粋なエビデンス）─┐
+   ├ record.html ◀─ evidence.js（gen_record.py が cmd/・artifacts/ を読んで生成・表示）
+   └ run.yaml（covers に判定を直接記入）─┬─▶ export_checklist.py ─▶ checklist_export.csv ─ 目視 ─▶ Sheets
+                                         └─▶ tasks.py（進捗表示）
 ```
 
 ## セットアップ
@@ -132,9 +132,9 @@ sudo curl -sI https://github.com | head -1
 
 ```bash
 uv run scripts/new_activity.py burp-crawl-authn
-# -> evidence/burp-crawl-authn-20260908/{run.yaml,record.md,cmd/,artifacts/,notes.md}
+# -> evidence/burp-crawl-authn-20260908/{run.yaml,record.html,evidence.js,cmd/,artifacts/,notes.md}
 
-# 複数サイトは --target で名前空間を分ける（record.md のコマンドの target も置換される）
+# 複数サイトは --target で名前空間を分ける（手順のコマンドの target も置換される）
 uv run scripts/new_activity.py recon-osint --target example.com
 # -> evidence/recon-osint-example.com-20260913/
 ```
@@ -152,69 +152,60 @@ uv run scripts/new_activity.py recon-osint --target example.com
 対応するプレイブックカード（`playbooks/WSTG-*.md`）を開きながら進める。
 一覧は `playbooks/INDEX.md`、どのアクティビティが何を満たすかは `matrix/coverage.md`。
 
-### 2. `record.md` に実施しながら結果を貼る
+### 2. コマンド手順を wrapper で実行する（＝純粋なエビデンスを作る）
 
-`record.md`（実施記録）は、そのアクティビティのカード手順を **Q&A 形式**に並べたもの。
-各手順が1問で、`[コマンド]` は `$` 行をそのまま実行、`[手動/ブラウザ]` は指示どおり操作し、
-**コマンド出力や画面の観察を「結果:」直後の ` ``` ` ブロックにそのまま貼る**。target は置換済み。
-このファイル自体を残す（＝エビデンス本体。テンポラリではない）。
-
-Markdown としてプレビューしても読めるように、見出しは「表題 / WSTG-ID / 手順」だけに使い、
-使い方や判定基準の注釈は引用・箇条書きに抑えてある。
-
-各手順には **「貼るもの:」** が付く。ここが「結果:」に何を残すかの指示で、空欄にしない
-（何も出なかったときは「該当なし」と書く。空欄は未実施と区別できない）。
-
-- **`[コマンド]`** … `$` 行の出力そのまま。**ファイルに落とすコマンドには確認コマンド
-  （`wc -l` / `head`）が自動で並ぶ**ので、その出力まで貼る。`curl -s ... -o file` のように
-  黙って終わるコマンドは、これが無いと「取れた」のか「空だった」のかが記録に残らない。
-  0 行・空・HTML が返っていたら収集失敗で、`pass` の根拠にしてはいけない
-- **`[手動/ブラウザ]`** … ① 操作した URL とクリック手順 ② 画面・レスポンスで確認できたこと
-  ③ スクショのパス（`artifacts/*.png`）④ 件数・該当箇所
-
-````text
-## WSTG-INFO-01 | Conduct Search Engine Discovery ...
-
-- カード: `playbooks/WSTG-INFO-01.md`
-- 目的: ...
-- 判定基準 pass = ... / fail = ...
-
-### 手順1 [コマンド]
-
-whois で組織名・登録者・ネームサーバを確認する
-
-```sh
-$ whois example.com
-```
-
-> 貼るもの: 上の `$` 行の出力をそのまま。…
-
-結果:
-```            ← ここに出力を貼る
-```
-
-### 判定
-
-@verdict info          ← pass | fail | info | na | todo
-
-@finding whois で登録者・NSを確認。露出情報なし。（要約のみ・生値は貼らない）
-````
-
-記入したら取り込む。`record.md` の `@verdict` / `@finding` が `run.yaml` の `covers:` に転記され、
-`evidence:` はこの `record.md` を指す（raw はこのファイルを見れば分かる）:
+手順のコマンドは自分で打たず、wrapper に実行させる。手順は `matrix/criteria.yaml` から
+毎回組み立て、target は `run.yaml` の対象に、出力先はこのフォルダの `artifacts/` に置換される。
 
 ```bash
-uv run scripts/capture.py evidence/recon-osint-example.com-20260913
+uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913            # コマンド手順を全部実行
+uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --list     # 手順一覧（実行しない）
+uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --only WSTG-INFO-02      # ID を絞る
+uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --only WSTG-INFO-02:4    # 手順を絞る
+uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --dry-run  # 実行内容の確認だけ
 ```
 
-- **`finding` は要約のみ**。生トークン・資格情報・生ホスト名は `record.md` の「結果:」に残し、
-  `finding` には書かない。
-- `record.md` を使わず **CLI をその場で回して `cmd/*.txt` に残したい**ときは、ロガーも使える:
+各コマンド手順は `bash` で実行され、出力（本体＋`wc -l`/`head` の確認コマンド）が丸ごと
+`cmd/<WSTG-ID>-s<n>.txt` に残る。これが**純粋なエビデンス**で、ドキュメントには埋め込まない。
+非0終了・空・HTML が返っていたら収集失敗なので、`pass` の根拠にしてはいけない。実行のたびに
+`run.yaml` の `commands:` に記録が追記され、`evidence.js`（表示データ）が作り直される。
+
+- 手動手順（Burp・ヒアリング・ブラウザ操作）は実行されない。`artifacts/manual-<WSTG-ID>-s<n>.txt`
+  に、① 操作した URL・手順 ② 確認できたこと（無ければ「該当なし」）③ スクショのパス ④ 件数を書く。
+- 動的入力が要る手順（`hosts.txt`・`cookies.txt` を用意してからのループ等）は、先に入力を置いてから
+  `--only` でその手順だけ回す。
+- 単発の CLI を回して `cmd/` に残すだけなら、従来どおりロガーも使える:
   ```bash
   uv run scripts/run_cmd.py evidence/tls-scan-20260908 -- testssl.sh --quiet target.example
   ```
-- Burp/ZAP などの GUI 操作は、`record.md` の `[手動/ブラウザ]` の「結果:」に何をしたか
-  （スコープ・使った機能・エクスポート先）を書く。これが再現メモになる。
+
+### 2b. 判定を `run.yaml` に書き、`record.html` で見る
+
+判定は `run.yaml` の `covers:` に**直接**書く（唯一の判定置き場。旧 `record.md` / `capture.py` は廃止）:
+
+```yaml
+covers:
+  - id: WSTG-INFO-02
+    verdict: fail          # pass | fail | info | na | todo
+    finding: "2.4.49 に既知 CVE。詳細は evidence 参照"   # 要約のみ
+    evidence: "cmd/WSTG-INFO-02-s5.txt"                 # 生値はこのファイルを見る
+```
+
+書いたら表示を最新化して、ブラウザで `record.html` を開いて確認する:
+
+```bash
+uv run scripts/gen_record.py evidence/recon-osint-example.com-20260913
+```
+
+`record.html` は静的なビューアで、中身は同フォルダの `evidence.js` から読み込む
+（ローカルの `file://` では `.txt` の `fetch` がブラウザに遮断されるため、`<script src>` でデータを渡す）。
+各手順のコマンド・出力・終了コード、WSTG-ID ごとの判定・finding がまとまって見える。
+
+**エビデンス本体は `cmd/`・`artifacts/` の各ファイルに、判定は `run.yaml` にあるので、
+上流（`criteria.yaml` 等）を更新して手順が変わっても、`gen_record.py` で作り直すだけでよく、
+過去のエビデンスを別ファイルからコピーし直す必要がない。**
+
+- **`finding` は要約のみ**。生トークン・資格情報・生ホスト名は書かず、`evidence:` のパス参照で示す。
 
 ### 3. 進捗を確認する
 

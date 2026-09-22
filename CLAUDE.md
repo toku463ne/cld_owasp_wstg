@@ -50,17 +50,25 @@
 docs/owasp（原文） ─▶ wstg_tests.yaml ─┬─▶ coverage.{yaml,md}（+ coverage.yaml の activities）
                                        └─▶ playbooks/（+ criteria.yaml）
 coverage.yaml ─┬─▶ TASKS.md（実施順）
-               └─▶ new_activity.py ─▶ evidence/*/{run.yaml, record.md}
-                     record.md（手順=Q&A・結果を貼る＝エビデンス本体）
-                        └─(記入)─▶ capture.py ─▶ run.yaml の covers を更新
-                     run.yaml ─┬─▶ export_checklist.py ─▶ CSV
-                               └─▶ tasks.py（進捗表示）
+               └─▶ new_activity.py ─▶ evidence/*/{run.yaml, record.html, cmd/, artifacts/}
+                     run_activity.py ─▶ criteria.yaml の手順を bash 実行
+                        ├─▶ cmd/<WSTG-ID>-s<n>.txt（純粋なエビデンス）
+                        ├─▶ run.yaml の commands: に追記
+                        └─▶ evidence.js（gen_record.py も同じ）
+                     record.html ◀─(表示)─ evidence.js（cmd/・artifacts/ を読む）
+                     run.yaml の covers ─(人が verdict/finding を直接記入)
+                        └─▶ export_checklist.py ─▶ CSV
+                     run.yaml ─▶ tasks.py（進捗表示）
 ```
 
-`new_activity.py` は `criteria.yaml` の手順を Q&A 形式の `record.md` に並べる（手順の
-`backtick` で target を参照するものは `$` 実行コマンド、それ以外は手動/ブラウザ操作）。
-`--target` でサイトごとにフォルダと record を量産できる。`record.md` の raw 結果は
-分解せずそのまま残し、`capture.py` は `@verdict`/`@finding` を `covers` に転記するだけ。
+`new_activity.py` はフォルダ一式（`run.yaml`・静的ビューア `record.html`・`cmd/`・`artifacts/`・
+手動手順の `manual-*.txt` ひな型）を作る。`run_activity.py` は `criteria.yaml` の手順のうち
+「コマンド手順」（`backtick` で target/OUTDIR を参照する `$` 実行コマンド）を bash で実行し、
+出力を `cmd/<WSTG-ID>-s<n>.txt` に丸ごと残す（＝純粋なエビデンス。ドキュメントには埋め込まない）。
+`gen_record.py` は実行せず、`run.yaml` と既存のエビデンスから `record.html`／`evidence.js` を
+作り直すだけ。**エビデンスは cmd/・artifacts/、判定は run.yaml にあるので、上流を更新して
+手順が変わっても `gen_record.py` で作り直すだけでよく、過去のエビデンスをコピーし直さずに済む。**
+判定（`verdict`/`finding`）は `run.yaml` の `covers` に人が直接書く（旧 `record.md`／`capture.py` は廃止）。
 
 上流を変えたら下流を必ず再生成し、生成物の差分も一緒にコミットする
 （原文の再取得後は `playbooks/` が大量に変わり得る。差分に目を通してからコミットする）。
@@ -71,18 +79,22 @@ coverage.yaml ─┬─▶ TASKS.md（実施順）
 ./scripts/selftest.sh
 ```
 
-生成物の鮮度・`matrix/*.yaml` の ID 整合・`new_activity` → `run_cmd` → `export_checklist` の
-一連の動作・カード生成・機密境界（`evidence/` と `docs/owasp/` が追跡されていないこと）を
+生成物の鮮度・`matrix/*.yaml` の ID 整合・`new_activity` → `run_activity` → `gen_record` →
+`export_checklist` の一連の動作・カード生成・機密境界（`evidence/` と `docs/owasp/` が追跡されていないこと）を
 一時ディレクトリだけで検証する。**スクリプトを触ったらこれを通してからコミットする。**
 挙動を変えたときは selftest 側のアサーションも更新する。
 
 ## 4. 壊してはいけない不変条件
 
-- **`run_cmd.py` と `capture.py` は `run.yaml` をテキストとして追記・部分置換する**。
-  PyYAML で読み込んで丸ごと書き戻さない（コメント・並び・空行が消え、手記録の意図が
-  失われる）。`capture.py` は `covers:` の該当 id ブロックの `verdict`/`finding`/`evidence`
-  行だけを置換する（ブロック外は触らない）。`record.md` に貼られた raw 結果は分解・複製
-  しない（そのファイル自体がエビデンス本体で、`evidence:` はそこを指す）。
+- **`run_cmd.py` と `run_activity.py` は `run.yaml` の `commands:` にテキストとして追記する**。
+  PyYAML で読み込んで丸ごと書き戻さない（コメント・並び・空行が消え、手記録の意図が失われる）。
+  判定（`covers` の `verdict`/`finding`/`evidence`）は人が手で書く前提なので、スクリプトからは
+  書き換えない（`gen_record.py` は `run.yaml` を **読むだけ**で書かない）。
+- **エビデンス本体は `cmd/`・`artifacts/` のファイル、`record.html` はそれを読むだけの表示**。
+  `record.html` は静的で、中身は同フォルダの `evidence.js`（`run_activity.py`／`gen_record.py` が
+  生成）から読む。`file://` では `.txt` の `fetch` が遮断されるので `<script src>` で渡す設計。
+  この分離（生エビデンス＝ファイル / 判定＝run.yaml / 表示＝record.html）を崩さない。`record.html`
+  に生の出力を埋め込んだり、`evidence.js` を唯一のエビデンスにしたりしない（作り直しで消えるため）。
 - **`export_checklist.py` の CSV 列は Google Sheets 側の契約**。
   列名・順序（`wstg_id, category, title, status, activities, evidence_paths,
   finding_summary, updated`）を変えるときは、人間に確認してから。

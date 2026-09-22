@@ -252,14 +252,14 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
         w(f"- カード: {', '.join(f'[{c}](playbooks/{c}.md)' for c in covers)}")
         w("")
         tools = ", ".join(a.get("tools", []))
-        w(f"- [ ] `uv run scripts/new_activity.py {a['id']}` で `record.md`（実施記録）を作る"
+        w(f"- [ ] `uv run scripts/new_activity.py {a['id']}` でフォルダ一式を作る"
           "（複数サイトは `--target <site>`）")
-        w(f"- [ ] `record.md` の各手順（{len(covers)} 項目・{tools}）を実施し、"
-          "コマンド出力や画面の観察を「結果:」に貼る ← このファイルがエビデンス本体")
-        w("      - `[コマンド]` は `$` 行を実行、`[手動/ブラウザ]` は指示どおり操作")
-        w(f"      - 直接実行して `cmd/` にも残したいときは `uv run scripts/run_cmd.py evidence/{a['id']}-<yyyymmdd> -- <コマンド>`")
-        w("- [ ] `record.md` に WSTG-ID ごとの `@verdict`（pass|fail|info|na|todo）と `@finding`（要約のみ）を記入")
-        w(f"- [ ] `uv run scripts/capture.py evidence/{a['id']}-<yyyymmdd>` で判定を `run.yaml`（→CSV）に反映")
+        w(f"- [ ] `uv run scripts/run_activity.py evidence/{a['id']}-<yyyymmdd>` で"
+          f"コマンド手順（{len(covers)} 項目・{tools}）を実行 ← `cmd/` に純粋なエビデンスが残る")
+        w("      - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く")
+        w(f"      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/{a['id']}-<yyyymmdd> -- <コマンド>`")
+        w("- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入")
+        w(f"- [ ] `uv run scripts/gen_record.py evidence/{a['id']}-<yyyymmdd>` で `record.html` を最新化して確認")
         w("")
 
     w("## 仕上げ")
