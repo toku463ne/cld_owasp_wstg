@@ -49,7 +49,7 @@ CLI_BINARIES = {
     "ffuf", "gobuster",
     "sqlmap", "testssl.sh", "sslyze", "nikto", "whatweb", "httpx", "dig", "nslookup",
     "ncat", "nc", "hydra", "dotdotpwn", "wfuzz", "retire", "git-dumper", "aws",
-    "padbuster", "grep",
+    "padbuster", "grep", "jq",
 }
 
 
@@ -246,7 +246,13 @@ def render_record(activity: dict, tests: dict, criteria: dict, target: str | Non
             out.append(sub_outdir(sub_target(step, target), act_dir))
             if cmds:
                 shown = [sub_outdir(cmd, act_dir) for cmd in cmds]
-                checks = [c for cmd in shown for c in verify_commands(cmd, act_dir)]
+                # 同じ出力ファイルを複数のコマンドが触る手順（curl で落として jq で読む等)
+                # では確認コマンドが重複するので、1手順につき1回に畳む
+                checks = []
+                for cmd in shown:
+                    for chk in verify_commands(cmd, act_dir):
+                        if chk not in checks:
+                            checks.append(chk)
                 out += ["", "```sh"]
                 out += [f"$ {cmd}" for cmd in shown]
                 # ファイルに落とすコマンドは、取れているかの確認までを1セットにする

@@ -104,6 +104,18 @@ grep -qF -- "\$ grep -iaE" "${REC}" \
   || ng "OUTDIR に書く grep 後処理コマンドが $ 実行として拾われていない"
 grep -qF -- "tee ${TDIR}/artifacts/takeover-candidates.md" "${REC}" \
   || ng "grep の tee 出力先が artifacts/ に置換されていない"
+# 同じ出力ファイルを複数のコマンドが触る手順（curl で落として jq で読む: INFO-02 の
+# NVD 照合）でも、確認コマンドは1手順に1回だけ並ぶこと
+"${PY[@]}" scripts/new_activity.py fingerprint-stack --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null
+FDIR="${TMP}/ev/fingerprint-stack-ex.test-20260101"
+FREC="${FDIR}/record.md"
+[ "$(grep -cF -- "head -c 400 ${FDIR}/artifacts/nvd-cve.json" "${FREC}")" -eq 1 ] \
+  || ng "同じ出力ファイルを触る手順で確認コマンドが重複している"
+# バージョン→CVE の照合がブラウザ無し（NVD API を curl/jq で引く）で完結すること
+grep -qF -- "$ curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0" "${FREC}" \
+  || ng "CVE 照合が NVD API（curl）の $ 実行コマンドになっていない"
+grep -qF -- "$ jq -r '.totalResults'" "${FREC}" \
+  || ng "jq が $ 実行コマンドとして拾われていない"
 # 各手順に「結果に何を貼るか」の指示があること（手動/ブラウザを含む）
 [ "$(grep -c "^> 貼るもの: " "${REC}")" -ge 5 ] \
   || ng "各手順に「貼るもの:」の指示が入っていない"

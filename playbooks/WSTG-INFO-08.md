@@ -22,19 +22,22 @@ WSTG の Test Objectives:
 1. `whatweb --log-json=evidence/<活動フォルダ>/artifacts/whatweb.json https://target/` と ブラウザ拡張 Wappalyzer でフレームワーク/CMS を推定
 2. Cookie 名（`JSESSIONID`/`ASP.NET_SessionId`/`laravel_session` 等）・URL パス・ヘッダから基盤を特定
 3. 取得したフロント JS を `retire --path <JSフォルダ> --outputformat json --outputpath evidence/<活動フォルダ>/artifacts/retire.json`（Retire.js）で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認
-4. 特定した製品・バージョンを CVE と照合し、finding にバージョン根拠（どこで判ったか）を添える
+4. 手順1・2 で特定した CMS/フレームワークごとに CPE 名を引く（retire.js が CVE まで出したフロント JS は不要）: `curl -s --get --data-urlencode "keywordSearch=wordpress 6.4.2" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o evidence/<活動フォルダ>/artifacts/nvd-cpe-cms.json` → `jq -r '.totalResults, (.products[].cpe.cpeName)' evidence/<活動フォルダ>/artifacts/nvd-cpe-cms.json`
+5. その cpeName で CVE を一覧し、finding にバージョン根拠（どこで判ったか）を添える: `curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0?virtualMatchString=cpe:2.3:a:wordpress:wordpress:6.4.2&resultsPerPage=100' -o evidence/<活動フォルダ>/artifacts/nvd-cve-cms.json` → `jq -r '.vulnerabilities[].cve | [.id, (.metrics.cvssMetricV31[0].cvssData.baseScore // "-" | tostring), .descriptions[0].value[0:100]] | @tsv' evidence/<活動フォルダ>/artifacts/nvd-cve-cms.json`
 
 ## 使用ツール
 
 - whatweb
 - Wappalyzer
 - Retire.js
+- curl
+- jq
 
 ## 判定基準（pass / fail の見分け）
 
 - **pass**: 使用フレームワークが特定できない、または特定できても既知脆弱性のないバージョン。
 - **fail**: 既知脆弱性のあるバージョンのフレームワーク・ライブラリを使用している（Cookie 名・パス・ヘッダ・JS から特定）。
-- 補足: フロント側のライブラリ（jQuery 等）は Retire.js で確認できる。Retire.js は実行時に github から脆弱性DB（jsrepository.json）を取りに行くため、プロキシ必須／外向き通信が絞られた環境では更新に失敗することがある（amass の libpostal と同じ構図）。`--path` は既にダウンロード済みのローカル JS を走査するので、DB さえ取得できれば対象への通信は不要。更新できないときは事前に DB を取得しておくか、特定したライブラリ名・バージョンを手で CVE 照合する。
+- 補足: フロント側のライブラリ（jQuery 等）は Retire.js で確認できる。Retire.js は実行時に github から脆弱性DB（jsrepository.json）を取りに行くため、プロキシ必須／外向き通信が絞られた環境では更新に失敗することがある（amass の libpostal と同じ構図）。`--path` は既にダウンロード済みのローカル JS を走査するので、DB さえ取得できれば対象への通信は不要。更新できないときは事前に DB を取得しておくか、下の NVD API での照合に回す。CMS・フレームワーク側の CVE 照合はブラウザ不要で、NVD の cpes/2.0（製品名+バージョン → cpeName）→ cves/2.0（cpeName → CVE 一覧）を curl で引く（API キー無しは 30 秒 5 リクエストまで。0 件の読み替えは WSTG-INFO-02 の note と同じ）。
 
 ## 記録すべき成果物（run.yaml へ）
 

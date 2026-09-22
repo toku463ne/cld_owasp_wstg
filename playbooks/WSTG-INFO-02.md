@@ -22,19 +22,21 @@ WSTG の Test Objectives:
 1. `curl -sI https://target/` で Server / X-Powered-By / Via ヘッダを確認
 2. `nmap -sV -p80,443 -oN evidence/<活動フォルダ>/artifacts/nmap-http.txt target` と `whatweb --log-json=evidence/<活動フォルダ>/artifacts/whatweb.json https://target/` で製品名・バージョンを突き合わせる
 3. 存在しないパス（`curl -s https://target/nope123`）を叩き、404 ページの体裁からも製品を推定
-4. 特定できたバージョンを CVE（NVD 等）と照合し、既知脆弱性の有無を finding に書く
+4. 手順2 で特定した製品名+バージョンから CPE 名（CVE 照合のキー）を引く: `curl -s --get --data-urlencode "keywordSearch=apache http server 2.4.49" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o evidence/<活動フォルダ>/artifacts/nvd-cpe.json` の中身を `jq -r '.totalResults, (.products[].cpe.cpeName)' evidence/<活動フォルダ>/artifacts/nvd-cpe.json` で確認する（keywordSearch は実際に特定した製品名+バージョンに置き換える。0 件なら note の言い換えを試す）
+5. 引いた cpeName で既知 CVE を一覧する: `curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0?virtualMatchString=cpe:2.3:a:apache:http_server:2.4.49&resultsPerPage=100' -o evidence/<活動フォルダ>/artifacts/nvd-cve.json` → `jq -r '.totalResults' evidence/<活動フォルダ>/artifacts/nvd-cve.json` と `jq -r '.vulnerabilities[].cve | [.id, (.metrics.cvssMetricV31[0].cvssData.baseScore // "-" | tostring), .descriptions[0].value[0:100]] | @tsv' evidence/<活動フォルダ>/artifacts/nvd-cve.json`。CVSS 7.0 以上の CVE があれば CVE-ID と「バージョンをどこで特定したか」を finding に書く
 
 ## 使用ツール
 
 - curl
 - nmap
 - whatweb
+- jq
 
 ## 判定基準（pass / fail の見分け）
 
 - **pass**: バナー・ヘッダ・エラーページから製品名とバージョンが特定できない、または既知脆弱性のないバージョン。
 - **fail**: Server ヘッダ等でバージョンまで特定でき、そのバージョンに既知の脆弱性がある。
-- 補足: バージョン秘匿だけでは対策にならない。パッチ状況とセットで報告する。
+- 補足: バージョン秘匿だけでは対策にならない。パッチ状況とセットで報告する。CVE 照合はブラウザ不要で、NVD の REST API を curl で引く（検索キーは CPE 名なので、cpes/2.0 で cpeName を引いてから cves/2.0 に渡す）。whatweb/nmap の表記と NVD の呼称はずれる（nmap の "Apache httpd 2.4.49" → cpe:2.3:a:apache:http_server:2.4.49）。cpes/2.0 が 0 件なら製品名を言い換える／バージョンを粗く（2.4.49 → 2.4）して引き直す。CPE が違えば cves/2.0 は当然 0 件になるので、CPE が取れたことを確認するまで「既知脆弱性なし」と書かない。API キー無しは 30 秒 5 リクエストまで（超過は 403）。curl は http_proxy/https_proxy を見るのでプロキシ配下でも追加指定は不要。外向き HTTPS が塞がれた環境では `searchsploit apache 2.4.49`（apt: exploitdb、ローカルDBのみで通信不要）で代替し、その旨を record に書く。
 
 ## 記録すべき成果物（run.yaml へ）
 

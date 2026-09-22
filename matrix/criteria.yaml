@@ -42,12 +42,13 @@ WSTG-INFO-02:
   purpose: "Web サーバの種類とバージョンがどこまで外部から判別できるかを確認する。"
   pass: "バナー・ヘッダ・エラーページから製品名とバージョンが特定できない、または既知脆弱性のないバージョン。"
   fail: "Server ヘッダ等でバージョンまで特定でき、そのバージョンに既知の脆弱性がある。"
-  note: "バージョン秘匿だけでは対策にならない。パッチ状況とセットで報告する。"
+  note: "バージョン秘匿だけでは対策にならない。パッチ状況とセットで報告する。CVE 照合はブラウザ不要で、NVD の REST API を curl で引く（検索キーは CPE 名なので、cpes/2.0 で cpeName を引いてから cves/2.0 に渡す）。whatweb/nmap の表記と NVD の呼称はずれる（nmap の \"Apache httpd 2.4.49\" → cpe:2.3:a:apache:http_server:2.4.49）。cpes/2.0 が 0 件なら製品名を言い換える／バージョンを粗く（2.4.49 → 2.4）して引き直す。CPE が違えば cves/2.0 は当然 0 件になるので、CPE が取れたことを確認するまで「既知脆弱性なし」と書かない。API キー無しは 30 秒 5 リクエストまで（超過は 403）。curl は http_proxy/https_proxy を見るのでプロキシ配下でも追加指定は不要。外向き HTTPS が塞がれた環境では `searchsploit apache 2.4.49`（apt: exploitdb、ローカルDBのみで通信不要）で代替し、その旨を record に書く。"
   steps:
     - "`curl -sI https://target/` で Server / X-Powered-By / Via ヘッダを確認"
     - "`nmap -sV -p80,443 -oN OUTDIR/nmap-http.txt target` と `whatweb --log-json=OUTDIR/whatweb.json https://target/` で製品名・バージョンを突き合わせる"
     - "存在しないパス（`curl -s https://target/nope123`）を叩き、404 ページの体裁からも製品を推定"
-    - "特定できたバージョンを CVE（NVD 等）と照合し、既知脆弱性の有無を finding に書く"
+    - "手順2 で特定した製品名+バージョンから CPE 名（CVE 照合のキー）を引く: `curl -s --get --data-urlencode \"keywordSearch=apache http server 2.4.49\" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o OUTDIR/nvd-cpe.json` の中身を `jq -r '.totalResults, (.products[].cpe.cpeName)' OUTDIR/nvd-cpe.json` で確認する（keywordSearch は実際に特定した製品名+バージョンに置き換える。0 件なら note の言い換えを試す）"
+    - "引いた cpeName で既知 CVE を一覧する: `curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0?virtualMatchString=cpe:2.3:a:apache:http_server:2.4.49&resultsPerPage=100' -o OUTDIR/nvd-cve.json` → `jq -r '.totalResults' OUTDIR/nvd-cve.json` と `jq -r '.vulnerabilities[].cve | [.id, (.metrics.cvssMetricV31[0].cvssData.baseScore // \"-\" | tostring), .descriptions[0].value[0:100]] | @tsv' OUTDIR/nvd-cve.json`。CVSS 7.0 以上の CVE があれば CVE-ID と「バージョンをどこで特定したか」を finding に書く"
 
 WSTG-INFO-03:
   purpose: "robots.txt・sitemap・security.txt・.well-known 配下から情報が漏れていないかを確認する。"
@@ -108,12 +109,13 @@ WSTG-INFO-08:
   purpose: "アプリのフレームワーク・CMS・ライブラリとそのバージョンを特定する。"
   pass: "使用フレームワークが特定できない、または特定できても既知脆弱性のないバージョン。"
   fail: "既知脆弱性のあるバージョンのフレームワーク・ライブラリを使用している（Cookie 名・パス・ヘッダ・JS から特定）。"
-  note: "フロント側のライブラリ（jQuery 等）は Retire.js で確認できる。Retire.js は実行時に github から脆弱性DB（jsrepository.json）を取りに行くため、プロキシ必須／外向き通信が絞られた環境では更新に失敗することがある（amass の libpostal と同じ構図）。`--path` は既にダウンロード済みのローカル JS を走査するので、DB さえ取得できれば対象への通信は不要。更新できないときは事前に DB を取得しておくか、特定したライブラリ名・バージョンを手で CVE 照合する。"
+  note: "フロント側のライブラリ（jQuery 等）は Retire.js で確認できる。Retire.js は実行時に github から脆弱性DB（jsrepository.json）を取りに行くため、プロキシ必須／外向き通信が絞られた環境では更新に失敗することがある（amass の libpostal と同じ構図）。`--path` は既にダウンロード済みのローカル JS を走査するので、DB さえ取得できれば対象への通信は不要。更新できないときは事前に DB を取得しておくか、下の NVD API での照合に回す。CMS・フレームワーク側の CVE 照合はブラウザ不要で、NVD の cpes/2.0（製品名+バージョン → cpeName）→ cves/2.0（cpeName → CVE 一覧）を curl で引く（API キー無しは 30 秒 5 リクエストまで。0 件の読み替えは WSTG-INFO-02 の note と同じ）。"
   steps:
     - "`whatweb --log-json=OUTDIR/whatweb.json https://target/` と ブラウザ拡張 Wappalyzer でフレームワーク/CMS を推定"
     - "Cookie 名（`JSESSIONID`/`ASP.NET_SessionId`/`laravel_session` 等）・URL パス・ヘッダから基盤を特定"
     - "取得したフロント JS を `retire --path <JSフォルダ> --outputformat json --outputpath OUTDIR/retire.json`（Retire.js）で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認"
-    - "特定した製品・バージョンを CVE と照合し、finding にバージョン根拠（どこで判ったか）を添える"
+    - "手順1・2 で特定した CMS/フレームワークごとに CPE 名を引く（retire.js が CVE まで出したフロント JS は不要）: `curl -s --get --data-urlencode \"keywordSearch=wordpress 6.4.2\" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o OUTDIR/nvd-cpe-cms.json` → `jq -r '.totalResults, (.products[].cpe.cpeName)' OUTDIR/nvd-cpe-cms.json`"
+    - "その cpeName で CVE を一覧し、finding にバージョン根拠（どこで判ったか）を添える: `curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0?virtualMatchString=cpe:2.3:a:wordpress:wordpress:6.4.2&resultsPerPage=100' -o OUTDIR/nvd-cve-cms.json` → `jq -r '.vulnerabilities[].cve | [.id, (.metrics.cvssMetricV31[0].cvssData.baseScore // \"-\" | tostring), .descriptions[0].value[0:100]] | @tsv' OUTDIR/nvd-cve-cms.json`"
 
 WSTG-INFO-10:
   purpose: "WAF・LB・リバースプロキシ・API GW・DB など、経路上の構成要素を推定する。"

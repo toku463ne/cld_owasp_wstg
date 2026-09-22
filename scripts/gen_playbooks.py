@@ -91,6 +91,7 @@ TOOL_PATTERNS = [
     (r"\bwhois\b", "whois"), (r"\bnslookup\b", "nslookup"), (r"\bdig\b", "dig"),
     (r"wayback|web\.archive", "Wayback Machine"), (r"\bdork|site:", "Google/Bing dorking"),
     (r"\bcurl\b", "curl"), (r"\bwget\b", "wget"), (r"\bnmap\b", "nmap"),
+    (r"\bjq\b", "jq"), (r"searchsploit", "searchsploit"),
     (r"\bffuf\b", "ffuf"), (r"gobuster", "gobuster"), (r"\bsqlmap\b", "sqlmap"),
     (r"testssl", "testssl.sh"), (r"\bsslyze\b", "sslyze"), (r"\bnikto\b", "nikto"),
     (r"\bwhatweb\b", "whatweb"), (r"wappalyzer", "Wappalyzer"), (r"\bhttpx\b", "httpx"),
