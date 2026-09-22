@@ -25,7 +25,7 @@ matrix/coverage.yaml（アクティビティ定義・実施順）
    ▼
 evidence/<activity>[-<target>]-<date>/
    ├ cmd/ + artifacts/（run_activity.py が手順を実行＝純粋なエビデンス）─┐
-   ├ record.html ◀─ evidence.js（gen_record.py が cmd/・artifacts/ を読んで生成・表示）
+   ├ record.html ─(iframe参照)▶ cmd/・artifacts/ の各ファイル（evidence.js はメタデータのみ）
    └ run.yaml（covers に判定を直接記入）─┬─▶ export_checklist.py ─▶ checklist_export.csv ─ 目視 ─▶ Sheets
                                          └─▶ tasks.py（進捗表示）
 ```
@@ -199,9 +199,15 @@ covers:
 uv run scripts/gen_record.py evidence/recon-osint-example.com-20260913
 ```
 
-`record.html` は静的なビューアで、中身は同フォルダの `evidence.js` から読み込む
-（ローカルの `file://` では `.txt` の `fetch` がブラウザに遮断されるため、`<script src>` でデータを渡す）。
-各手順のコマンド・出力・終了コード、WSTG-ID ごとの判定・finding がまとまって見える。
+`record.html` は静的なビューアで、手順の説明・各コマンド・WSTG-ID ごとの判定/finding という
+**メタデータ**を同フォルダの `evidence.js` から読む（`file://` では `.txt` の `fetch` が遮断されるため
+`<script src>` で渡す）。**エビデンス本体（各コマンドの出力）は evidence.js に複製せず、
+`cmd/`・`artifacts/` のファイルを `<iframe>` で直接参照する**。したがって `.txt` を手で編集
+（別環境で取った結果を貼る等）したら、`gen_record.py` を回さなくてもブラウザのリロードだけで反映される。
+`gen_record.py` が要るのは、手順の変更・判定の記入・新しいコマンドの追加を反映するときだけ。
+
+- Firefox は `file://` の `<iframe>` で同フォルダのファイルを表示できる（Kali 既定）。
+  Chromium 系で枠が空になる場合は `python -m http.server` でこのフォルダを配信して開く。
 
 **エビデンス本体は `cmd/`・`artifacts/` の各ファイルに、判定は `run.yaml` にあるので、
 上流（`criteria.yaml` 等）を更新して手順が変わっても、`gen_record.py` で作り直すだけでよく、

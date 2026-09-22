@@ -119,8 +119,10 @@ for it in d["items"]:
             assert "output_path" in r, r
 DESC
 # record.html の JS 内の \n が実改行に化けていないこと（RECORD_HTML は raw 文字列）
-grep -qF '"\n…(以下略' "${TDIR}/record.html" \
-  || ng "record.html の JS 内 \\n が実改行に化けている（テンプレートが raw 文字列でない）"
+grep -qF 'fr.src = r.output_path' "${TDIR}/record.html" \
+  || ng "record.html がエビデンスを iframe 参照で表示していない"
+grep -qF 'r.output && r.output' "${TDIR}/record.html" \
+  && ng "record.html にエビデンス本体が埋め込まれている（参照でなく複製）" || true
 ok "record.html / evidence.js 生成（target/OUTDIR 置換・手動ひな型）"
 
 # fingerprint-stack: NVD 照合が curl/jq、受動観測が curl、確認コマンドは重複しないこと
@@ -157,8 +159,9 @@ assert any(x['output']=='cmd/WSTG-INFO-02-s1-c1.txt' for x in c), 'commands: に
 import json
 d=json.loads(open('${RDIR}/evidence.js').read().split('window.WSTG_EVIDENCE = ',1)[1].rstrip(';\n'))
 r=d['items'][0]['steps'][0]['runs'][0]
-assert r['exit_code'] is not None and r['output'].strip(), r
-" || ng "run_activity 後に evidence.js が実行結果を反映しない"
+assert r['has_output'] and r['output_path']=='cmd/WSTG-INFO-02-s1-c1.txt', r
+assert 'output' not in r, ('中身を埋め込んでいる（参照のはず）: ' + str(r))
+" || ng "run_activity 後に evidence.js が出力ファイルを参照しない"
 ok "run_activity: dry-run 提示・実行でエビデンス/commands/evidence.js を更新"
 
 # パスを間違えても（--target を付けた活動を target 抜きで叩く等）近いフォルダを提案すること
@@ -179,13 +182,14 @@ for k in range(i, i+6):
 rp.write_text("\n".join(lines), encoding="utf-8")
 VERDICT
 "${PY[@]}" scripts/gen_record.py "${RDIR}" >/dev/null
+[ -s "${RDIR}/cmd/WSTG-INFO-02-s1-c1.txt" ] || ng "gen_record 後にエビデンスファイルが消えた"
 "${PY[@]}" -c "
 import json
 d=json.loads(open('${RDIR}/evidence.js').read().split('window.WSTG_EVIDENCE = ',1)[1].rstrip(';\n'))
 it=d['items'][0]
 assert it['verdict']=='fail' and it['finding']=='要約のみ', it
-assert it['steps'][0]['runs'][0]['output'].strip(), '再生成で収集済みエビデンスが消えた'
-" || ng "gen_record が run.yaml の判定を反映しない / エビデンスを失う"
+assert it['steps'][0]['runs'][0]['has_output'], '収集済みの出力が参照されていない'
+" || ng "gen_record が run.yaml の判定を反映しない / 参照が壊れた"
 ok "判定は run.yaml 直記入 → gen_record で反映（再生成でエビデンスを失わない）"
 
 echo "[4/8] run_cmd.py（実行・保存・追記）"

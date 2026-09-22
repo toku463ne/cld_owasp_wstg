@@ -90,11 +90,13 @@ coverage.yaml ─┬─▶ TASKS.md（実施順）
   PyYAML で読み込んで丸ごと書き戻さない（コメント・並び・空行が消え、手記録の意図が失われる）。
   判定（`covers` の `verdict`/`finding`/`evidence`）は人が手で書く前提なので、スクリプトからは
   書き換えない（`gen_record.py` は `run.yaml` を **読むだけ**で書かない）。
-- **エビデンス本体は `cmd/`・`artifacts/` のファイル、`record.html` はそれを読むだけの表示**。
-  `record.html` は静的で、中身は同フォルダの `evidence.js`（`run_activity.py`／`gen_record.py` が
-  生成）から読む。`file://` では `.txt` の `fetch` が遮断されるので `<script src>` で渡す設計。
-  この分離（生エビデンス＝ファイル / 判定＝run.yaml / 表示＝record.html）を崩さない。`record.html`
-  に生の出力を埋め込んだり、`evidence.js` を唯一のエビデンスにしたりしない（作り直しで消えるため）。
+- **エビデンス本体は `cmd/`・`artifacts/` のファイル、`record.html` はそれを参照するだけの表示**。
+  `record.html` は静的で、手順・コマンド・判定などの**メタデータ**を `evidence.js`
+  （`run_activity.py`／`gen_record.py` が生成）から読み、**各コマンドの出力は evidence.js に
+  複製せず `<iframe>` で `cmd/`・`artifacts/` のファイルを直接参照する**（`file://` では `fetch`
+  が遮断されるが iframe は同フォルダのファイルを表示できる）。だから `.txt` を手で編集したら
+  リロードだけで反映される。この分離（生エビデンス＝ファイル / 判定＝run.yaml / 表示＝record.html）
+  を崩さない。`build_evidence` で出力の中身を evidence.js に載せない（参照＝output_path のまま保つ）。
 - **`export_checklist.py` の CSV 列は Google Sheets 側の契約**。
   列名・順序（`wstg_id, category, title, status, activities, evidence_paths,
   finding_summary, updated`）を変えるときは、人間に確認してから。

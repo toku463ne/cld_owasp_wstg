@@ -85,7 +85,9 @@ RECORD_HTML = r"""<!DOCTYPE html>
          font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;
          line-height:1.6; max-width:960px; margin-inline:auto; }
   h1 { font-size:1.4rem; margin:0 0 4px; }
-  .meta { color:var(--mut); font-size:.85rem; margin-bottom:20px; }
+  .meta { color:var(--mut); font-size:.85rem; margin-bottom:6px; }
+  .note { color:var(--mut); font-size:.8rem; margin-bottom:18px; padding:6px 10px;
+          border:1px dashed var(--line); border-radius:6px; }
   .item { border:1px solid var(--line); border-radius:10px; padding:16px 18px;
           margin:18px 0; background:var(--card); }
   .item h2 { font-size:1.05rem; margin:0 0 8px; display:flex; gap:10px; align-items:center;
@@ -111,7 +113,8 @@ RECORD_HTML = r"""<!DOCTYPE html>
       font:.82rem/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
       white-space:pre-wrap;word-break:break-word;}
   pre.cmd{background:var(--cmdbg);color:var(--cmd);}
-  pre.out{background:var(--pre);}
+  iframe.out{display:block;width:100%;min-height:120px;max-height:420px;margin:6px 0;
+             border:1px solid var(--line);border-radius:8px;background:#fff;resize:vertical;}
   .rc{font-size:.78rem;color:var(--mut);}
   .rc.bad{color:#c62828;font-weight:700;}
   .empty{color:var(--mut);font-style:italic;font-size:.85rem;}
@@ -137,6 +140,9 @@ RECORD_HTML = r"""<!DOCTYPE html>
     [d.title, d.date && ("date " + d.date), d.tester && ("tester " + d.tester),
      d.generated_at && ("生成 " + d.generated_at)].filter(Boolean).join("  ·  "));
   app.appendChild(meta);
+  app.appendChild(el("div", "note",
+    "結果は cmd/・artifacts/ のファイルを iframe で参照して表示します（.txt を編集したらリロードで反映）。"
+    + "枠が空のときは Firefox で開くか、python -m http.server でこのフォルダを配信してください。"));
 
   (d.items || []).forEach(function (it) {
     var box = el("div", "item");
@@ -164,13 +170,16 @@ RECORD_HTML = r"""<!DOCTYPE html>
       (st.runs || []).forEach(function (r) {
         // 各コマンドの前に「そのコマンドの説明」、コマンドのすぐ下に「そのコマンドの結果」
         if (r.role === "check") s.appendChild(el("div", "cap", "取得できたかの確認（サイズ・行数・先頭）"));
-        else if (r.role === "manual") s.appendChild(el("div", "cap", "手動での観察を書く"));
+        else if (r.role === "manual") s.appendChild(el("div", "cap", "手動での観察"));
         if (r.cmd) s.appendChild(el("pre", "cmd", "$ " + r.cmd));
-        if (r.output && r.output.trim()) {
-          s.appendChild(el("pre", "out", r.output + (r.truncated ? "\n…(以下略。全文は " + r.output_path + ")" : "")));
-          s.appendChild(el("div", (r.exit_code ? "rc bad" : "rc"),
-            "→ " + r.output_path + (r.exit_code != null ? "  (exit " + r.exit_code + ")" : "")
-            + (r.ran_at ? "  " + r.ran_at : "")));
+        if (r.has_output) {
+          // エビデンスは埋め込みではなく参照。iframe で cmd/・artifacts/ のファイルを直接表示する
+          // （file:// では fetch は遮断されるが iframe は同フォルダのファイルを表示できる）。
+          // .txt を手で編集したらリロードだけで反映される。
+          var fr = document.createElement("iframe");
+          fr.className = "out"; fr.src = r.output_path; fr.loading = "lazy";
+          s.appendChild(fr);
+          s.appendChild(el("div", "rc", "→ " + r.output_path));
         } else {
           s.appendChild(el("p", "empty", r.role === "manual"
             ? "未記入（" + r.output_path + " に観察を書く）"
@@ -395,28 +404,20 @@ def _load_run_yaml(activity_dir: Path) -> dict:
     return yaml.safe_load(rp.read_text(encoding="utf-8")) if rp.exists() else {}
 
 
-# エビデンスファイルは大きくなり得るので、表示用データには先頭だけ載せる（本体は .txt を見る）
-EVIDENCE_MAX_CHARS = 20000
-
-
 def build_evidence(activity: dict, tests: dict, criteria: dict, target,
                    activity_dir: Path, act_dir: str) -> dict:
-    """run.yaml（判定・コマンド記録）と各手順の出力ファイルから、表示用データを組む。"""
+    """表示用データ（メタデータ）を組む。エビデンス本体はコピーせず output_path で参照する。
+
+    record.html は各 output_path を iframe で直接読むので、.txt を手で編集しても
+    リロードだけで反映される（evidence.js を作り直さなくてよい）。判定は run.yaml の covers。
+    """
     run = _load_run_yaml(activity_dir)
     covers = {c["id"]: c for c in (run.get("covers") or [])}
-    # commands: の各エントリを output（相対パス）で引けるようにする（最後の実行を採用）
-    by_output: dict = {}
-    for cmd in run.get("commands") or []:
-        if isinstance(cmd, dict) and cmd.get("output"):
-            by_output[cmd["output"]] = cmd
 
-    def read_output(rel: str):
-        """出力ファイルの中身（先頭 EVIDENCE_MAX_CHARS）と切り詰めフラグを返す。"""
+    def has_output(rel: str) -> bool:
+        """出力ファイルが存在し中身があるか（表示を出すかの判断。中身はコピーしない）。"""
         fpath = activity_dir / rel
-        if not fpath.exists():
-            return "", False
-        raw = fpath.read_text(encoding="utf-8", errors="replace")
-        return raw[:EVIDENCE_MAX_CHARS], len(raw) > EVIDENCE_MAX_CHARS
+        return fpath.exists() and fpath.stat().st_size > 0
 
     items: list = []
     grouped: dict = {}
@@ -429,26 +430,21 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
         cv = covers.get(wid, {})
         steps_out = []
         for step in grouped.get(wid, []):
-            # 1コマンド = 1エビデンス。説明→コマンド→結果 の順に並べられる形で返す。
+            # 1コマンド = 1エビデンス。中身は evidence.js に写さず、output_path で
+            # 参照する（record.html が iframe でファイルを直接表示する）。
             runs_out = []
             if step["kind"] == "manual":
-                content, truncated = read_output(step["manual_output"])
                 runs_out.append({
                     "role": "manual", "cmd": None,
                     "output_path": step["manual_output"],
-                    "output": content, "truncated": truncated,
-                    "exit_code": None, "ran_at": None,
+                    "has_output": has_output(step["manual_output"]),
                 })
             else:
                 for r in step["runs"]:
-                    content, truncated = read_output(r["output"])
-                    rec = by_output.get(r["output"], {})
                     runs_out.append({
                         "role": r["role"], "cmd": r["cmd"],
                         "output_path": r["output"],
-                        "output": content, "truncated": truncated,
-                        "exit_code": rec.get("exit_code"),
-                        "ran_at": rec.get("started_at"),
+                        "has_output": has_output(r["output"]),
                     })
             steps_out.append({
                 "idx": step["idx"],
