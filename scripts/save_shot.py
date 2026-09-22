@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """スクショをアクティビティの artifacts/ に保存する（範囲選択キャプチャ or クリップボード）。
 
-    uv run scripts/save_shot.py <activity_dir> --wid WSTG-INFO-01 --grab   # 範囲選択して直接保存（推奨）
+    uv run scripts/save_shot.py <activity_dir> --wid WSTG-INFO-01 --grab --delay 3  # 3秒後に範囲選択（その間にブラウザを前面へ）
     uv run scripts/save_shot.py <activity_dir> --wid WSTG-INFO-01          # クリップボードの画像を保存
     uv run scripts/save_shot.py <activity_dir> --wid WSTG-INFO-01 --step 3
     uv run scripts/save_shot.py <activity_dir> --from /path/to/existing.png --wid WSTG-CONF-05
@@ -28,6 +28,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -129,6 +130,8 @@ def main() -> int:
     ap.add_argument("--name", help="ファイル名を明示（既定は shot-<WID>-<日時>.png）")
     ap.add_argument("--grab", action="store_true", help="その場で範囲選択してキャプチャ（クリップボード不要）")
     ap.add_argument("--tool", help="--grab で使うツールを明示（例: grim+slurp / maim / xfce4-screenshooter）")
+    ap.add_argument("--delay", type=int, default=0, metavar="秒",
+                    help="--grab の前に待つ秒数。待つ間に対象ウィンドウ（ブラウザ等）を前面に出す")
     ap.add_argument("--list-tools", action="store_true", help="セッションと使えるキャプチャツールを表示して終了")
     ap.add_argument("--from", dest="src", help="クリップボードの代わりに既存の画像ファイルから保存")
     ap.add_argument("--force", action="store_true", help="同名ファイルを上書きする")
@@ -180,6 +183,10 @@ def main() -> int:
             print("  ※ Wayland では flameshot の選択画面が出ないことがあります。"
                   "出なければ Ctrl+C で中断し、`--tool grim+slurp`（要 grim slurp）を使ってください。",
                   file=sys.stderr)
+        if args.delay > 0:
+            print(f"  {args.delay} 秒後にキャプチャします。今のうちに対象ウィンドウ"
+                  "（ブラウザ等）を前面に出してください（Alt+Tab）。", file=sys.stderr)
+            time.sleep(args.delay)
         if not run_capture(chosen, dest) or not dest.exists():
             print("キャプチャがキャンセル／失敗しました（何も保存していません）。", file=sys.stderr)
             return 1
