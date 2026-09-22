@@ -19,7 +19,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `curl -sI` でログイン応答の `Set-Cookie` を取得し、属性を1つずつ確認
+1. ログイン応答のヘッダを evidence/<活動フォルダ>/artifacts/login-headers.txt に保存（curl -i -c evidence/<活動フォルダ>/artifacts/cookies.txt でログインを実行してヘッダを残すか、Burp/DevTools の応答からコピー）した上で、発行 Cookie の属性を抽出: `grep -iE '^set-cookie:' evidence/<活動フォルダ>/artifacts/login-headers.txt`。出てきた Set-Cookie 行を1つずつ下の属性で確認する
 2. `Secure`（HTTPS 限定）・`HttpOnly`（JS 遮断）・`SameSite`（Lax/Strict）の有無を確認
 3. `Domain`/`Path` が過度に広くないか、`__Host-`/`__Secure-` prefix の適否を確認
 4. セッション Cookie と CSRF/その他 Cookie で属性が適切に分かれているか確認
@@ -27,6 +27,8 @@ WSTG の Test Objectives:
 ## 使用ツール
 
 - curl
+- Burp Suite
+- ブラウザ開発者ツール
 
 ## 判定基準（pass / fail の見分け）
 

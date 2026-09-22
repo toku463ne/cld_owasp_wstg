@@ -21,14 +21,13 @@ WSTG の Test Objectives:
 ## 手順
 
 1. モバイルアプリ・API・IVR 等の代替チャネルで、Web と同等のロックアウト/MFA/強度要件があるか確認
-2. 旧版 API エンドポイント（`/api/v1/login` 等）を `curl`/Burp で叩き、弱い認証のままでないか確認
+2. 旧版/別系統の API ログイン口が生きていないか一括プローブ: `for e in /api/v1/login /api/v2/login /api/login /rest/login /login.json /oauth/token /mobile/login; do echo "$e -> $(curl -s -k -m 8 -o /dev/null -w '%{http_code}' -X POST "https://target$e")"; done | tee evidence/<活動フォルダ>/artifacts/legacy-api.txt`。200/400/401 が返る＝存在。応答を精査し、MFA/ロックアウトが無い・平文許容など弱い認証が残っていないか確認
 3. チャネル間でセッション/トークンが共有され、弱い側から強い側を侵害できないか確認
 4. 代替チャネルだけ保護が抜けている箇所を finding に整理
 
 ## 使用ツール
 
 - curl
-- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

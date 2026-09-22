@@ -365,7 +365,7 @@ WSTG-ATHN-06:
   fail: "認証後の画面がキャッシュされ、ログアウト後に戻るボタンや履歴から内容を再表示できる。"
   note: "実機で「ログアウト→戻る」を試すのが最も伝わる証拠になる。"
   steps:
-    - "認証済み画面のレスポンスヘッダを `curl -sI`/Burp で取得し `Cache-Control: no-store` / `Pragma: no-cache` の有無を確認"
+    - "認証済みの機微画面 URL を OUTDIR/auth-urls.txt に1行1件で置き、ログイン後の Cookie を OUTDIR/cookies.txt に用意（ブラウザからエクスポート、または curl -c で保存）した上で、キャッシュ抑止ヘッダを一括確認: `while read -r u; do echo \"== $u ==\"; curl -sI -b OUTDIR/cookies.txt \"$u\" | grep -iE '^(cache-control|pragma|expires):'; done < OUTDIR/auth-urls.txt | tee OUTDIR/cache-headers.txt`。`no-store`（理想）/`no-cache`/`private` が無い・`max-age>0`＝ディスクにキャッシュされ得る"
     - "ログアウト後にブラウザの「戻る」で認証済み画面が再表示されないか確認"
     - "機微画面をディスクキャッシュから復元できないか確認する: 認証済みで機微画面を開いた後、DevTools→Network で当該レスポンスを再読込し `(from disk cache)` と出るか、または about:cache（Firefox）/ ブラウザのキャッシュ保存先に当該 URL のエントリが残るか。残る＝ログアウトや別ユーザでもディスクから中身を復元され得る（共用端末で漏えい）"
     - "機微画面でキャッシュ抑止がない場合、共用端末での漏えいリスクとして finding に"
@@ -410,7 +410,7 @@ WSTG-ATHN-10:
   note: "代替チャネルの洗い出しは recon と burp-crawl の成果を使う。"
   steps:
     - "モバイルアプリ・API・IVR 等の代替チャネルで、Web と同等のロックアウト/MFA/強度要件があるか確認"
-    - "旧版 API エンドポイント（`/api/v1/login` 等）を `curl`/Burp で叩き、弱い認証のままでないか確認"
+    - "旧版/別系統の API ログイン口が生きていないか一括プローブ: `for e in /api/v1/login /api/v2/login /api/login /rest/login /login.json /oauth/token /mobile/login; do echo \"$e -> $(curl -s -k -m 8 -o /dev/null -w '%{http_code}' -X POST \"https://target$e\")\"; done | tee OUTDIR/legacy-api.txt`。200/400/401 が返る＝存在。応答を精査し、MFA/ロックアウトが無い・平文許容など弱い認証が残っていないか確認"
     - "チャネル間でセッション/トークンが共有され、弱い側から強い側を侵害できないか確認"
     - "代替チャネルだけ保護が抜けている箇所を finding に整理"
 
@@ -475,7 +475,7 @@ WSTG-SESS-02:
   fail: "Secure か HttpOnly が欠けている、SameSite=None なのに用途上不要、Domain が広すぎる。"
   note: "認証済みで発行される Cookie を対象にする。トラッキング用 Cookie と混同しない。"
   steps:
-    - "`curl -sI` でログイン応答の `Set-Cookie` を取得し、属性を1つずつ確認"
+    - "ログイン応答のヘッダを OUTDIR/login-headers.txt に保存（curl -i -c OUTDIR/cookies.txt でログインを実行してヘッダを残すか、Burp/DevTools の応答からコピー）した上で、発行 Cookie の属性を抽出: `grep -iE '^set-cookie:' OUTDIR/login-headers.txt`。出てきた Set-Cookie 行を1つずつ下の属性で確認する"
     - "`Secure`（HTTPS 限定）・`HttpOnly`（JS 遮断）・`SameSite`（Lax/Strict）の有無を確認"
     - "`Domain`/`Path` が過度に広くないか、`__Host-`/`__Secure-` prefix の適否を確認"
     - "セッション Cookie と CSRF/その他 Cookie で属性が適切に分かれているか確認"
