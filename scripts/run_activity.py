@@ -32,6 +32,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from new_activity import (  # noqa: E402
     iter_steps, resolve_activity, refresh_record, write_manual_stubs,
+    print_missing_run_yaml,
 )
 from run_cmd import append_command  # noqa: E402
 
@@ -114,8 +115,7 @@ def main() -> int:
 
     activity_dir = Path(args.activity_dir)
     if not (activity_dir / "run.yaml").exists():
-        print(f"run.yaml が見つかりません: {activity_dir / 'run.yaml'}", file=sys.stderr)
-        print("  uv run scripts/new_activity.py <activity_id> で先に作成してください。", file=sys.stderr)
+        print_missing_run_yaml(activity_dir, "run_activity.py")
         return 2
 
     activity, tests, criteria, target, act_dir = resolve_activity(activity_dir)

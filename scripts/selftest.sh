@@ -148,6 +148,12 @@ assert st['exit_code'] is not None and st['output'].strip(), st
 " || ng "run_activity 後に evidence.js が実行結果を反映しない"
 ok "run_activity: dry-run 提示・実行でエビデンス/commands/evidence.js を更新"
 
+# パスを間違えても（--target を付けた活動を target 抜きで叩く等）近いフォルダを提案すること
+"${PY[@]}" scripts/run_activity.py "${TMP}/ev/recon-osint-19990101" > "${TMP}/miss.txt" 2>&1 || true
+grep -q "recon-osint-ex.test-20260101" "${TMP}/miss.txt" \
+  || ng "存在しないパスで近い名前の既存フォルダを提案しない"
+ok "run.yaml が無いパスは近い既存フォルダを提案する"
+
 # 判定は run.yaml の covers に直接記入 → gen_record.py で record.html に反映（エビデンスは失わない）
 "${PY[@]}" - "${RDIR}" <<'VERDICT'
 import sys, re

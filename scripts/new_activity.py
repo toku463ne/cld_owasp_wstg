@@ -455,6 +455,38 @@ def _act_dir_str(target_dir: Path) -> str:
         return target_dir.as_posix()
 
 
+def find_activity_dirs(missing: Path) -> list:
+    """指定パスが無いとき、近い名前の既存フォルダ（run.yaml を持つ）を候補として返す。
+
+    `--target` を付けた活動はフォルダ名に対象が入る（recon-osint-example.com-YYYYMMDD）ので、
+    `evidence/recon-osint-YYYYMMDD` のように target 抜きで叩いたときに拾えるようにする。
+    """
+    parent = missing.parent
+    if str(parent) in ("", ".") or not parent.exists():
+        parent = REPO_ROOT / "evidence"
+    prefix = re.sub(r"-\d{8}$", "", missing.name)   # 末尾の -YYYYMMDD を落として活動 ID を残す
+    out = []
+    if parent.exists():
+        for d in sorted(parent.iterdir()):
+            if d.is_dir() and (d / "run.yaml").exists() and d.name.startswith(prefix):
+                out.append(d)
+    return out
+
+
+def print_missing_run_yaml(activity_dir: Path, script: str) -> None:
+    """run.yaml が無いときの案内（近い名前の既存フォルダがあれば提案する）。"""
+    import sys
+    print(f"run.yaml が見つかりません: {activity_dir / 'run.yaml'}", file=sys.stderr)
+    cands = find_activity_dirs(activity_dir)
+    if cands:
+        print("  --target を付けた活動はフォルダ名に対象が入ります。次のどれかでは？", file=sys.stderr)
+        for d in cands:
+            print(f"    uv run scripts/{script} {d}", file=sys.stderr)
+    else:
+        print("  先に uv run scripts/new_activity.py <activity_id> [--target <site>] で作成してください。",
+              file=sys.stderr)
+
+
 def resolve_activity(activity_dir: Path):
     """run.yaml を起点に (activity, tests, criteria, target, act_dir) を引く。
 

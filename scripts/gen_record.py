@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from new_activity import refresh_record  # noqa: E402
+from new_activity import refresh_record, print_missing_run_yaml  # noqa: E402
 
 
 def main() -> int:
@@ -30,8 +30,7 @@ def main() -> int:
 
     activity_dir = Path(args.activity_dir)
     if not (activity_dir / "run.yaml").exists():
-        print(f"run.yaml が見つかりません: {activity_dir / 'run.yaml'}", file=sys.stderr)
-        print("  uv run scripts/new_activity.py <activity_id> で先に作成してください。", file=sys.stderr)
+        print_missing_run_yaml(activity_dir, "gen_record.py")
         return 2
 
     data = refresh_record(activity_dir)
