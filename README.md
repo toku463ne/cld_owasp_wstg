@@ -213,7 +213,8 @@ covers:
 uv run scripts/gen_record.py evidence/recon-osint-example.com-20260913
 ```
 
-`record.html` は静的なビューアで、手順の説明・各コマンド・WSTG-ID ごとの判定/finding という
+`record.html` は WSTG-ID ごとの**タブ**で表示する（長い縦スクロールを畳む。選択タブはブラウザに記憶）。
+静的なビューアで、手順の説明・各コマンド・WSTG-ID ごとの判定/finding という
 **メタデータ**を同フォルダの `evidence.js` から読む（`file://` では `.txt` の `fetch` が遮断されるため
 `<script src>` で渡す）。**エビデンス本体（各コマンドの出力）は evidence.js に複製せず、
 `cmd/`・`artifacts/` のファイルを `<iframe>` で直接参照する**。したがって `.txt` を手で編集
@@ -221,7 +222,15 @@ uv run scripts/gen_record.py evidence/recon-osint-example.com-20260913
 `gen_record.py` が要るのは、手順の変更・判定の記入・新しいコマンドの追加を反映するときだけ。
 
 - Firefox は `file://` の `<iframe>` で同フォルダのファイルを表示できる（Kali 既定）。
-  Chromium 系で枠が空になる場合は `python -m http.server` でこのフォルダを配信して開く。
+  Chromium 系で枠が空になる場合や、**手順ごとの『スクショを撮る』ボタンを使いたい場合**は、
+  ローカルサーバ経由で開く:
+  ```bash
+  uv run scripts/serve_record.py evidence/recon-osint-example.com-20260913 --open
+  # -> http://127.0.0.1:8765/record.html（127.0.0.1 のみ待受）
+  ```
+  http 配信になるので Chrome でも iframe/img が確実に表示され、各手順の
+  『📷 この手順のスクショを撮る』が有効になる（サーバが save_shot --grab を実行→その手順の直下に画像）。
+  待ち時間（秒）を上部の入力で指定し、その間に対象ウィンドウを前面へ出して範囲選択する。
 
 **エビデンス本体は `cmd/`・`artifacts/` の各ファイルに、判定は `run.yaml` にあるので、
 上流（`criteria.yaml` 等）を更新して手順が変わっても、`gen_record.py` で作り直すだけでよく、

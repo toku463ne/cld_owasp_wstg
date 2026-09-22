@@ -86,10 +86,22 @@ RECORD_HTML = r"""<!DOCTYPE html>
          line-height:1.6; max-width:960px; margin-inline:auto; }
   h1 { font-size:1.4rem; margin:0 0 4px; }
   .meta { color:var(--mut); font-size:.85rem; margin-bottom:6px; }
-  .note { color:var(--mut); font-size:.8rem; margin-bottom:18px; padding:6px 10px;
+  .note { color:var(--mut); font-size:.8rem; margin-bottom:14px; padding:6px 10px;
           border:1px dashed var(--line); border-radius:6px; }
+  .controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+              font-size:.82rem; color:var(--mut); margin-bottom:14px; }
+  .controls input { width:4em; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; border-bottom:2px solid var(--line);
+          margin-bottom:16px; }
+  .tab { font:inherit; font-size:.85rem; padding:6px 12px; border:1px solid var(--line);
+         border-bottom:none; border-radius:8px 8px 0 0; background:transparent; color:var(--fg);
+         cursor:pointer; display:flex; gap:6px; align-items:center; }
+  .tab.active { background:var(--card); font-weight:700; }
+  .tab .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .dot.v-pass{background:#0a7c33;} .dot.v-fail{background:#c62828;} .dot.v-info{background:#1565c0;}
+  .dot.v-na{background:#999;} .dot.v-todo{background:#e0a000;}
   .item { border:1px solid var(--line); border-radius:10px; padding:16px 18px;
-          margin:18px 0; background:var(--card); }
+          margin:0 0 18px; background:var(--card); }
   .item h2 { font-size:1.05rem; margin:0 0 8px; display:flex; gap:10px; align-items:center;
              flex-wrap:wrap; }
   .badge { font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:999px;
@@ -117,10 +129,13 @@ RECORD_HTML = r"""<!DOCTYPE html>
              border:1px solid var(--line);border-radius:8px;background:#fff;resize:vertical;}
   img.shot{display:block;max-width:100%;margin:6px 0;border:1px solid var(--line);
            border-radius:8px;background:#fff;}
+  .shot-btn{font:inherit;font-size:.8rem;margin:8px 0;padding:5px 10px;border:1px solid var(--line);
+            border-radius:8px;background:var(--cmdbg);color:var(--cmd);cursor:pointer;}
+  .shot-btn:disabled{opacity:.6;cursor:default;}
   .rc{font-size:.78rem;color:var(--mut);}
   .rc.bad{color:#c62828;font-weight:700;}
   .empty{color:var(--mut);font-style:italic;font-size:.85rem;}
-  .warn{color:#b26a00;}
+  .warn{color:#b26a00;} .mut{color:var(--mut);}
 </style>
 </head>
 <body>
@@ -136,17 +151,61 @@ RECORD_HTML = r"""<!DOCTYPE html>
     app.appendChild(el("p", "warn",
       "evidence.js が見つかりません。uv run scripts/gen_record.py <このフォルダ> で生成してください。"));
     return; }
+  var served = location.protocol.indexOf("http") === 0;   // serve_record.py 経由か
   app.innerHTML = "";
   app.appendChild(el("h1", null, "実施記録 — " + d.activity_id + (d.target ? " / " + d.target : "")));
-  var meta = el("div", "meta",
+  app.appendChild(el("div", "meta",
     [d.title, d.date && ("date " + d.date), d.tester && ("tester " + d.tester),
-     d.generated_at && ("生成 " + d.generated_at)].filter(Boolean).join("  ·  "));
-  app.appendChild(meta);
-  app.appendChild(el("div", "note",
-    "結果は cmd/・artifacts/ のファイルを iframe で参照して表示します（.txt を編集したらリロードで反映）。"
-    + "枠が空のときは Firefox で開くか、python -m http.server でこのフォルダを配信してください。"));
+     d.generated_at && ("生成 " + d.generated_at)].filter(Boolean).join("  ·  ")));
 
-  (d.items || []).forEach(function (it) {
+  var delayInput = null;
+  if (served) {
+    var ctl = el("div", "controls");
+    ctl.appendChild(el("span", null, "スクショ待ち時間(秒):"));
+    delayInput = document.createElement("input");
+    delayInput.type = "number"; delayInput.value = "3"; delayInput.min = "0";
+    ctl.appendChild(delayInput);
+    ctl.appendChild(el("span", "mut",
+      "『スクショを撮る』を押すとこの秒数だけ待つので、その間に対象ウィンドウを前面へ→範囲選択"));
+    app.appendChild(ctl);
+  } else {
+    app.appendChild(el("div", "note",
+      "結果・スクショは cmd/・artifacts/ のファイルを参照表示します（.txt 編集はリロードで反映）。"
+      + "手順ごとの『スクショを撮る』ボタンを使うには uv run scripts/serve_record.py <このフォルダ> で"
+      + "開いてください（file:// では撮影できません）。"));
+  }
+
+  function addShots(parent, imgs) {
+    if (!imgs || !imgs.length) return;
+    parent.appendChild(el("div", "cap", "スクリーンショット"));
+    imgs.forEach(function (src) {
+      var im = document.createElement("img");
+      im.className = "shot"; im.src = src; im.loading = "lazy"; im.alt = src;
+      parent.appendChild(im);
+      parent.appendChild(el("div", "rc", "→ " + src));
+    });
+  }
+
+  function capture(wid, step, btn) {
+    var delay = 3;
+    if (delayInput) { var v = parseInt(delayInput.value, 10); if (!isNaN(v)) delay = v; }
+    var old = btn.textContent; btn.disabled = true;
+    btn.textContent = "撮影中… " + delay + "秒以内に対象を前面へ→範囲選択";
+    fetch("api/capture", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wid: wid, step: step, delay: delay }) })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res.ok) { try { localStorage.setItem("wstg-tab-" + d.activity_id, wid); } catch (e) {}
+          location.reload(); }
+        else { alert("撮影できませんでした:\n" + (res.error || "")); btn.disabled = false; btn.textContent = old; }
+      })
+      .catch(function () {
+        alert("サーバに接続できません。serve_record.py で開いていますか？");
+        btn.disabled = false; btn.textContent = old;
+      });
+  }
+
+  function renderItem(it) {
     var box = el("div", "item");
     var h = el("h2");
     h.appendChild(el("span", null, it.wid));
@@ -155,41 +214,24 @@ RECORD_HTML = r"""<!DOCTYPE html>
     h.appendChild(el("span", "role", it.role));
     box.appendChild(h);
     if (it.purpose) box.appendChild(el("div", "crit", "目的: " + it.purpose));
-    if (it.pass) { var cp = el("div", "crit"); cp.appendChild(el("b", null, "pass ")); 
+    if (it.pass) { var cp = el("div", "crit"); cp.appendChild(el("b", null, "pass "));
       cp.appendChild(document.createTextNode(it.pass)); box.appendChild(cp); }
     if (it.fail) { var cf = el("div", "crit"); cf.appendChild(el("b", null, "fail "));
       cf.appendChild(document.createTextNode(it.fail)); box.appendChild(cf); }
     if (it.finding) box.appendChild(el("div", "finding", "finding: " + it.finding));
-
-    function addShots(parent, imgs) {   // スクショを <img> 参照で並べる（save_shot.py 由来）
-      if (!imgs || !imgs.length) return;
-      parent.appendChild(el("div", "cap", "スクリーンショット"));
-      imgs.forEach(function (src) {
-        var im = document.createElement("img");
-        im.className = "shot"; im.src = src; im.loading = "lazy"; im.alt = src;
-        parent.appendChild(im);
-        parent.appendChild(el("div", "rc", "→ " + src));
-      });
-    }
-    addShots(box, it.images);   // WSTG-ID 全体のスクショはカード上部に
+    addShots(box, it.images);
 
     (it.steps || []).forEach(function (st) {
       var s = el("div", "step");
-      // 手順の枠は「簡単な説明」だけ（生コマンドは入れない）
       var t = el("p", "t");
       t.appendChild(el("span", "badge k-" + st.kind, st.kind === "cmd" ? "コマンド" : "手動"));
       t.appendChild(document.createTextNode(" 手順" + st.idx + "： " + (st.desc || "")));
       s.appendChild(t);
-
       (st.runs || []).forEach(function (r) {
-        // 各コマンドの前に「そのコマンドの説明」、コマンドのすぐ下に「そのコマンドの結果」
         if (r.role === "check") s.appendChild(el("div", "cap", "取得できたかの確認（サイズ・行数・先頭）"));
         else if (r.role === "manual") s.appendChild(el("div", "cap", "手動での観察"));
         if (r.cmd) s.appendChild(el("pre", "cmd", "$ " + r.cmd));
         if (r.has_output) {
-          // エビデンスは埋め込みではなく参照。iframe で cmd/・artifacts/ のファイルを直接表示する
-          // （file:// では fetch は遮断されるが iframe は同フォルダのファイルを表示できる）。
-          // .txt を手で編集したらリロードだけで反映される。
           var fr = document.createElement("iframe");
           fr.className = "out"; fr.src = r.output_path; fr.loading = "lazy";
           s.appendChild(fr);
@@ -200,11 +242,45 @@ RECORD_HTML = r"""<!DOCTYPE html>
             : "未実行（uv run scripts/run_activity.py でこのコマンドを実行）"));
         }
       });
+      if (served) {
+        var b = el("button", "shot-btn", "📷 この手順のスクショを撮る");
+        b.addEventListener("click", function () { capture(it.wid, st.idx, b); });
+        s.appendChild(b);
+      }
       addShots(s, st.images);   // --step で撮ったスクショはその手順の直下に
       box.appendChild(s);
     });
-    app.appendChild(box);
+    return box;
+  }
+
+  // WSTG-ID ごとのタブ（長い縦スクロールを畳む）
+  var tabbar = el("div", "tabs");
+  var panes = el("div", "panes");
+  var entries = [];
+  function activate(wid) {
+    entries.forEach(function (e) {
+      var on = e.wid === wid;
+      e.box.style.display = on ? "" : "none";
+      e.tb.classList.toggle("active", on);
+    });
+    try { localStorage.setItem("wstg-tab-" + d.activity_id, wid); } catch (e) {}
+  }
+  (d.items || []).forEach(function (it) {
+    var tb = el("button", "tab");
+    tb.appendChild(el("span", "dot v-" + (it.verdict || "todo")));
+    tb.appendChild(el("span", null, it.wid));
+    var box = renderItem(it); box.style.display = "none";
+    panes.appendChild(box); tabbar.appendChild(tb);
+    entries.push({ wid: it.wid, tb: tb, box: box });
+    tb.addEventListener("click", function () { activate(it.wid); });
   });
+  app.appendChild(tabbar);
+  app.appendChild(panes);
+  var init = null;
+  try { init = localStorage.getItem("wstg-tab-" + d.activity_id); } catch (e) {}
+  if (!init || !entries.some(function (e) { return e.wid === init; }))
+    init = entries.length ? entries[0].wid : null;
+  if (init) activate(init);
 })();
 </script>
 </body>

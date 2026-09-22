@@ -152,6 +152,31 @@ printf 'not a png' > "${TMP}/nope.txt"
   && ng "PNG でないデータを保存してしまう" || true
 ok "save_shot: 画像を artifacts/ に保存し record.html に <img> 参照（非PNGは拒否）"
 
+# serve_record.py: 配信と /api/capture（不正wid拒否・ツール無しは ok:false）を検査（スレッドで起動）
+"${PY[@]}" - "${TDIR}" <<'SRV'
+import sys, threading, json, urllib.request
+from pathlib import Path
+sys.path.insert(0, "scripts")
+import serve_record
+httpd = serve_record.build_server(Path(sys.argv[1]), "127.0.0.1", 0)
+port = httpd.server_address[1]
+threading.Thread(target=httpd.serve_forever, daemon=True).start()
+def post(obj):
+    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/capture",
+        data=json.dumps(obj).encode(), headers={"Content-Type": "application/json"}, method="POST")
+    return json.load(urllib.request.urlopen(req, timeout=30))
+try:
+    r = urllib.request.urlopen(f"http://127.0.0.1:{port}/record.html", timeout=5)
+    assert r.status == 200 and b"WSTG_EVIDENCE" in r.read(), "record.html を配信していない"
+    assert post({"wid": "nope", "step": 1, "delay": 0})["ok"] is False, "不正 wid を弾かない"
+    # 正しい wid でもサンドボックスには撮影ツールが無いので ok:false（＝API 経路は生きている）
+    assert post({"wid": "WSTG-INFO-01", "step": 1, "delay": 0})["ok"] is False
+finally:
+    httpd.shutdown(); httpd.server_close()
+SRV
+[ $? -eq 0 ] || ng "serve_record の配信 / capture API が想定通りでない"
+ok "serve_record: 配信と /api/capture（不正wid拒否・API 経路）"
+
 # fingerprint-stack: NVD 照合が curl/jq、受動観測が curl、確認コマンドは重複しないこと
 "${PY[@]}" scripts/new_activity.py fingerprint-stack --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null
 FDIR="${TMP}/ev/fingerprint-stack-ex.test-20260101"
