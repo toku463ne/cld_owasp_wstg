@@ -32,7 +32,7 @@ WID_RE = re.compile(r"^WSTG-[A-Z]+-\d+$")
 SHOT_RE = re.compile(r"^shot-.*\.png$")
 
 sys.path.insert(0, str(SCRIPTS))
-from new_activity import refresh_record  # noqa: E402  （削除後に evidence.js を作り直す）
+from new_activity import refresh_record, print_missing_run_yaml  # noqa: E402
 
 
 class RecordHandler(SimpleHTTPRequestHandler):
@@ -147,11 +147,17 @@ def main() -> int:
     args = ap.parse_args()
 
     activity_dir = Path(args.activity_dir)
-    if not (activity_dir / "record.html").exists():
-        print(f"record.html がありません: {activity_dir}", file=sys.stderr)
-        print("  uv run scripts/new_activity.py <activity_id> か gen_record.py で先に作成してください。",
-              file=sys.stderr)
+    if not (activity_dir / "run.yaml").exists():
+        print_missing_run_yaml(activity_dir, "serve_record.py")
         return 2
+
+    # 起動時に record.html / evidence.js を最新化する（git pull 後にテンプレートが
+    # 変わっても、既存フォルダの record.html を作り直さないと反映されないため）。
+    try:
+        refresh_record(activity_dir)
+        print("[serve_record] record.html / evidence.js を最新化しました。")
+    except SystemExit as exc:
+        print(f"[serve_record] 最新化をスキップ: {exc}", file=sys.stderr)
 
     try:
         httpd = build_server(activity_dir, args.host, args.port)
