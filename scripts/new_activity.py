@@ -115,6 +115,8 @@ RECORD_HTML = r"""<!DOCTYPE html>
   pre.cmd{background:var(--cmdbg);color:var(--cmd);}
   iframe.out{display:block;width:100%;min-height:120px;max-height:420px;margin:6px 0;
              border:1px solid var(--line);border-radius:8px;background:#fff;resize:vertical;}
+  img.shot{display:block;max-width:100%;margin:6px 0;border:1px solid var(--line);
+           border-radius:8px;background:#fff;}
   .rc{font-size:.78rem;color:var(--mut);}
   .rc.bad{color:#c62828;font-weight:700;}
   .empty{color:var(--mut);font-style:italic;font-size:.85rem;}
@@ -188,6 +190,16 @@ RECORD_HTML = r"""<!DOCTYPE html>
       });
       box.appendChild(s);
     });
+    // スクショ（save_shot.py が付けた shot-<WID>-*.png）を <img> で参照表示
+    if (it.images && it.images.length) {
+      box.appendChild(el("div", "cap", "スクリーンショット"));
+      it.images.forEach(function (src) {
+        var im = document.createElement("img");
+        im.className = "shot"; im.src = src; im.loading = "lazy"; im.alt = src;
+        box.appendChild(im);
+        box.appendChild(el("div", "rc", "→ " + src));
+      });
+    }
     app.appendChild(box);
   });
 })();
@@ -452,6 +464,10 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
                 "desc": step["desc"],
                 "runs": runs_out,
             })
+        # この WSTG-ID のスクショ（scripts/save_shot.py が付ける名前規約）を <img> 参照用に集める
+        art = activity_dir / "artifacts"
+        images = sorted(p.relative_to(activity_dir).as_posix()
+                        for p in art.glob(f"shot-{wid}-*.png")) if art.exists() else []
         items.append({
             "wid": wid,
             "title": tests.get(wid, {}).get("title", ""),
@@ -463,6 +479,7 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
             "finding": cv.get("finding", ""),
             "evidence": cv.get("evidence", ""),
             "steps": steps_out,
+            "images": images,
         })
 
     return {

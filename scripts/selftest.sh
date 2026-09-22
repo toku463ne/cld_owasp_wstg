@@ -125,6 +125,33 @@ grep -qF 'r.output && r.output' "${TDIR}/record.html" \
   && ng "record.html にエビデンス本体が埋め込まれている（参照でなく複製）" || true
 ok "record.html / evidence.js 生成（target/OUTDIR 置換・手動ひな型）"
 
+# save_shot.py: クリップボード画像の代わりに --from で保存し、record.html に <img> 参照で出る
+"${PY[@]}" - "${TMP}/dummy.png" <<'MKPNG'
+import struct, zlib, sys
+def chunk(t, d):
+    c = t + d
+    return struct.pack(">I", len(d)) + c + struct.pack(">I", zlib.crc32(c) & 0xffffffff)
+png = (b"\x89PNG\r\n\x1a\n"
+       + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+       + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\x00"))
+       + chunk(b"IEND", b""))
+open(sys.argv[1], "wb").write(png)
+MKPNG
+"${PY[@]}" scripts/save_shot.py "${TDIR}" --wid WSTG-INFO-01 --from "${TMP}/dummy.png" >/dev/null
+ls "${TDIR}/artifacts/" | grep -q "^shot-WSTG-INFO-01-" || ng "save_shot が artifacts/ にスクショを保存しない"
+"${PY[@]}" - "${TDIR}/evidence.js" <<'IMG'
+import json, sys
+d = json.loads(open(sys.argv[1], encoding="utf-8").read().split("window.WSTG_EVIDENCE = ", 1)[1].rstrip(";\n"))
+it = next(x for x in d["items"] if x["wid"] == "WSTG-INFO-01")
+assert it["images"] and it["images"][0].startswith("artifacts/shot-WSTG-INFO-01-"), it["images"]
+IMG
+grep -qF 'im.className = "shot"' "${TDIR}/record.html" || ng "record.html がスクショを <img> 参照で表示しない"
+# PNG でないデータは弾くこと
+printf 'not a png' > "${TMP}/nope.txt"
+"${PY[@]}" scripts/save_shot.py "${TDIR}" --wid WSTG-INFO-01 --from "${TMP}/nope.txt" >/dev/null 2>&1 \
+  && ng "PNG でないデータを保存してしまう" || true
+ok "save_shot: 画像を artifacts/ に保存し record.html に <img> 参照（非PNGは拒否）"
+
 # fingerprint-stack: NVD 照合が curl/jq、受動観測が curl、確認コマンドは重複しないこと
 "${PY[@]}" scripts/new_activity.py fingerprint-stack --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null
 FDIR="${TMP}/ev/fingerprint-stack-ex.test-20260101"

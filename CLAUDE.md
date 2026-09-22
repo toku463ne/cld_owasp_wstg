@@ -55,7 +55,8 @@ coverage.yaml ─┬─▶ TASKS.md（実施順）
                         ├─▶ cmd/<WSTG-ID>-s<n>-c<k>.txt（コマンドごとの純粋なエビデンス）
                         ├─▶ run.yaml の commands: に追記
                         └─▶ evidence.js（gen_record.py も同じ）
-                     record.html ◀─(表示)─ evidence.js（cmd/・artifacts/ を読む）
+                     save_shot.py ─▶ artifacts/shot-<WID>-*.png（スクショ）
+                     record.html ◀─(iframe/img 参照)─ cmd/・artifacts/（evidence.js はメタデータ）
                      run.yaml の covers ─(人が verdict/finding を直接記入)
                         └─▶ export_checklist.py ─▶ CSV
                      run.yaml ─▶ tasks.py（進捗表示）
