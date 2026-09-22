@@ -138,6 +138,16 @@ RECORD_HTML = r"""<!DOCTYPE html>
   .shot-btn:disabled{opacity:.6;cursor:default;}
   .del-btn{font:inherit;font-size:.75rem;padding:1px 8px;border:1px solid var(--line);
            border-radius:6px;background:transparent;color:#c62828;cursor:pointer;}
+  .edit{margin:8px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;}
+  .field{margin:6px 0;}
+  .field label{display:block;font-size:.78rem;color:var(--mut);margin-bottom:2px;}
+  .field select,.field textarea{font:inherit;width:100%;padding:6px 8px;border:1px solid var(--line);
+           border-radius:6px;background:var(--bg);color:var(--fg);}
+  .field select{width:auto;}
+  .field textarea{resize:vertical;font:.85rem/1.5 ui-monospace,Menlo,Consolas,monospace;}
+  .save-btn{font:inherit;font-size:.85rem;margin-top:6px;padding:5px 14px;border:1px solid var(--line);
+            border-radius:8px;background:var(--cmdbg);color:var(--cmd);cursor:pointer;font-weight:700;}
+  .save-btn:disabled{opacity:.6;cursor:default;}
   .rc{font-size:.78rem;color:var(--mut);}
   .rc.bad{color:#c62828;font-weight:700;}
   .empty{color:var(--mut);font-style:italic;font-size:.85rem;}
@@ -228,6 +238,46 @@ RECORD_HTML = r"""<!DOCTYPE html>
       });
   }
 
+  function labeled(label, node) {
+    var w = el("div", "field");
+    w.appendChild(el("label", null, label));
+    w.appendChild(node);
+    return w;
+  }
+  function editForm(it) {
+    var wrap = el("div", "edit");
+    wrap.appendChild(el("div", "cap", "判定・所見を編集（保存で run.yaml / findings.md に反映）"));
+    var vs = document.createElement("select");
+    ["todo", "pass", "fail", "info", "na"].forEach(function (v) {
+      var o = document.createElement("option"); o.value = v; o.textContent = v.toUpperCase();
+      if (v === (it.verdict || "todo")) o.selected = true; vs.appendChild(o);
+    });
+    var ft = document.createElement("textarea"); ft.value = it.finding || ""; ft.rows = 2;
+    ft.placeholder = "finding（CSV に載る1行見出し。改行可）";
+    var wt = document.createElement("textarea"); wt.value = it.writeup || ""; wt.rows = 6;
+    wt.placeholder = "所見（詳細・findings.md。CSV には出ない）";
+    wrap.appendChild(labeled("verdict", vs));
+    wrap.appendChild(labeled("finding", ft));
+    wrap.appendChild(labeled("所見（詳細）", wt));
+    var save = el("button", "save-btn", "保存");
+    save.addEventListener("click", function () { saveItem(it.wid, vs.value, ft.value, wt.value, save); });
+    wrap.appendChild(save);
+    return wrap;
+  }
+  function saveItem(wid, verdict, finding, writeup, btn) {
+    var old = btn.textContent; btn.disabled = true; btn.textContent = "保存中…";
+    fetch("api/save", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wid: wid, verdict: verdict, finding: finding, writeup: writeup }) })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res.ok) { try { localStorage.setItem("wstg-tab-" + d.activity_id, wid); } catch (e) {}
+          location.reload(); }
+        else { alert("保存できませんでした:\n" + (res.error || "")); btn.disabled = false; btn.textContent = old; }
+      })
+      .catch(function () { alert("サーバに接続できません。serve_record.py で開いていますか？");
+        btn.disabled = false; btn.textContent = old; });
+  }
+
   function renderItem(it) {
     var box = el("div", "item");
     var h = el("h2");
@@ -241,10 +291,14 @@ RECORD_HTML = r"""<!DOCTYPE html>
       cp.appendChild(document.createTextNode(it.pass)); box.appendChild(cp); }
     if (it.fail) { var cf = el("div", "crit"); cf.appendChild(el("b", null, "fail "));
       cf.appendChild(document.createTextNode(it.fail)); box.appendChild(cf); }
-    if (it.finding) box.appendChild(el("div", "finding", "finding: " + it.finding));
-    if (it.writeup) {
-      box.appendChild(el("div", "cap", "所見（詳細） — findings.md"));
-      box.appendChild(el("div", "writeup", it.writeup));
+    if (served) {
+      box.appendChild(editForm(it));   // verdict/finding/所見 をその場で編集して保存
+    } else {
+      if (it.finding) box.appendChild(el("div", "finding", "finding: " + it.finding));
+      if (it.writeup) {
+        box.appendChild(el("div", "cap", "所見（詳細） — findings.md"));
+        box.appendChild(el("div", "writeup", it.writeup));
+      }
     }
     addShots(box, it.images);
 
@@ -562,6 +616,88 @@ def write_findings_md(activity: dict, tests: dict, activity_dir: Path, force: bo
         return False
     dest.write_text(render_findings_md(activity, tests), encoding="utf-8")
     return True
+
+
+VALID_VERDICTS = {"pass", "fail", "info", "na", "todo"}
+
+
+def _find_cover_block(lines: list, wid: str):
+    """covers: の該当 id ブロックの行範囲 (start, end) を返す（無ければ None, None）。"""
+    start = next((i for i, l in enumerate(lines)
+                  if re.match(rf"^\s*-\s*id:\s*{re.escape(wid)}(\s|$|#)", l)), None)
+    if start is None:
+        return None, None
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        if re.match(r"^\s*-\s*id:\s*WSTG-", lines[j]) or re.match(r"^[A-Za-z_#]", lines[j]):
+            end = j
+            break
+    return start, end
+
+
+def _render_finding_lines(indent: str, finding: str) -> list:
+    """finding を run.yaml の行に整形する。複数行はブロックスカラー `finding: |` にする。"""
+    text = finding.replace("\r\n", "\n").strip("\n")
+    if "\n" in text:
+        return [f"{indent}finding: |"] + [f"{indent}  {ln}" for ln in text.split("\n")]
+    return [f"{indent}finding: " + _yaml_str(text)]
+
+
+def update_cover(run_yaml: Path, wid: str, verdict=None, finding=None) -> bool:
+    """run.yaml の covers: の該当 id ブロックの verdict / finding だけをテキスト置換する。
+
+    PyYAML で丸ごと書き戻さない（コメント・並び・他ブロックを壊さない）。finding は
+    複数行ならブロックスカラーで書く。verdict/finding のうち渡されたものだけ更新する。
+    """
+    lines = run_yaml.read_text(encoding="utf-8").split("\n")
+    start, end = _find_cover_block(lines, wid)
+    if start is None:
+        return False
+    block = lines[start:end]
+
+    if verdict is not None:
+        for k, l in enumerate(block):
+            if re.match(r"^\s*verdict:", l):
+                block[k] = re.sub(r"(verdict:\s*)\S+", rf"\g<1>{verdict}", l)
+                break
+
+    if finding is not None:
+        fi = next((k for k, l in enumerate(block) if re.match(r"^\s*finding:", l)), None)
+        if fi is not None:
+            indent = re.match(r"^(\s*)finding:", block[fi]).group(1)
+            val = block[fi].split("finding:", 1)[1].strip()
+            fend = fi + 1
+            if val[:1] in ("|", ">"):   # 既存がブロックスカラー → 継続行（より深い/空行）を食う
+                while fend < len(block) and (block[fend].strip() == ""
+                                             or block[fend].startswith(indent + " ")):
+                    fend += 1
+            block[fi:fend] = _render_finding_lines(indent, finding)
+
+    lines[start:end] = block
+    run_yaml.write_text("\n".join(lines), encoding="utf-8")
+    return True
+
+
+def update_findings(findings_md: Path, tests: dict, wid: str, body: str) -> None:
+    """findings.md の該当 WSTG-ID セクションの本文だけを差し替える（無ければ追記）。"""
+    body = body.replace("\r\n", "\n").strip("\n")
+    new_body = body if body.strip() else FINDINGS_PLACEHOLDER
+    title = tests.get(wid, {}).get("title", "")
+    if not findings_md.exists():
+        findings_md.write_text(
+            f"# 所見メモ\n\n## {wid} — {title}\n\n{new_body}\n", encoding="utf-8")
+        return
+    lines = findings_md.read_text(encoding="utf-8").split("\n")
+    hi = next((i for i, l in enumerate(lines) if re.match(rf"^##\s+{re.escape(wid)}\b", l)), None)
+    if hi is None:
+        while lines and lines[-1].strip() == "":
+            lines.pop()
+        lines += ["", f"## {wid} — {title}", "", new_body, ""]
+    else:
+        nxt = next((k for k in range(hi + 1, len(lines))
+                    if re.match(r"^##\s+WSTG-", lines[k])), len(lines))
+        lines[hi + 1:nxt] = ["", new_body, ""]
+    findings_md.write_text("\n".join(lines), encoding="utf-8")
 
 
 def _load_run_yaml(activity_dir: Path) -> dict:

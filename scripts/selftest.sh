@@ -224,11 +224,23 @@ try:
     rel = "artifacts/" + os.path.basename(shots[0])
     assert post("/api/delete_shot", {"path": rel})["ok"] is True, "shot を削除できない"
     assert not os.path.exists(shots[0]), "shot が消えていない"
+    # /api/save: verdict/finding を run.yaml、所見を findings.md にテキスト部分置換で保存
+    import yaml as _yaml
+    assert post("/api/save", {"wid": "WSTG-INFO-01", "verdict": "bad"})["ok"] is False, "不正 verdict を通した"
+    assert post("/api/save", {"wid": "WSTG-INFO-01", "verdict": "fail",
+                              "finding": "見出しA\n見出しB", "writeup": "本文X"})["ok"] is True
+    y = _yaml.safe_load((Path(root) / folder / "run.yaml").read_text())
+    cov = {x["id"]: x for x in y["covers"]}
+    assert cov["WSTG-INFO-01"]["verdict"] == "fail" and "\n" in cov["WSTG-INFO-01"]["finding"], cov["WSTG-INFO-01"]
+    assert cov["WSTG-CONF-10"]["verdict"] == "todo", "他ブロックが壊れた"
+    from new_activity import parse_findings
+    wr = parse_findings((Path(root) / folder / "findings.md").read_text())
+    assert wr.get("WSTG-INFO-01") == "本文X", wr.get("WSTG-INFO-01")
 finally:
     httpd.shutdown(); httpd.server_close()
 SRV
 [ $? -eq 0 ] || ng "serve_record の配信 / capture API が想定通りでない"
-ok "serve_record: 統一配信（索引・/<フォルダ>/record・capture・delete）"
+ok "serve_record: 統一配信＋編集API（索引・record・capture・delete・save）"
 
 # fingerprint-stack: NVD 照合が curl/jq、受動観測が curl、確認コマンドは重複しないこと
 "${PY[@]}" scripts/new_activity.py fingerprint-stack --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null

@@ -253,6 +253,9 @@ uv run scripts/gen_record.py evidence/recon-osint-example.com-20260913
   『📷 この手順のスクショを撮る』が有効になる（サーバが save_shot --grab を実行→その手順の直下に画像）。
   待ち時間（秒）を上部の入力で指定し、その間に対象ウィンドウを前面へ出して範囲選択する。
   間違って撮ったスクショは各画像の『🗑 削除』で消せる（`artifacts/shot-*.png` のみ・確認あり）。
+  さらに各タブ内に **verdict のセレクト・finding・所見（findings.md）のテキストボックス**が出て、
+  『保存』で `run.yaml`／`findings.md` に直接反映される（エディタを開かずに判定・所見を書ける。
+  finding は複数行のまま保存すると `run.yaml` では YAML ブロックに、CSV では1行に畳まれる）。
 
 **エビデンス本体は `cmd/`・`artifacts/` の各ファイルに、判定は `run.yaml` にあるので、
 上流（`criteria.yaml` 等）を更新して手順が変わっても、`gen_record.py` で作り直すだけでよく、

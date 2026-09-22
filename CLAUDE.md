@@ -57,7 +57,8 @@ coverage.yaml ─┬─▶ TASKS.md（実施順）
                         └─▶ evidence.js（gen_record.py も同じ）
                      save_shot.py ─▶ artifacts/shot-<WID>[-s<n>]-*.png（スクショ）
                      record.html（WSTG-ID タブ）◀─(iframe/img 参照)─ cmd/・artifacts/（evidence.js はメタデータ）
-                     serve_record.py ─▶ evidence/ 全体を http 配信（索引＋各 record.html）＋/<フォルダ>/api/{capture,delete_shot}
+                     serve_record.py ─▶ evidence/ 全体を http 配信（索引＋各 record.html）＋/<フォルダ>/api/{capture,delete_shot,save}
+                        └─ /api/save ─▶ update_cover(run.yaml)・update_findings(findings.md)（テキスト部分置換）
                      findings.md ─(WSTG-ID ごとの本文)─▶ record.html「所見（詳細）」（CSV には出ない）
                      run.yaml の covers ─(人が verdict/finding=1行見出しを直接記入)
                         └─▶ export_checklist.py ─▶ CSV（finding は one_line で1行に畳む）
@@ -91,10 +92,11 @@ coverage.yaml ─┬─▶ TASKS.md（実施順）
 
 ## 4. 壊してはいけない不変条件
 
-- **`run_cmd.py` と `run_activity.py` は `run.yaml` の `commands:` にテキストとして追記する**。
-  PyYAML で読み込んで丸ごと書き戻さない（コメント・並び・空行が消え、手記録の意図が失われる）。
-  判定（`covers` の `verdict`/`finding`/`evidence`）は人が手で書く前提なので、スクリプトからは
-  書き換えない（`gen_record.py` は `run.yaml` を **読むだけ**で書かない）。
+- **`run.yaml` は必ずテキストで部分編集する（PyYAML で丸ごと書き戻さない）**。
+  コメント・並び・空行・手記録の意図が消えるため。`run_cmd.py`／`run_activity.py` は `commands:` に
+  追記、`update_cover`（serve_record の `/api/save` が呼ぶ）は `covers` の該当 id ブロックの
+  `verdict`/`finding` 行だけを部分置換する（`finding` は複数行ならブロックスカラー）。
+  `gen_record.py` は `run.yaml` を **読むだけ**。判定を書く経路はこの2つ（人手の直接編集 / `/api/save`）だけ。
 - **エビデンス本体は `cmd/`・`artifacts/` のファイル、`record.html` はそれを参照するだけの表示**。
   `record.html` は静的で、手順・コマンド・判定などの**メタデータ**を `evidence.js`
   （`run_activity.py`／`gen_record.py` が生成）から読み、**各コマンドの出力は evidence.js に

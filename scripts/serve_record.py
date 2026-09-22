@@ -36,7 +36,9 @@ WID_RE = re.compile(r"^WSTG-[A-Z]+-\d+$")
 SHOT_RE = re.compile(r"^shot-.*\.png$")
 
 sys.path.insert(0, str(SCRIPTS))
-from new_activity import refresh_record  # noqa: E402
+from new_activity import (  # noqa: E402
+    refresh_record, resolve_activity, update_cover, update_findings, VALID_VERDICTS,
+)
 
 VERDICTS = ["fail", "todo", "info", "pass", "na"]
 INDEX_CSS = """
@@ -170,8 +172,44 @@ class RecordHandler(SimpleHTTPRequestHandler):
             self._capture(act)
         elif route.endswith("/api/delete_shot"):
             self._delete_shot(act)
+        elif route.endswith("/api/save"):
+            self._save(act)
         else:
             self._json(404, {"ok": False, "error": "not found"})
+
+    def _save(self, act: Path) -> None:
+        """run.yaml の verdict/finding と findings.md の本文を、テキスト部分置換で更新する。"""
+        data = self._read_json()
+        if data is None:
+            self._json(200, {"ok": False, "error": "リクエストが不正です"})
+            return
+        wid = str(data.get("wid", ""))
+        if not WID_RE.match(wid):
+            self._json(200, {"ok": False, "error": f"WSTG-ID の形式が不正です: {wid}"})
+            return
+        verdict = data.get("verdict")
+        if verdict is not None:
+            verdict = str(verdict)
+            if verdict not in VALID_VERDICTS:
+                self._json(200, {"ok": False, "error": f"verdict が不正です: {verdict}"})
+                return
+        finding = data.get("finding")
+        writeup = data.get("writeup")
+        try:
+            if verdict is not None or finding is not None:
+                ok = update_cover(act / "run.yaml", wid, verdict,
+                                  (str(finding) if finding is not None else None))
+                if not ok:
+                    self._json(200, {"ok": False, "error": f"run.yaml に {wid} の covers がありません"})
+                    return
+            if writeup is not None:
+                _, tests, _, _, _ = resolve_activity(act)
+                update_findings(act / "findings.md", tests, wid, str(writeup))
+            refresh_record(act)
+        except OSError as exc:
+            self._json(200, {"ok": False, "error": str(exc)})
+            return
+        self._json(200, {"ok": True})
 
     def _delete_shot(self, act: Path) -> None:
         data = self._read_json()
