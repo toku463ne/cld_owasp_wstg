@@ -203,8 +203,28 @@ uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --dry-r
 covers:
   - id: WSTG-INFO-02
     verdict: fail          # pass | fail | info | na | todo
-    finding: "2.4.49 に既知 CVE。詳細は evidence 参照"   # 要約のみ
+    finding: "2.4.49 に既知 CVE。詳細は evidence 参照"   # 1行の見出し（CSV に載る）
     evidence: "cmd/WSTG-INFO-02-s5.txt"                 # 生値はこのファイルを見る
+```
+
+`finding` は CSV に載る**1行の見出し**（要約のみ）。複数行で書きたいときは YAML のブロックにする
+（CSV では自動で1行に畳まれる）:
+
+```yaml
+    finding: |
+      2.4.49 で既知 CVE（CVE-2021-41773 等）。
+      /icons/ で確認。パッチ状況は要ヒアリング。
+```
+
+**詳しい所見の本文**は、各アクティビティの `findings.md` に WSTG-ID ごとに書く。record.html に
+「所見（詳細）」として表示され、CSV には出ない（CSV はあくまで概要）。生の値は書かず evidence を参照する。
+
+```markdown
+## WSTG-INFO-02 — Fingerprint Web Server
+
+Apache 2.4.49 を確認。Server ヘッダで露出。
+- 影響: 既知 RCE の可能性
+- 次: パッチ状況をヒアリング
 ```
 
 書いたら表示を最新化して、ブラウザで `record.html` を開いて確認する:

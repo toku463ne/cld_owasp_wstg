@@ -8,8 +8,10 @@
 生成物:
     evidence/<activity_id>[-<target>]-<yyyymmdd>/
       run.yaml       covers: を matrix/coverage.yaml から自動プリフィル（verdict: todo）。
-                     判定（verdict/finding）はこの covers に直接書く（唯一の判定置き場）
-      record.html    実施記録の表示ビューア（静的）。中身は evidence.js から読み込む
+                     判定（verdict / finding=1行見出し）はこの covers に直接書く（唯一の判定置き場。
+                     finding は複数行にしたいとき YAML ブロック `finding: |` で書ける）
+      findings.md    WSTG-ID ごとの詳しい所見の本文（record.html に「所見（詳細）」で表示。CSV には出ない）
+      record.html    実施記録の表示ビューア（静的・WSTG-ID タブ）。中身は evidence.js から読み込む
       evidence.js    表示用データ（run_activity.py / gen_record.py が生成・更新する）
       cmd/           run_activity.py / run_cmd.py が実行したコマンドの出力（＝純粋なエビデンス）
       artifacts/     ツールの出力ファイル・スクショ・Burp エクスポート、および手動手順の
@@ -20,8 +22,8 @@
 収集フロー:
     1. uv run scripts/run_activity.py <このフォルダ>       # コマンド手順を実行→cmd/ に純粋なエビデンス
     2. 手動手順は artifacts/manual-*.txt に観察を書く（Burp・ヒアリング等）
-    3. run.yaml の covers に verdict / finding を直接記入する（要約のみ。生値は evidence: で参照）
-    4. uv run scripts/gen_record.py <このフォルダ>        # record.html を最新化
+    3. run.yaml の covers に verdict / finding（1行見出し）を記入。詳しい所見は findings.md に書く
+    4. uv run scripts/gen_record.py <このフォルダ>        # record.html を最新化（serve_record 経由なら自動）
     5. uv run scripts/export_checklist.py                 # run.yaml → CSV（目視レビュー後に共有）
 
 エビデンス本体は cmd/・artifacts/ の各ファイル。record.html はそれを読むだけの表示なので、
@@ -117,7 +119,9 @@ RECORD_HTML = r"""<!DOCTYPE html>
   .crit{font-size:.85rem;color:var(--mut);margin:2px 0;}
   .crit b{color:var(--fg);}
   .finding{margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--line);
-           background:var(--pre);border-radius:0 6px 6px 0;font-size:.9rem;}
+           background:var(--pre);border-radius:0 6px 6px 0;font-size:.9rem;white-space:pre-wrap;}
+  .writeup{margin:2px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+           background:var(--pre);font-size:.9rem;white-space:pre-wrap;}
   .step{margin:14px 0 0;padding-top:10px;border-top:1px dashed var(--line);}
   .step .t{font-size:.95rem;font-weight:600;margin:0 0 8px;}
   .cap{font-size:.82rem;color:var(--mut);margin:10px 0 2px;}
@@ -238,6 +242,10 @@ RECORD_HTML = r"""<!DOCTYPE html>
     if (it.fail) { var cf = el("div", "crit"); cf.appendChild(el("b", null, "fail "));
       cf.appendChild(document.createTextNode(it.fail)); box.appendChild(cf); }
     if (it.finding) box.appendChild(el("div", "finding", "finding: " + it.finding));
+    if (it.writeup) {
+      box.appendChild(el("div", "cap", "所見（詳細） — findings.md"));
+      box.appendChild(el("div", "writeup", it.writeup));
+    }
     addShots(box, it.images);
 
     (it.steps || []).forEach(function (st) {
@@ -508,6 +516,54 @@ def manual_stub_text(activity: dict, step: dict) -> str:
     ]) + "\n"
 
 
+# findings.md（WSTG-ID ごとの詳しい所見の本文）の未記入プレースホルダ
+FINDINGS_PLACEHOLDER = "（ここに詳細な所見を書く。無ければ空のままでよい。生値は書かず evidence を参照）"
+
+
+def render_findings_md(activity: dict, tests: dict) -> str:
+    """findings.md（WSTG-ID ごとの本文）の雛形。record.html に「所見（詳細）」で表示される。"""
+    out = [
+        f"# 所見メモ — {activity['id']}",
+        "",
+        "WSTG-ID ごとに詳しい所見（本文）をここに書く。record.html に「所見（詳細）」として表示される。",
+        "CSV に載るのは run.yaml の `finding`（1行の見出し）だけ。生の値（資格情報・生ホスト名・トークン）は",
+        "書かず、evidence（cmd/・artifacts/）のパスで参照する。",
+    ]
+    for cov in activity.get("covers", []):
+        wid = cov["id"]
+        title = tests.get(wid, {}).get("title", "")
+        out += ["", f"## {wid} — {title}", "", FINDINGS_PLACEHOLDER]
+    return "\n".join(out) + "\n"
+
+
+def parse_findings(text: str) -> dict:
+    """findings.md を WSTG-ID ごとの本文に分解する（見出し `## WSTG-XXX ...`）。"""
+    out: dict = {}
+    cur, buf = None, []
+    for line in text.split("\n"):
+        m = re.match(r"^##\s+(WSTG-[A-Z]+-\d+)\b", line)
+        if m:
+            if cur:
+                out[cur] = "\n".join(buf).strip()
+            cur, buf = m.group(1), []
+            continue
+        if cur is not None:
+            buf.append(line)
+    if cur:
+        out[cur] = "\n".join(buf).strip()
+    # プレースホルダのままは「未記入」として空にする
+    return {k: ("" if v == FINDINGS_PLACEHOLDER else v) for k, v in out.items()}
+
+
+def write_findings_md(activity: dict, tests: dict, activity_dir: Path, force: bool) -> bool:
+    """findings.md を用意する（既存は壊さない）。作ったら True。"""
+    dest = activity_dir / "findings.md"
+    if dest.exists() and not force:
+        return False
+    dest.write_text(render_findings_md(activity, tests), encoding="utf-8")
+    return True
+
+
 def _load_run_yaml(activity_dir: Path) -> dict:
     """run.yaml を読み込む（表示用の読み取り専用。書き戻しはしない）。"""
     rp = activity_dir / "run.yaml"
@@ -523,6 +579,9 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
     """
     run = _load_run_yaml(activity_dir)
     covers = {c["id"]: c for c in (run.get("covers") or [])}
+    # findings.md（WSTG-ID ごとの詳しい所見の本文）。record.html に「所見（詳細）」で出す。
+    fmd = activity_dir / "findings.md"
+    writeups = parse_findings(fmd.read_text(encoding="utf-8")) if fmd.exists() else {}
 
     def has_output(rel: str) -> bool:
         """出力ファイルが存在し中身があるか（表示を出すかの判断。中身はコピーしない）。"""
@@ -585,6 +644,7 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
             "verdict": cv.get("verdict", "todo"),
             "finding": cv.get("finding", ""),
             "evidence": cv.get("evidence", ""),
+            "writeup": writeups.get(wid, ""),
             "steps": steps_out,
             "images": images,
         })
@@ -690,6 +750,7 @@ def refresh_record(activity_dir: Path) -> dict:
     """実行はせず、run.yaml と既存のエビデンスから record.html / evidence.js を最新化する。"""
     activity, tests, criteria, target, act_dir = resolve_activity(activity_dir)
     write_manual_stubs(activity, criteria, target, activity_dir, act_dir, force=False)
+    write_findings_md(activity, tests, activity_dir, force=False)
     write_record_html(activity_dir, force=False)
     data = build_evidence(activity, tests, criteria, target, activity_dir, act_dir)
     write_evidence_js(activity_dir, data)
@@ -725,7 +786,9 @@ def render_run_yaml(activity: dict, tests: dict, date: str, tester: str, target:
     scope = _yaml_str(target) if target else '""'
     lines = [
         f"# {activity['id']} — {activity.get('title', '')}",
-        "# finding は要約のみ。生トークン・資格情報・生ホスト名は書かず evidence: で参照する。",
+        "# finding は CSV に載る1行の見出し（要約のみ。生値は書かず evidence: で参照）。",
+        "# 複数行で書きたいときは finding: | にして次行からインデントして書く（CSV では1行に畳まれる）。",
+        "# 詳しい所見の本文は findings.md に WSTG-ID ごとに書く（record.html に「所見（詳細）」で出る）。",
         f"activity_id: {activity['id']}",
         f"title: {_yaml_str(activity.get('title', ''))}",
         f"date: {iso_date(date)}",
@@ -893,6 +956,7 @@ def main() -> int:
     # 手動手順の観察を書く .txt ひな型・表示ビューア・表示データを用意する。
     # 生のエビデンスは cmd/・artifacts/ の各ファイル。record.html はそれを読むだけ。
     manual = write_manual_stubs(activity, criteria, args.target, target_dir, act_dir, args.force)
+    write_findings_md(activity, tests, target_dir, args.force)
     write_record_html(target_dir, force=args.force)
     write_evidence_js(
         target_dir,
@@ -909,8 +973,9 @@ def main() -> int:
     print(f"  実施記録ビューア: {target_dir / 'record.html'}（evidence.js を読み込む）")
     print(f"  実行: uv run scripts/run_activity.py {target_dir}"
           "  でコマンド手順を実行→エビデンスと evidence.js を更新")
-    print(f"  判定: {run_yaml} の covers に verdict / finding を直接記入し、"
-          f"uv run scripts/gen_record.py {target_dir} で record.html を更新")
+    print(f"  判定: {run_yaml} の covers に verdict / finding（1行見出し）を直接記入")
+    print(f"  詳しい所見: {target_dir / 'findings.md'} に WSTG-ID ごとに本文を書く（record.html に表示）")
+    print(f"  反映: uv run scripts/gen_record.py {target_dir}（serve_record.py 経由なら自動）")
     return 0
 
 

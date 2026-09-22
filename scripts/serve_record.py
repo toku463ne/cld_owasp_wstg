@@ -52,6 +52,17 @@ class RecordHandler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
+    def do_GET(self) -> None:  # noqa: N802
+        # record.html / evidence.js を出す前に最新化する。findings.md や run.yaml を
+        # 手で編集しても、ブラウザのリロードだけで反映される。
+        route = self.path.split("?", 1)[0]
+        if route in ("/", "/record.html", "/evidence.js"):
+            try:
+                refresh_record(self.activity_dir)
+            except SystemExit:
+                pass
+        super().do_GET()
+
     def _read_json(self):
         try:
             length = int(self.headers.get("Content-Length", 0))

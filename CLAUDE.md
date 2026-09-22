@@ -58,13 +58,16 @@ coverage.yaml ─┬─▶ TASKS.md（実施順）
                      save_shot.py ─▶ artifacts/shot-<WID>[-s<n>]-*.png（スクショ）
                      record.html（WSTG-ID タブ）◀─(iframe/img 参照)─ cmd/・artifacts/（evidence.js はメタデータ）
                      serve_record.py ─▶ record.html を http 配信＋/api/capture（ボタン→save_shot --grab）
-                     run.yaml の covers ─(人が verdict/finding を直接記入)
-                        └─▶ export_checklist.py ─▶ CSV
+                     findings.md ─(WSTG-ID ごとの本文)─▶ record.html「所見（詳細）」（CSV には出ない）
+                     run.yaml の covers ─(人が verdict/finding=1行見出しを直接記入)
+                        └─▶ export_checklist.py ─▶ CSV（finding は one_line で1行に畳む）
                      run.yaml ─▶ tasks.py（進捗表示）
 ```
 
 `new_activity.py` はフォルダ一式（`run.yaml`・静的ビューア `record.html`・`cmd/`・`artifacts/`・
-手動手順の `manual-*.txt` ひな型）を作る。`run_activity.py` は `criteria.yaml` の手順のうち
+手動手順の `manual-*.txt` ひな型・詳しい所見用の `findings.md`）を作る。`finding` は CSV に載る
+1行見出し（`export_checklist.py` が `one_line` で畳む。複数行は `finding: |` で書ける）。長い所見の
+本文は `findings.md` に WSTG-ID ごとに書き、`record.html` の「所見（詳細）」に出す（CSV には出さない）。`run_activity.py` は `criteria.yaml` の手順のうち
 「コマンド手順」（`backtick` で target/OUTDIR を参照する `$` 実行コマンド）を bash で実行し、
 出力をコマンドごとに `cmd/<WSTG-ID>-s<n>-c<k>.txt` に残す（＝純粋なエビデンス。ドキュメントには埋め込まない）。
 `gen_record.py` は実行せず、`run.yaml` と既存のエビデンスから `record.html`／`evidence.js` を

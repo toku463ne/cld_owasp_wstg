@@ -125,6 +125,45 @@ grep -qF 'r.output && r.output' "${TDIR}/record.html" \
   && ng "record.html にエビデンス本体が埋め込まれている（参照でなく複製）" || true
 ok "record.html / evidence.js 生成（target/OUTDIR 置換・手動ひな型）"
 
+# A+B: findings.md（詳しい所見の本文）と run.yaml の複数行 finding
+[ -f "${TDIR}/findings.md" ] || ng "findings.md が作られない"
+"${PY[@]}" - "${TDIR}" <<'AB'
+import sys, re, subprocess
+from pathlib import Path
+d = Path(sys.argv[1])
+# INFO-01 に複数行 finding（ブロック）と findings.md 本文を入れる
+rp = d / "run.yaml"; t = rp.read_text().split("\n")
+i = next(k for k, l in enumerate(t) if re.match(r"^\s*-\s*id:\s*WSTG-INFO-01(\s|$|#)", l))
+for k in range(i, i + 7):
+    if t[k].strip().startswith("finding:"):
+        t[k] = "    finding: |\n      1行目の見出し。\n      2行目。"
+        break
+rp.write_text("\n".join(t))
+fm = d / "findings.md"; body = fm.read_text()
+body = re.sub(r"(## WSTG-INFO-01[^\n]*\n\n)（ここに詳細な所見[^\n]*）", r"\1詳細本文テスト", body, count=1)
+fm.write_text(body)
+subprocess.run([sys.executable, "scripts/gen_record.py", str(d)], check=True,
+               stdout=subprocess.DEVNULL)
+import json
+ev = json.loads((d / "evidence.js").read_text().split("window.WSTG_EVIDENCE = ", 1)[1].rstrip(";\n"))
+it = next(x for x in ev["items"] if x["wid"] == "WSTG-INFO-01")
+assert "\n" in it["finding"], ("複数行 finding が反映されない", it["finding"])
+assert it["writeup"] == "詳細本文テスト", ("findings.md 本文が反映されない", it["writeup"])
+it2 = next(x for x in ev["items"] if x["wid"] == "WSTG-CONF-10")
+assert it2["writeup"] == "", ("未記入のプレースホルダが本文として入っている", it2["writeup"])
+AB
+[ $? -eq 0 ] || ng "findings.md / 複数行 finding が evidence.js に反映されない"
+grep -qF 'class="writeup"' "${TDIR}/record.html" 2>/dev/null || grep -qF '"writeup"' "${TDIR}/record.html" \
+  || ng "record.html が所見（詳細）を表示しない"
+# CSV は複数行 finding を1行に畳むこと
+"${PY[@]}" scripts/export_checklist.py --root "${TMP}/ev" --out "${TMP}/ab.csv" >/dev/null
+"${PY[@]}" -c "
+import csv
+r=[x for x in csv.DictReader(open('${TMP}/ab.csv',encoding='utf-8-sig')) if x['wstg_id']=='WSTG-INFO-01'][0]
+assert '\n' not in r['finding_summary'] and '見出し' in r['finding_summary'], r['finding_summary']
+" || ng "CSV が複数行 finding を1行に畳めていない"
+ok "findings.md 本文＋複数行 finding（record.html 表示・CSV は1行）"
+
 # save_shot.py: クリップボード画像の代わりに --from で保存し、record.html に <img> 参照で出る
 "${PY[@]}" - "${TMP}/dummy.png" <<'MKPNG'
 import struct, zlib, sys
