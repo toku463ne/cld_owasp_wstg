@@ -8,8 +8,9 @@
 
 やること:
   1. 画像を取り込み、<activity_dir>/artifacts/shot-<WID>[-s<n>]-<日時>.png に保存する。
-       --grab … その場で範囲選択してキャプチャ（flameshot / grim+slurp / maim / scrot /
-                xfce4-screenshooter を自動判定）。クリップボードを介さないので確実。
+       --grab … その場で範囲選択してキャプチャ。セッションに合う素直なツールを優先
+                （X11=maim/scrot/xfce4-screenshooter、Wayland=grim+slurp、flameshot は後回し）。
+                `--list-tools` で使えるツール確認、`--tool <名前>` で明示指定。クリップボード不要。
        既定   … クリップボードの PNG（X11=xclip / Wayland=wl-paste を自動判定）。
        --from … 既存の画像ファイルから取り込む。
   2. record.html が読む evidence.js を作り直す（--wid のスクショはそのカードに <img> で出る）。
@@ -64,30 +65,49 @@ def clipboard_types() -> str:
         return ""
 
 
-def grab_region(dest: Path) -> bool:
-    """その場で範囲選択してキャプチャし dest に保存する。使えたツールがあれば True。"""
-    # flameshot は X11/Wayland 両対応で --raw が stdout に PNG を吐く（最優先）
-    if shutil.which("flameshot"):
-        proc = subprocess.run(["flameshot", "gui", "--raw"], stdout=subprocess.PIPE)
+# 範囲選択キャプチャに使えるツール。セッションに合った素直なものを優先し、
+# GUI が出ないことのある flameshot は後回しにする（実測でハングした）。
+# 各ツールに必要なバイナリと、dest に保存するための起動方法（file=直接保存 / stdout=標準出力）。
+_TOOLS = {
+    "grim+slurp":          {"bins": ["grim", "slurp"], "mode": "slurp"},
+    "maim":                {"bins": ["maim"], "mode": "file",
+                            "argv": lambda d: ["maim", "-s", str(d)]},
+    "scrot":               {"bins": ["scrot"], "mode": "file",
+                            "argv": lambda d: ["scrot", "-s", str(d)]},
+    "xfce4-screenshooter": {"bins": ["xfce4-screenshooter"], "mode": "file",
+                            "argv": lambda d: ["xfce4-screenshooter", "-r", "-s", str(d)]},
+    "gnome-screenshot":    {"bins": ["gnome-screenshot"], "mode": "file",
+                            "argv": lambda d: ["gnome-screenshot", "-a", "-f", str(d)]},
+    "spectacle":           {"bins": ["spectacle"], "mode": "file",
+                            "argv": lambda d: ["spectacle", "-r", "-b", "-n", "-o", str(d)]},
+    "flameshot":           {"bins": ["flameshot"], "mode": "stdout",
+                            "argv": lambda d: ["flameshot", "gui", "--raw"]},
+}
+_ORDER_WAYLAND = ["grim+slurp", "gnome-screenshot", "spectacle", "flameshot"]
+_ORDER_X11 = ["maim", "scrot", "xfce4-screenshooter", "gnome-screenshot", "flameshot", "spectacle"]
+
+
+def available_tools() -> list:
+    """このセッションで使える（インストール済みの）キャプチャツールを優先順で返す。"""
+    order = _ORDER_WAYLAND if is_wayland() else _ORDER_X11
+    return [n for n in order if all(shutil.which(b) for b in _TOOLS[n]["bins"])]
+
+
+def run_capture(name: str, dest: Path) -> bool:
+    """name のツールで範囲選択キャプチャし dest に保存する。True=保存 / False=キャンセル・失敗。"""
+    spec = _TOOLS[name]
+    if spec["mode"] == "slurp":                       # grim + slurp（Wayland）
+        geom = subprocess.run(["slurp"], stdout=subprocess.PIPE, text=True).stdout.strip()
+        if not geom:
+            return False                              # 選択キャンセル
+        return subprocess.run(["grim", "-g", geom, str(dest)]).returncode == 0 and dest.exists()
+    if spec["mode"] == "stdout":                      # flameshot --raw（標準出力に PNG）
+        proc = subprocess.run(spec["argv"](dest), stdout=subprocess.PIPE)
         if proc.returncode == 0 and proc.stdout.startswith(PNG_MAGIC):
             dest.write_bytes(proc.stdout)
             return True
-        return False  # キャンセル等
-    if is_wayland():
-        if shutil.which("grim") and shutil.which("slurp"):
-            geom = subprocess.run(["slurp"], stdout=subprocess.PIPE, text=True).stdout.strip()
-            if not geom:
-                return False  # 選択キャンセル
-            return subprocess.run(["grim", "-g", geom, str(dest)]).returncode == 0
-    else:
-        if shutil.which("maim"):
-            return subprocess.run(["maim", "-s", str(dest)]).returncode == 0 and dest.exists()
-        if shutil.which("scrot"):
-            return subprocess.run(["scrot", "-s", str(dest)]).returncode == 0 and dest.exists()
-        if shutil.which("xfce4-screenshooter"):
-            return subprocess.run(["xfce4-screenshooter", "-r", "-s", str(dest)]).returncode == 0 \
-                and dest.exists()
-    return None  # 使えるツールが無い（呼び出し側で案内）
+        return False
+    return subprocess.run(spec["argv"](dest)).returncode == 0 and dest.exists()  # 直接保存
 
 
 def make_name(wid, step, explicit) -> str:
@@ -108,9 +128,21 @@ def main() -> int:
     ap.add_argument("--step", type=int, help="手順番号（ファイル名に付けるだけ）")
     ap.add_argument("--name", help="ファイル名を明示（既定は shot-<WID>-<日時>.png）")
     ap.add_argument("--grab", action="store_true", help="その場で範囲選択してキャプチャ（クリップボード不要）")
+    ap.add_argument("--tool", help="--grab で使うツールを明示（例: grim+slurp / maim / xfce4-screenshooter）")
+    ap.add_argument("--list-tools", action="store_true", help="セッションと使えるキャプチャツールを表示して終了")
     ap.add_argument("--from", dest="src", help="クリップボードの代わりに既存の画像ファイルから保存")
     ap.add_argument("--force", action="store_true", help="同名ファイルを上書きする")
     args = ap.parse_args()
+
+    if args.list_tools:
+        sess = "wayland" if is_wayland() else "x11"
+        avail = available_tools()
+        print(f"セッション: {sess}")
+        print(f"使えるキャプチャツール（優先順）: {', '.join(avail) if avail else '（なし）'}")
+        if not avail:
+            hint = "grim slurp" if is_wayland() else "maim"
+            print(f"  無い場合: sudo apt install -y {hint}")
+        return 0
 
     activity_dir = Path(args.activity_dir)
     if not (activity_dir / "run.yaml").exists():
@@ -126,14 +158,30 @@ def main() -> int:
 
     # 取り込み方法を決める: --grab（キャプチャ）/ --from（既存）/ 既定（クリップボード）
     if args.grab:
-        got = grab_region(dest)
-        if got is None:
-            print("範囲選択キャプチャに使えるツールがありません。", file=sys.stderr)
-            print("  `sudo apt install -y flameshot`（X11/Wayland 両対応）を推奨。"
-                  "Wayland は grim+slurp、X11 は maim / scrot でも可。", file=sys.stderr)
+        sess = "wayland" if is_wayland() else "x11"
+        avail = available_tools()
+        chosen = args.tool or (avail[0] if avail else None)
+        if args.tool and (args.tool not in _TOOLS
+                          or not all(shutil.which(b) for b in _TOOLS[args.tool]["bins"])):
+            print(f"指定ツールが使えません: {args.tool}", file=sys.stderr)
+            print(f"  使えるツール: {', '.join(avail) if avail else '（なし）'}", file=sys.stderr)
             return 1
-        if not got or not dest.exists():
-            print("キャプチャがキャンセルされました（何も保存していません）。", file=sys.stderr)
+        if not chosen:
+            print(f"範囲選択キャプチャに使えるツールがありません（セッション: {sess}）。", file=sys.stderr)
+            if is_wayland():
+                print("  Wayland: `sudo apt install -y grim slurp`", file=sys.stderr)
+            else:
+                print("  X11: `sudo apt install -y maim`（または scrot / xfce4-screenshooter）", file=sys.stderr)
+            return 1
+        print(f"[save_shot] セッション: {sess} / 使用ツール: {chosen}", file=sys.stderr)
+        print("  画面が暗転したら範囲をドラッグで選択してください（キャンセルすると保存しません）。",
+              file=sys.stderr)
+        if chosen == "flameshot" and is_wayland():
+            print("  ※ Wayland では flameshot の選択画面が出ないことがあります。"
+                  "出なければ Ctrl+C で中断し、`--tool grim+slurp`（要 grim slurp）を使ってください。",
+                  file=sys.stderr)
+        if not run_capture(chosen, dest) or not dest.exists():
+            print("キャプチャがキャンセル／失敗しました（何も保存していません）。", file=sys.stderr)
             return 1
         data = dest.read_bytes()
     else:
