@@ -231,6 +231,7 @@ uv run scripts/gen_record.py evidence/recon-osint-example.com-20260913
   http 配信になるので Chrome でも iframe/img が確実に表示され、各手順の
   『📷 この手順のスクショを撮る』が有効になる（サーバが save_shot --grab を実行→その手順の直下に画像）。
   待ち時間（秒）を上部の入力で指定し、その間に対象ウィンドウを前面へ出して範囲選択する。
+  間違って撮ったスクショは各画像の『🗑 削除』で消せる（`artifacts/shot-*.png` のみ・確認あり）。
 
 **エビデンス本体は `cmd/`・`artifacts/` の各ファイルに、判定は `run.yaml` にあるので、
 上流（`criteria.yaml` 等）を更新して手順が変わっても、`gen_record.py` で作り直すだけでよく、

@@ -132,6 +132,8 @@ RECORD_HTML = r"""<!DOCTYPE html>
   .shot-btn{font:inherit;font-size:.8rem;margin:8px 0;padding:5px 10px;border:1px solid var(--line);
             border-radius:8px;background:var(--cmdbg);color:var(--cmd);cursor:pointer;}
   .shot-btn:disabled{opacity:.6;cursor:default;}
+  .del-btn{font:inherit;font-size:.75rem;padding:1px 8px;border:1px solid var(--line);
+           border-radius:6px;background:transparent;color:#c62828;cursor:pointer;}
   .rc{font-size:.78rem;color:var(--mut);}
   .rc.bad{color:#c62828;font-weight:700;}
   .empty{color:var(--mut);font-style:italic;font-size:.85rem;}
@@ -175,6 +177,16 @@ RECORD_HTML = r"""<!DOCTYPE html>
       + "開いてください（file:// では撮影できません）。"));
   }
 
+  function delShot(src) {
+    if (!confirm("このスクショを削除しますか？\n" + src)) return;
+    fetch("api/delete_shot", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: src }) })
+      .then(function (r) { return r.json(); })
+      .then(function (res) { if (res.ok) { location.reload(); }
+        else { alert("削除できませんでした:\n" + (res.error || "")); } })
+      .catch(function () { alert("サーバに接続できません。serve_record.py で開いていますか？"); });
+  }
+
   function addShots(parent, imgs) {
     if (!imgs || !imgs.length) return;
     parent.appendChild(el("div", "cap", "スクリーンショット"));
@@ -182,7 +194,14 @@ RECORD_HTML = r"""<!DOCTYPE html>
       var im = document.createElement("img");
       im.className = "shot"; im.src = src; im.loading = "lazy"; im.alt = src;
       parent.appendChild(im);
-      parent.appendChild(el("div", "rc", "→ " + src));
+      var rc = el("div", "rc", "→ " + src);
+      if (served) {   // 削除はサーバ経由（file:// では出さない）
+        rc.appendChild(document.createTextNode("  "));
+        var del = el("button", "del-btn", "🗑 削除");
+        del.addEventListener("click", function () { delShot(src); });
+        rc.appendChild(del);
+      }
+      parent.appendChild(rc);
     });
   }
 

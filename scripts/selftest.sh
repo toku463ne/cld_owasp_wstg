@@ -171,11 +171,24 @@ try:
     assert post({"wid": "nope", "step": 1, "delay": 0})["ok"] is False, "不正 wid を弾かない"
     # 正しい wid でもサンドボックスには撮影ツールが無いので ok:false（＝API 経路は生きている）
     assert post({"wid": "WSTG-INFO-01", "step": 1, "delay": 0})["ok"] is False
+    # delete_shot: 直前の save_shot テストで作った shot を消せる。traversal/非shot は拒否
+    def dpost(obj):
+        req = urllib.request.Request(f"http://127.0.0.1:{port}/api/delete_shot",
+            data=json.dumps(obj).encode(), headers={"Content-Type": "application/json"}, method="POST")
+        return json.load(urllib.request.urlopen(req, timeout=10))
+    assert dpost({"path": "../../etc/passwd"})["ok"] is False, "traversal を許した"
+    assert dpost({"path": "run.yaml"})["ok"] is False, "shot 以外を消せてしまう"
+    import glob, os
+    shots = glob.glob(os.path.join(sys.argv[1], "artifacts", "shot-WSTG-INFO-01-*.png"))
+    assert shots, "削除対象の shot が無い（save_shot テストが先に走る前提）"
+    rel = "artifacts/" + os.path.basename(shots[0])
+    assert dpost({"path": rel})["ok"] is True, "shot を削除できない"
+    assert not os.path.exists(shots[0]), "shot が消えていない"
 finally:
     httpd.shutdown(); httpd.server_close()
 SRV
 [ $? -eq 0 ] || ng "serve_record の配信 / capture API が想定通りでない"
-ok "serve_record: 配信と /api/capture（不正wid拒否・API 経路）"
+ok "serve_record: 配信・capture API・delete_shot（traversal拒否・shot削除）"
 
 # fingerprint-stack: NVD 照合が curl/jq、受動観測が curl、確認コマンドは重複しないこと
 "${PY[@]}" scripts/new_activity.py fingerprint-stack --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null

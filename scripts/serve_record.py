@@ -29,6 +29,10 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parent
 SAVE_SHOT = SCRIPTS / "save_shot.py"
 WID_RE = re.compile(r"^WSTG-[A-Z]+-\d+$")
+SHOT_RE = re.compile(r"^shot-.*\.png$")
+
+sys.path.insert(0, str(SCRIPTS))
+from new_activity import refresh_record  # noqa: E402  （削除後に evidence.js を作り直す）
 
 
 class RecordHandler(SimpleHTTPRequestHandler):
@@ -48,14 +52,48 @@ class RecordHandler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
-    def do_POST(self) -> None:  # noqa: N802
-        if self.path.split("?", 1)[0] != "/api/capture":
-            self._json(404, {"ok": False, "error": "not found"})
-            return
+    def _read_json(self):
         try:
             length = int(self.headers.get("Content-Length", 0))
-            data = json.loads(self.rfile.read(length) or b"{}")
+            return json.loads(self.rfile.read(length) or b"{}")
         except (ValueError, json.JSONDecodeError):
+            return None
+
+    def do_POST(self) -> None:  # noqa: N802
+        route = self.path.split("?", 1)[0]
+        if route == "/api/capture":
+            self._capture()
+        elif route == "/api/delete_shot":
+            self._delete_shot()
+        else:
+            self._json(404, {"ok": False, "error": "not found"})
+
+    def _delete_shot(self) -> None:
+        data = self._read_json()
+        if data is None:
+            self._json(200, {"ok": False, "error": "リクエストが不正です"})
+            return
+        rel = str(data.get("path", ""))
+        base = (self.activity_dir / "artifacts").resolve()
+        target = (self.activity_dir / rel).resolve()
+        # artifacts/ 直下の shot-*.png のみ削除可（パストラバーサル・任意ファイル削除を防ぐ）
+        if target.parent != base or not SHOT_RE.match(target.name):
+            self._json(200, {"ok": False, "error": f"削除できるのは artifacts/shot-*.png だけです: {rel}"})
+            return
+        if not target.exists():
+            self._json(200, {"ok": False, "error": f"見つかりません: {rel}"})
+            return
+        try:
+            target.unlink()
+            refresh_record(self.activity_dir)   # evidence.js を作り直して表示から外す
+        except OSError as exc:
+            self._json(200, {"ok": False, "error": str(exc)})
+            return
+        self._json(200, {"ok": True, "deleted": rel})
+
+    def _capture(self) -> None:
+        data = self._read_json()
+        if data is None:
             self._json(200, {"ok": False, "error": "リクエストが不正です"})
             return
 
