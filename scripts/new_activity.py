@@ -10,7 +10,6 @@
       run.yaml       covers: を matrix/coverage.yaml から自動プリフィル（verdict: todo）。
                      判定（verdict / finding=1行見出し）はこの covers に直接書く（唯一の判定置き場。
                      finding は複数行にしたいとき YAML ブロック `finding: |` で書ける）
-      findings.md    WSTG-ID ごとの詳しい所見の本文（record.html に「所見（詳細）」で表示。CSV には出ない）
       record.html    実施記録の表示ビューア（静的・WSTG-ID タブ）。中身は evidence.js から読み込む
       evidence.js    表示用データ（run_activity.py / gen_record.py が生成・更新する）
       cmd/           run_activity.py / run_cmd.py が実行したコマンドの出力（＝純粋なエビデンス）
@@ -22,7 +21,8 @@
 収集フロー:
     1. uv run scripts/run_activity.py <このフォルダ>       # コマンド手順を実行→cmd/ に純粋なエビデンス
     2. 手動手順は artifacts/manual-*.txt に観察を書く（Burp・ヒアリング等）
-    3. run.yaml の covers に verdict / finding（1行見出し）を記入。詳しい所見は findings.md に書く
+    3. run.yaml の covers に verdict / finding（判定理由の1行）を記入（Web の record.html からも書ける）。
+       問題を見つけたら所見（evidence/_findings/F-*.md。scripts/findings.py）を作り、エビデンスを添付する
     4. uv run scripts/gen_record.py <このフォルダ>        # record.html を最新化（serve_record 経由なら自動）
     5. uv run scripts/export_checklist.py                 # run.yaml → CSV（目視レビュー後に共有）
 
@@ -120,8 +120,6 @@ RECORD_HTML = r"""<!DOCTYPE html>
   .crit b{color:var(--fg);}
   .finding{margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--line);
            background:var(--pre);border-radius:0 6px 6px 0;font-size:.9rem;white-space:pre-wrap;}
-  .writeup{margin:2px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
-           background:var(--pre);font-size:.9rem;white-space:pre-wrap;}
   .step{margin:14px 0 0;padding-top:10px;border-top:1px dashed var(--line);}
   .step .t{font-size:.95rem;font-weight:600;margin:0 0 8px;}
   .cap{font-size:.82rem;color:var(--mut);margin:10px 0 2px;}
@@ -157,6 +155,20 @@ RECORD_HTML = r"""<!DOCTYPE html>
   .rc.bad{color:#c62828;font-weight:700;}
   .empty{color:var(--mut);font-style:italic;font-size:.85rem;}
   .warn{color:#b26a00;} .mut{color:var(--mut);}
+  .nav{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:.85rem;margin:0 0 14px;
+       padding-bottom:8px;border-bottom:1px solid var(--line);}
+  .nav a{color:inherit;} .nav .who{margin-left:auto;color:var(--mut);}
+  a.attach{font-size:.78rem;} a.anchor{margin-left:6px;color:var(--mut);text-decoration:none;font-size:.8rem;}
+  .step.hl{outline:2px solid #e0a000;outline-offset:6px;border-radius:4px;}
+  .drop{margin:8px 0;padding:8px 10px;border:1px dashed var(--line);border-radius:8px;font-size:.8rem;
+        color:var(--mut);cursor:pointer;}
+  .drop:focus{outline:2px solid #1565c0;color:var(--fg);}
+  .fbox{margin:10px 0 0;} .frow{font-size:.88rem;margin:3px 0;display:flex;gap:8px;align-items:baseline;}
+  .fcount{font-size:.7rem;background:#c62828;color:#fff;border-radius:999px;padding:0 6px;}
+  .sev{font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:999px;white-space:nowrap;}
+  .s-critical{background:#6a1b1b;color:#fff;} .s-high{background:#c62828;color:#fff;}
+  .s-medium{background:#ef8a00;color:#fff;} .s-low{background:#e3c200;color:#222;}
+  .s-none{background:#1565c0;color:#fff;} .s-unrated{background:#999;color:#fff;}
 </style>
 </head>
 <body>
@@ -168,19 +180,44 @@ RECORD_HTML = r"""<!DOCTYPE html>
   var d = window.WSTG_EVIDENCE;
   function el(tag, cls, txt) { var e = document.createElement(tag);
     if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function link(href, cls, txt) { var a = el("a", cls, txt); a.href = href; return a; }
   if (!d) { app.innerHTML = "";
     app.appendChild(el("p", "warn",
       "evidence.js が見つかりません。uv run scripts/gen_record.py <このフォルダ> で生成してください。"));
     return; }
   var served = location.protocol.indexOf("http") === 0;   // serve_record.py 経由か
+  var info = { capture: false, user: "" };                 // /api/info で上書き（撮影可否・利用者）
+  var folder = d.folder || "";
+  function evPath(rel) { return folder + "/" + rel; }      // evidence ルートからの相対パス
+  function q(obj) { return Object.keys(obj).map(function (k) {
+    return encodeURIComponent(k) + "=" + encodeURIComponent(obj[k]); }).join("&"); }
+  function findingHref(id) { return served ? "/findings/" + id : "../_findings/" + id + ".md"; }
+  function post(url, obj) {   // 書き込み API は独自ヘッダ必須（CSRF 対策。serve_record.py が検査）
+    return fetch(url, { method: "POST",
+      headers: { "Content-Type": "application/json", "X-WSTG-Request": "1" },
+      body: JSON.stringify(obj) })
+      .then(function (r) { return r.json(); });
+  }
+  function remember(wid) { try { localStorage.setItem("wstg-tab-" + d.activity_id, wid); } catch (e) {} }
+  function fail(msg) { alert(msg); }
+  var NET_ERR = "サーバに接続できません。serve_record.py で開いていますか？";
+
+  function start() {
   app.innerHTML = "";
+  if (served) {
+    var nav = el("nav", "nav");
+    [["/", "ダッシュボード"], ["/tasks", "タスク"], ["/wstg/", "WSTG 索引"], ["/findings/", "所見"]]
+      .forEach(function (x) { nav.appendChild(link(x[0], null, x[1])); });
+    if (info.user) nav.appendChild(el("span", "who", "👤 " + info.user));
+    app.appendChild(nav);
+  }
   app.appendChild(el("h1", null, "実施記録 — " + d.activity_id + (d.target ? " / " + d.target : "")));
   app.appendChild(el("div", "meta",
     [d.title, d.date && ("date " + d.date), d.tester && ("tester " + d.tester),
      d.generated_at && ("生成 " + d.generated_at)].filter(Boolean).join("  ·  ")));
 
   var delayInput = null;
-  if (served) {
+  if (served && info.capture) {
     var ctl = el("div", "controls");
     ctl.appendChild(el("span", null, "スクショ待ち時間(秒):"));
     delayInput = document.createElement("input");
@@ -189,24 +226,25 @@ RECORD_HTML = r"""<!DOCTYPE html>
     ctl.appendChild(el("span", "mut",
       "『スクショを撮る』を押すとこの秒数だけ待つので、その間に対象ウィンドウを前面へ→範囲選択"));
     app.appendChild(ctl);
-  } else {
+  } else if (!served) {
     app.appendChild(el("div", "note",
       "結果・スクショは cmd/・artifacts/ のファイルを参照表示します（.txt 編集はリロードで反映）。"
-      + "手順ごとの『スクショを撮る』ボタンを使うには uv run scripts/serve_record.py <このフォルダ> で"
-      + "開いてください（file:// では撮影できません）。"));
+      + "判定の編集・画像の追加・所見の作成は uv run scripts/serve_record.py で開いてください。"));
   }
 
   function delShot(src) {
     if (!confirm("このスクショを削除しますか？\n" + src)) return;
-    fetch("api/delete_shot", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: src }) })
-      .then(function (r) { return r.json(); })
+    post("api/delete_shot", { path: src })
       .then(function (res) { if (res.ok) { location.reload(); }
-        else { alert("削除できませんでした:\n" + (res.error || "")); } })
-      .catch(function () { alert("サーバに接続できません。serve_record.py で開いていますか？"); });
+        else { fail("削除できませんでした:\n" + (res.error || "")); } })
+      .catch(function () { fail(NET_ERR); });
   }
 
-  function addShots(parent, imgs) {
+  function attachLink(wid, rel) {   // このエビデンスを所見に添付（新規 or 既存を選ぶページへ）
+    return link("/findings/attach?" + q({ wid: wid, ev: evPath(rel) }), "attach", "📎 所見に添付");
+  }
+
+  function addShots(parent, imgs, wid) {
     if (!imgs || !imgs.length) return;
     parent.appendChild(el("div", "cap", "スクリーンショット"));
     imgs.forEach(function (src) {
@@ -214,7 +252,9 @@ RECORD_HTML = r"""<!DOCTYPE html>
       im.className = "shot"; im.src = src; im.loading = "lazy"; im.alt = src;
       parent.appendChild(im);
       var rc = el("div", "rc", "→ " + src);
-      if (served) {   // 削除はサーバ経由（file:// では出さない）
+      if (served) {   // 削除・添付はサーバ経由（file:// では出さない）
+        rc.appendChild(document.createTextNode("  "));
+        rc.appendChild(attachLink(wid, src));
         rc.appendChild(document.createTextNode("  "));
         var del = el("button", "del-btn", "🗑 削除");
         del.addEventListener("click", function () { delShot(src); });
@@ -229,18 +269,56 @@ RECORD_HTML = r"""<!DOCTYPE html>
     if (delayInput) { var v = parseInt(delayInput.value, 10); if (!isNaN(v)) delay = v; }
     var old = btn.textContent; btn.disabled = true;
     btn.textContent = "撮影中… " + delay + "秒以内に対象を前面へ→範囲選択";
-    fetch("api/capture", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wid: wid, step: step, delay: delay }) })
-      .then(function (r) { return r.json(); })
+    post("api/capture", { wid: wid, step: step, delay: delay })
       .then(function (res) {
-        if (res.ok) { try { localStorage.setItem("wstg-tab-" + d.activity_id, wid); } catch (e) {}
-          location.reload(); }
-        else { alert("撮影できませんでした:\n" + (res.error || "")); btn.disabled = false; btn.textContent = old; }
+        if (res.ok) { remember(wid); location.reload(); }
+        else { fail("撮影できませんでした:\n" + (res.error || "")); btn.disabled = false; btn.textContent = old; }
       })
-      .catch(function () {
-        alert("サーバに接続できません。serve_record.py で開いていますか？");
-        btn.disabled = false; btn.textContent = old;
-      });
+      .catch(function () { fail(NET_ERR); btn.disabled = false; btn.textContent = old; });
+  }
+
+  // 画像を追加（クリップボードから貼り付け / ファイル選択）。PNG 以外は canvas で PNG に変換して送る
+  function toPngDataUrl(file, cb) {
+    if (file.type === "image/png") {
+      var fr = new FileReader(); fr.onload = function () { cb(fr.result); }; fr.readAsDataURL(file); return;
+    }
+    var img = new Image(); var url = URL.createObjectURL(file);
+    img.onload = function () {
+      var c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext("2d").drawImage(img, 0, 0); URL.revokeObjectURL(url); cb(c.toDataURL("image/png"));
+    };
+    img.onerror = function () { fail("画像として読み込めませんでした"); };
+    img.src = url;
+  }
+  function uploadShot(wid, step, file, zone) {
+    zone.textContent = "アップロード中…";
+    toPngDataUrl(file, function (dataUrl) {
+      post("api/upload_shot", { wid: wid, step: step, data: dataUrl.split(",", 2)[1] })
+        .then(function (res) {
+          if (res.ok) { remember(wid); location.hash = wid + (step ? "/s" + step : ""); location.reload(); }
+          else { fail("保存できませんでした:\n" + (res.error || "")); zone.textContent = zoneText; }
+        })
+        .catch(function () { fail(NET_ERR); zone.textContent = zoneText; });
+    });
+  }
+  var zoneText = "🖼 ここをクリックして Ctrl+V で画像を貼り付け／ダブルクリックでファイル選択";
+  function imageAdder(wid, step) {
+    var zone = el("div", "drop", zoneText); zone.tabIndex = 0;
+    var fi = document.createElement("input"); fi.type = "file"; fi.accept = "image/*"; fi.style.display = "none";
+    zone.addEventListener("paste", function (ev) {
+      var items = (ev.clipboardData || {}).items || [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image/") === 0) { ev.preventDefault(); uploadShot(wid, step, items[i].getAsFile(), zone); return; }
+      }
+      fail("クリップボードに画像がありません（スクショを撮ってから Ctrl+V）");
+    });
+    zone.addEventListener("dblclick", function () { fi.click(); });
+    zone.addEventListener("dragover", function (ev) { ev.preventDefault(); });
+    zone.addEventListener("drop", function (ev) { ev.preventDefault();
+      var f = ev.dataTransfer.files[0]; if (f) uploadShot(wid, step, f, zone); });
+    fi.addEventListener("change", function () { if (fi.files[0]) uploadShot(wid, step, fi.files[0], zone); });
+    var w = el("div"); w.appendChild(zone); w.appendChild(fi);
+    return w;
   }
 
   function labeled(label, node) {
@@ -251,36 +329,47 @@ RECORD_HTML = r"""<!DOCTYPE html>
   }
   function editForm(it) {
     var wrap = el("div", "edit");
-    wrap.appendChild(el("div", "cap", "判定・所見を編集（保存で run.yaml / findings.md に反映）"));
+    wrap.appendChild(el("div", "cap", "判定を編集（保存で run.yaml に反映）"));
     var vs = document.createElement("select");
     ["todo", "pass", "fail", "info", "na"].forEach(function (v) {
       var o = document.createElement("option"); o.value = v; o.textContent = v.toUpperCase();
       if (v === (it.verdict || "todo")) o.selected = true; vs.appendChild(o);
     });
     var ft = document.createElement("textarea"); ft.value = it.finding || ""; ft.rows = 2;
-    ft.placeholder = "finding（CSV に載る1行見出し。改行可）";
-    var wt = document.createElement("textarea"); wt.value = it.writeup || ""; wt.rows = 6;
-    wt.placeholder = "所見（詳細・findings.md。CSV には出ない）";
+    ft.placeholder = "判定理由（1行。例: 4本の dork すべて該当なし）。問題の詳細は下の『所見』に書く";
     wrap.appendChild(labeled("verdict", vs));
-    wrap.appendChild(labeled("finding", ft));
-    wrap.appendChild(labeled("所見（詳細）", wt));
+    wrap.appendChild(labeled("判定理由（finding）", ft));
     var save = el("button", "save-btn", "保存");
-    save.addEventListener("click", function () { saveItem(it.wid, vs.value, ft.value, wt.value, save); });
+    save.addEventListener("click", function () { saveItem(it.wid, vs.value, ft.value, save); });
     wrap.appendChild(save);
     return wrap;
   }
-  function saveItem(wid, verdict, finding, writeup, btn) {
+  function saveItem(wid, verdict, finding, btn) {
     var old = btn.textContent; btn.disabled = true; btn.textContent = "保存中…";
-    fetch("api/save", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wid: wid, verdict: verdict, finding: finding, writeup: writeup }) })
-      .then(function (r) { return r.json(); })
+    post("api/save", { wid: wid, verdict: verdict, finding: finding })
       .then(function (res) {
-        if (res.ok) { try { localStorage.setItem("wstg-tab-" + d.activity_id, wid); } catch (e) {}
-          location.reload(); }
-        else { alert("保存できませんでした:\n" + (res.error || "")); btn.disabled = false; btn.textContent = old; }
+        if (res.ok) { remember(wid); location.reload(); }
+        else { fail("保存できませんでした:\n" + (res.error || "")); btn.disabled = false; btn.textContent = old; }
       })
-      .catch(function () { alert("サーバに接続できません。serve_record.py で開いていますか？");
-        btn.disabled = false; btn.textContent = old; });
+      .catch(function () { fail(NET_ERR); btn.disabled = false; btn.textContent = old; });
+  }
+
+  function findingsBox(it) {
+    var w = el("div", "fbox");
+    var head = el("div", "cap", "所見（" + (it.findings || []).length + " 件）");
+    if (served) {
+      head.appendChild(document.createTextNode("  "));
+      head.appendChild(link("/findings/new?" + q({ wid: it.wid, ev: folder + "/" }), "attach", "＋ 所見を作成"));
+    }
+    w.appendChild(head);
+    (it.findings || []).forEach(function (f) {
+      var row = el("div", "frow");
+      row.appendChild(el("span", "sev s-" + f.severity, f.severity_label + (f.base != null ? " " + f.base : "")));
+      row.appendChild(link(findingHref(f.id), null, f.id + " " + f.title));
+      if (f.status !== "confirmed") row.appendChild(el("span", "mut", " [" + f.status + "]"));
+      w.appendChild(row);
+    });
+    return w;
   }
 
   function editOutput(pathRel, btn) {
@@ -304,14 +393,12 @@ RECORD_HTML = r"""<!DOCTYPE html>
         cancel.addEventListener("click", function () { wrap.remove(); btn.style.display = ""; btn.disabled = false; });
         save.addEventListener("click", function () {
           save.disabled = true; save.textContent = "保存中…";
-          fetch("api/save_output", { method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path: pathRel, content: ta.value }) })
-            .then(function (r) { return r.json(); })
+          post("api/save_output", { path: pathRel, content: ta.value })
             .then(function (res) {
               if (res.ok) { location.reload(); }
-              else { alert("保存できませんでした:\n" + (res.error || "")); save.disabled = false; save.textContent = "保存"; }
+              else { fail("保存できませんでした:\n" + (res.error || "")); save.disabled = false; save.textContent = "保存"; }
             })
-            .catch(function () { alert("サーバに接続できません。"); save.disabled = false; save.textContent = "保存"; });
+            .catch(function () { fail(NET_ERR); save.disabled = false; save.textContent = "保存"; });
         });
       });
   }
@@ -319,7 +406,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
   function renderItem(it) {
     var box = el("div", "item");
     var h = el("h2");
-    h.appendChild(el("span", null, it.wid));
+    h.appendChild(served ? link("/wstg/" + it.wid, null, it.wid) : el("span", null, it.wid));
     if (it.title) h.appendChild(el("span", "role", it.title));
     h.appendChild(el("span", "badge v-" + (it.verdict || "todo"), (it.verdict || "todo").toUpperCase()));
     h.appendChild(el("span", "role", it.role));
@@ -330,21 +417,20 @@ RECORD_HTML = r"""<!DOCTYPE html>
     if (it.fail) { var cf = el("div", "crit"); cf.appendChild(el("b", null, "fail "));
       cf.appendChild(document.createTextNode(it.fail)); box.appendChild(cf); }
     if (served) {
-      box.appendChild(editForm(it));   // verdict/finding/所見 をその場で編集して保存
-    } else {
-      if (it.finding) box.appendChild(el("div", "finding", "finding: " + it.finding));
-      if (it.writeup) {
-        box.appendChild(el("div", "cap", "所見（詳細） — findings.md"));
-        box.appendChild(el("div", "writeup", it.writeup));
-      }
+      box.appendChild(editForm(it));   // verdict/判定理由 をその場で編集して保存
+    } else if (it.finding) {
+      box.appendChild(el("div", "finding", "判定理由: " + it.finding));
     }
-    addShots(box, it.images);
+    box.appendChild(findingsBox(it));
+    addShots(box, it.images, it.wid);
 
     (it.steps || []).forEach(function (st) {
       var s = el("div", "step");
+      s.id = it.wid + "/s" + st.idx;   // 深いリンク: record.html#<WSTG-ID>/s<n>
       var t = el("p", "t");
       t.appendChild(el("span", "badge k-" + st.kind, st.kind === "cmd" ? "コマンド" : "手動"));
       t.appendChild(document.createTextNode(" 手順" + st.idx + "： " + (st.desc || "")));
+      t.appendChild(link("#" + s.id, "anchor", "#"));
       s.appendChild(t);
       (st.runs || []).forEach(function (r) {
         if (r.role === "check") s.appendChild(el("div", "cap", "取得できたかの確認（サイズ・行数・先頭）"));
@@ -354,7 +440,9 @@ RECORD_HTML = r"""<!DOCTYPE html>
           var fr = document.createElement("iframe");
           fr.className = "out"; fr.src = r.output_path; fr.loading = "lazy";
           s.appendChild(fr);
-          s.appendChild(el("div", "rc", "→ " + r.output_path));
+          var rc = el("div", "rc", "→ " + r.output_path);
+          if (served) { rc.appendChild(document.createTextNode("  ")); rc.appendChild(attachLink(it.wid, r.output_path)); }
+          s.appendChild(rc);
         } else {
           s.appendChild(el("p", "empty", r.role === "manual"
             ? "未記入（" + r.output_path + " に観察を書く）"
@@ -367,11 +455,14 @@ RECORD_HTML = r"""<!DOCTYPE html>
         }
       });
       if (served) {
-        var b = el("button", "shot-btn", "📷 この手順のスクショを撮る");
-        b.addEventListener("click", function () { capture(it.wid, st.idx, b); });
-        s.appendChild(b);
+        if (info.capture) {
+          var b = el("button", "shot-btn", "📷 この手順のスクショを撮る");
+          b.addEventListener("click", function () { capture(it.wid, st.idx, b); });
+          s.appendChild(b);
+        }
+        s.appendChild(imageAdder(it.wid, st.idx));
       }
-      addShots(s, st.images);   // --step で撮ったスクショはその手順の直下に
+      addShots(s, st.images, it.wid);   // この手順のスクショはその手順の直下に
       box.appendChild(s);
     });
     return box;
@@ -387,12 +478,13 @@ RECORD_HTML = r"""<!DOCTYPE html>
       e.box.style.display = on ? "" : "none";
       e.tb.classList.toggle("active", on);
     });
-    try { localStorage.setItem("wstg-tab-" + d.activity_id, wid); } catch (e) {}
+    remember(wid);
   }
   (d.items || []).forEach(function (it) {
     var tb = el("button", "tab");
     tb.appendChild(el("span", "dot v-" + (it.verdict || "todo")));
     tb.appendChild(el("span", null, it.wid));
+    if ((it.findings || []).length) tb.appendChild(el("span", "fcount", String(it.findings.length)));
     var box = renderItem(it); box.style.display = "none";
     panes.appendChild(box); tabbar.appendChild(tb);
     entries.push({ wid: it.wid, tb: tb, box: box });
@@ -400,11 +492,33 @@ RECORD_HTML = r"""<!DOCTYPE html>
   });
   app.appendChild(tabbar);
   app.appendChild(panes);
-  var init = null;
-  try { init = localStorage.getItem("wstg-tab-" + d.activity_id); } catch (e) {}
-  if (!init || !entries.some(function (e) { return e.wid === init; }))
-    init = entries.length ? entries[0].wid : null;
-  if (init) activate(init);
+
+  // #<WSTG-ID>[/s<n>] で該当タブ・手順へ（所見や WSTG 索引からのリンク）。無ければ前回のタブ
+  function fromHash() {
+    var h = decodeURIComponent(location.hash.replace(/^#/, ""));
+    var wid = h.split("/")[0];
+    if (!entries.some(function (e) { return e.wid === wid; })) return false;
+    activate(wid);
+    var target = document.getElementById(h);
+    if (target && h.indexOf("/") > 0) { target.classList.add("hl"); target.scrollIntoView(); }
+    return true;
+  }
+  window.addEventListener("hashchange", fromHash);
+  if (!fromHash()) {
+    var init = null;
+    try { init = localStorage.getItem("wstg-tab-" + d.activity_id); } catch (e) {}
+    if (!init || !entries.some(function (e) { return e.wid === init; }))
+      init = entries.length ? entries[0].wid : null;
+    if (init) activate(init);
+  }
+  }
+
+  if (served) {
+    fetch("/api/info").then(function (r) { return r.json(); })
+      .then(function (x) { info = x || info; }).catch(function () {}).then(start);
+  } else {
+    start();
+  }
 })();
 </script>
 </body>
@@ -613,54 +727,6 @@ def manual_stub_text(activity: dict, step: dict) -> str:
     ]) + "\n"
 
 
-# findings.md（WSTG-ID ごとの詳しい所見の本文）の未記入プレースホルダ
-FINDINGS_PLACEHOLDER = "（ここに詳細な所見を書く。無ければ空のままでよい。生値は書かず evidence を参照）"
-
-
-def render_findings_md(activity: dict, tests: dict) -> str:
-    """findings.md（WSTG-ID ごとの本文）の雛形。record.html に「所見（詳細）」で表示される。"""
-    out = [
-        f"# 所見メモ — {activity['id']}",
-        "",
-        "WSTG-ID ごとに詳しい所見（本文）をここに書く。record.html に「所見（詳細）」として表示される。",
-        "CSV に載るのは run.yaml の `finding`（1行の見出し）だけ。生の値（資格情報・生ホスト名・トークン）は",
-        "書かず、evidence（cmd/・artifacts/）のパスで参照する。",
-    ]
-    for cov in activity.get("covers", []):
-        wid = cov["id"]
-        title = tests.get(wid, {}).get("title", "")
-        out += ["", f"## {wid} — {title}", "", FINDINGS_PLACEHOLDER]
-    return "\n".join(out) + "\n"
-
-
-def parse_findings(text: str) -> dict:
-    """findings.md を WSTG-ID ごとの本文に分解する（見出し `## WSTG-XXX ...`）。"""
-    out: dict = {}
-    cur, buf = None, []
-    for line in text.split("\n"):
-        m = re.match(r"^##\s+(WSTG-[A-Z]+-\d+)\b", line)
-        if m:
-            if cur:
-                out[cur] = "\n".join(buf).strip()
-            cur, buf = m.group(1), []
-            continue
-        if cur is not None:
-            buf.append(line)
-    if cur:
-        out[cur] = "\n".join(buf).strip()
-    # プレースホルダのままは「未記入」として空にする
-    return {k: ("" if v == FINDINGS_PLACEHOLDER else v) for k, v in out.items()}
-
-
-def write_findings_md(activity: dict, tests: dict, activity_dir: Path, force: bool) -> bool:
-    """findings.md を用意する（既存は壊さない）。作ったら True。"""
-    dest = activity_dir / "findings.md"
-    if dest.exists() and not force:
-        return False
-    dest.write_text(render_findings_md(activity, tests), encoding="utf-8")
-    return True
-
-
 VALID_VERDICTS = {"pass", "fail", "info", "na", "todo"}
 
 
@@ -721,26 +787,20 @@ def update_cover(run_yaml: Path, wid: str, verdict=None, finding=None) -> bool:
     return True
 
 
-def update_findings(findings_md: Path, tests: dict, wid: str, body: str) -> None:
-    """findings.md の該当 WSTG-ID セクションの本文だけを差し替える（無ければ追記）。"""
-    body = body.replace("\r\n", "\n").strip("\n")
-    new_body = body if body.strip() else FINDINGS_PLACEHOLDER
-    title = tests.get(wid, {}).get("title", "")
-    if not findings_md.exists():
-        findings_md.write_text(
-            f"# 所見メモ\n\n## {wid} — {title}\n\n{new_body}\n", encoding="utf-8")
-        return
-    lines = findings_md.read_text(encoding="utf-8").split("\n")
-    hi = next((i for i, l in enumerate(lines) if re.match(rf"^##\s+{re.escape(wid)}\b", l)), None)
-    if hi is None:
-        while lines and lines[-1].strip() == "":
-            lines.pop()
-        lines += ["", f"## {wid} — {title}", "", new_body, ""]
-    else:
-        nxt = next((k for k in range(hi + 1, len(lines))
-                    if re.match(r"^##\s+WSTG-", lines[k])), len(lines))
-        lines[hi + 1:nxt] = ["", new_body, ""]
-    findings_md.write_text("\n".join(lines), encoding="utf-8")
+def _linked_findings(evidence_root: Path) -> dict:
+    """WSTG-ID → 紐づく所見の要約リスト（表示用。本文は載せない）。"""
+    try:
+        import findings as _findings
+    except ImportError:
+        return {}
+    out: dict = {}
+    for f in _findings.list_all(evidence_root):
+        for w in f["wstg"]:
+            out.setdefault(w, []).append({
+                "id": f["id"], "title": f["title"], "status": f["status"],
+                "severity": f["severity"], "severity_label": f["severity_label"], "base": f["base"],
+            })
+    return out
 
 
 def _load_run_yaml(activity_dir: Path) -> dict:
@@ -758,9 +818,8 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
     """
     run = _load_run_yaml(activity_dir)
     covers = {c["id"]: c for c in (run.get("covers") or [])}
-    # findings.md（WSTG-ID ごとの詳しい所見の本文）。record.html に「所見（詳細）」で出す。
-    fmd = activity_dir / "findings.md"
-    writeups = parse_findings(fmd.read_text(encoding="utf-8")) if fmd.exists() else {}
+    # この WSTG-ID に紐づく所見（evidence/_findings/F-*.md）。record.html に一覧とリンクを出す。
+    linked = _linked_findings(activity_dir.parent)
 
     def has_output(rel: str) -> bool:
         """出力ファイルが存在し中身があるか（表示を出すかの判断。中身はコピーしない）。"""
@@ -823,13 +882,14 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
             "verdict": cv.get("verdict", "todo"),
             "finding": cv.get("finding", ""),
             "evidence": cv.get("evidence", ""),
-            "writeup": writeups.get(wid, ""),
+            "findings": linked.get(wid, []),
             "steps": steps_out,
             "images": images,
         })
 
     return {
         "activity_id": activity["id"],
+        "folder": activity_dir.name,
         "title": activity.get("title", ""),
         "target": target or "",
         "date": str(run.get("date", "")),   # run.yaml では既に ISO 文字列（PyYAML が date 化する）
@@ -929,7 +989,6 @@ def refresh_record(activity_dir: Path) -> dict:
     """実行はせず、run.yaml と既存のエビデンスから record.html / evidence.js を最新化する。"""
     activity, tests, criteria, target, act_dir = resolve_activity(activity_dir)
     write_manual_stubs(activity, criteria, target, activity_dir, act_dir, force=False)
-    write_findings_md(activity, tests, activity_dir, force=False)
     write_record_html(activity_dir, force=False)
     data = build_evidence(activity, tests, criteria, target, activity_dir, act_dir)
     write_evidence_js(activity_dir, data)
@@ -967,7 +1026,7 @@ def render_run_yaml(activity: dict, tests: dict, date: str, tester: str, target:
         f"# {activity['id']} — {activity.get('title', '')}",
         "# finding は CSV に載る1行の見出し（要約のみ。生値は書かず evidence: で参照）。",
         "# 複数行で書きたいときは finding: | にして次行からインデントして書く（CSV では1行に畳まれる）。",
-        "# 詳しい所見の本文は findings.md に WSTG-ID ごとに書く（record.html に「所見（詳細）」で出る）。",
+        "# 問題を見つけたら所見（evidence/_findings/F-*.md）を作る。1つの WSTG に複数の所見を紐づけられる。",
         f"activity_id: {activity['id']}",
         f"title: {_yaml_str(activity.get('title', ''))}",
         f"date: {iso_date(date)}",
@@ -1135,7 +1194,6 @@ def main() -> int:
     # 手動手順の観察を書く .txt ひな型・表示ビューア・表示データを用意する。
     # 生のエビデンスは cmd/・artifacts/ の各ファイル。record.html はそれを読むだけ。
     manual = write_manual_stubs(activity, criteria, args.target, target_dir, act_dir, args.force)
-    write_findings_md(activity, tests, target_dir, args.force)
     write_record_html(target_dir, force=args.force)
     write_evidence_js(
         target_dir,
@@ -1153,7 +1211,8 @@ def main() -> int:
     print(f"  実行: uv run scripts/run_activity.py {target_dir}"
           "  でコマンド手順を実行→エビデンスと evidence.js を更新")
     print(f"  判定: {run_yaml} の covers に verdict / finding（1行見出し）を直接記入")
-    print(f"  詳しい所見: {target_dir / 'findings.md'} に WSTG-ID ごとに本文を書く（record.html に表示）")
+    print("  所見: 問題を見つけたら Web の record.html の『＋ 所見を作成』"
+          "（または uv run scripts/findings.py new）で evidence/_findings/ に作る")
     print(f"  反映: uv run scripts/gen_record.py {target_dir}（serve_record.py 経由なら自動）")
     return 0
 

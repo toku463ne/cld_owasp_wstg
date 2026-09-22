@@ -5,12 +5,13 @@ OWASP Web Security Testing Guide (WSTG) **v4.2** を、**収集アクティビ�
 
 - WSTG 項目を1件ずつ潰すのではなく、1回の収集（例: 「認証済みクロール」）で
   該当する複数の WSTG-ID にまとめてチェックを入れる。
-- チェックリスト（`checklist_export.csv`）は **概要のみ**。詳細は各エビデンス
-  フォルダを見れば分かる、という前提で運用する。
+- 管理は **Web 一本**（`scripts/serve_record.py`）。タスク（指示書＋チェックリスト）・WSTG 索引
+  （どこまで完了したか）・所見（CVSS 付き）・実施記録（エビデンス）を1つのサイトで辿る。
+  チームで使うときは共用 Kali 上で nginx（TLS＋認証）の後ろに置く。
 - 実エビデンスはこのリポジトリに入れない（`evidence/` は `.gitignore` 済み）。
 
-**まず `TASKS.md` を開く。** 実施順に並んだチェックリストがそこにある。
-今どこまで進んだかは `uv run scripts/tasks.py`。
+**まず Web を開く:** `uv run scripts/serve_record.py --open` → 「タスク」を上から消化する。
+同じ内容のテキスト版が `TASKS.md`、端末での進捗確認は `uv run scripts/tasks.py`。
 
 ## 全体像
 
@@ -24,10 +25,16 @@ matrix/coverage.yaml（アクティビティ定義・実施順）
    │ new_activity.py
    ▼
 evidence/<activity>[-<target>]-<date>/
-   ├ cmd/ + artifacts/（run_activity.py が手順を実行＝純粋なエビデンス）─┐
+   ├ cmd/ + artifacts/（run_activity.py が手順を実行＝純粋なエビデンス）
    ├ record.html ─(iframe参照)▶ cmd/・artifacts/ の各ファイル（evidence.js はメタデータのみ）
-   └ run.yaml（covers に判定を直接記入）─┬─▶ export_checklist.py ─▶ checklist_export.csv ─ 目視 ─▶ Sheets
-                                         └─▶ tasks.py（進捗表示）
+   └ run.yaml（covers に判定＝verdict と判定理由）
+evidence/_findings/F-*.md（所見。WSTG と多対多・CVSS ベクトル・エビデンスへのパス）
+evidence/_state/checks.yaml（タスクの手動チェック）
+   │
+   ▼ serve_record.py（127.0.0.1）◀── nginx（TLS＋認証）◀── チーム
+   /           ダッシュボード       /tasks      指示書＋チェックリスト
+   /wstg/      WSTG 索引（完了状況）/findings/  所見（深刻度は CVSS から自動）
+   /<act>/record.html 実施記録      /export.csv 一覧（外に出すとき）
 ```
 
 ## セットアップ
@@ -125,7 +132,7 @@ sudo curl -sI https://github.com | head -1
 
 ## 日々の流れ
 
-`TASKS.md` を上から消化していく。1本のアクティビティで踏むのは 1〜2、
+Web の「タスク」（テキスト版は `TASKS.md`）を上から消化していく。1本のアクティビティで踏むのは 1〜2c、
 区切りのたびに 3〜4 を回す。
 
 ### 1. アクティビティを開始する
@@ -195,76 +202,62 @@ uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --dry-r
   uv run scripts/run_cmd.py evidence/tls-scan-20260908 -- testssl.sh --quiet target.example
   ```
 
-### 2b. 判定を `run.yaml` に書き、`record.html` で見る
-
-判定は `run.yaml` の `covers:` に**直接**書く（唯一の判定置き場。旧 `record.md` / `capture.py` は廃止）:
-
-```yaml
-covers:
-  - id: WSTG-INFO-02
-    verdict: fail          # pass | fail | info | na | todo
-    finding: "2.4.49 に既知 CVE。詳細は evidence 参照"   # 1行の見出し（CSV に載る）
-    evidence: "cmd/WSTG-INFO-02-s5.txt"                 # 生値はこのファイルを見る
-```
-
-`finding` は CSV に載る**1行の見出し**（要約のみ）。複数行で書きたいときは YAML のブロックにする
-（CSV では自動で1行に畳まれる）:
-
-```yaml
-    finding: |
-      2.4.49 で既知 CVE（CVE-2021-41773 等）。
-      /icons/ で確認。パッチ状況は要ヒアリング。
-```
-
-**詳しい所見の本文**は、各アクティビティの `findings.md` に WSTG-ID ごとに書く。record.html に
-「所見（詳細）」として表示され、CSV には出ない（CSV はあくまで概要）。生の値は書かず evidence を参照する。
-
-```markdown
-## WSTG-INFO-02 — Fingerprint Web Server
-
-Apache 2.4.49 を確認。Server ヘッダで露出。
-- 影響: 既知 RCE の可能性
-- 次: パッチ状況をヒアリング
-```
-
-書いたら表示を最新化して、ブラウザで `record.html` を開いて確認する:
+### 2b. Web で判定を書き、所見を作る
 
 ```bash
-uv run scripts/gen_record.py evidence/recon-osint-example.com-20260913
+uv run scripts/serve_record.py --open        # http://127.0.0.1:8765/（127.0.0.1 のみ待受）
 ```
 
-`record.html` は WSTG-ID ごとの**タブ**で表示する（長い縦スクロールを畳む。選択タブはブラウザに記憶）。
-静的なビューアで、手順の説明・各コマンド・WSTG-ID ごとの判定/finding という
-**メタデータ**を同フォルダの `evidence.js` から読む（`file://` では `.txt` の `fetch` が遮断されるため
-`<script src>` で渡す）。**エビデンス本体（各コマンドの出力）は evidence.js に複製せず、
-`cmd/`・`artifacts/` のファイルを `<iframe>` で直接参照する**。したがって `.txt` を手で編集
-（別環境で取った結果を貼る等）したら、`gen_record.py` を回さなくてもブラウザのリロードだけで反映される。
-`gen_record.py` が要るのは、手順の変更・判定の記入・新しいコマンドの追加を反映するときだけ。
+トップ（ダッシュボード）から、**タスク**・**WSTG 索引**・**所見**・各アクティビティの
+**実施記録（record.html）** を辿る。ページは GET のたびにファイルから作り直すので、
+`run.yaml` や所見ファイルをエディタで直してもリロードで反映される。
 
-- Firefox は `file://` の `<iframe>` で同フォルダのファイルを表示できる（Kali 既定）。
-  Chromium 系で枠が空になる場合や、**手順ごとの『スクショを撮る』ボタンを使いたい場合**は、
-  ローカルサーバ経由で開く。1つのサーバで `evidence/` 全体を配信し、トップの索引から
-  全アクティビティを辿れる（アクティビティごとにサーバを立てなくてよい）:
+**record.html（WSTG-ID ごとのタブ）でできること**
+
+- **判定**: 各タブの verdict（pass|fail|info|na|todo）と**判定理由**（1行。`run.yaml` の `finding`）を
+  『保存』。`run.yaml` の該当ブロックだけをテキスト置換する（手で直接書いてもよい）。
+- **所見**: タブ内の『＋ 所見を作成』、または各出力・スクショの『📎 所見に添付』（新規 or 既存の所見に追加）。
+- **画像**: 手順ごとの枠をクリックして Ctrl+V（クリップボードのスクショを貼る）、ダブルクリックでファイル選択、
+  ドラッグ＆ドロップ。`artifacts/shot-<WSTG-ID>-s<n>-<日時>.png` として保存され、その手順の直下に出る。
+  ローカルモードでは『📷 この手順のスクショを撮る』（サーバ機の画面を範囲選択）も使える。
+- **結果の貼り付け**: 各コマンド結果の『✎ 結果を貼る/編集』で `cmd/…txt` を直接編集できる
+  （会社で network error になったコマンドを別環境で実行して貼る等。`cmd/`・`artifacts/` 直下の `.txt` のみ）。
+- **深いリンク**: `record.html#WSTG-INFO-02/s5` で、そのタブのその手順に飛ぶ（所見・WSTG 索引からのリンクはこれ）。
+
+`record.html` はファイルをダブルクリック（`file://`）でも閲覧だけはできる（編集・添付・画像追加は Web のみ）。
+エビデンス本体（各コマンドの出力）は evidence.js に複製せず `cmd/`・`artifacts/` のファイルを `<iframe>` で
+直接参照する。上流（`criteria.yaml` 等）を更新して手順が変わっても `gen_record.py` で作り直すだけでよく、
+過去のエビデンスをコピーし直す必要はない。
+
+**判定理由（`finding`）は要約のみ**。生トークン・資格情報・生ホスト名は書かず、エビデンスのパスで示す。
+複数行にすると `run.yaml` では YAML ブロック（`finding: |`）、CSV では1行に畳まれる。
+
+### 2c. 所見（Finding）と深刻度（CVSS v3.1）
+
+所見は **1件 = 1ファイル**（`evidence/_findings/F-001.md`）。WSTG-ID とは**多対多**で、
+1つの WSTG に複数の所見を、1つの所見に複数の WSTG・複数アクティビティのエビデンスを紐づけられる。
+中身は front matter（タイトル・状態・CVSS ベクトル・指標ごとの判断理由・WSTG・エビデンスのパス）＋本文
+（概要・再現手順・影響・対策案）。
+
+- **深刻度は人が選ばない。** 所見フォームの 8 問（起こりやすさ＝攻撃元・複雑さ・権限・ユーザ関与、
+  影響＝スコープ・機密性・完全性・可用性）に答えると CVSS v3.1 の基本スコアを計算し、
+  Critical ≥9.0 / High ≥7.0 / Medium ≥4.0 / Low ≥0.1 / 情報 0.0 を自動で付ける。
+  各問に「判断理由」を書いておくと、レビューで何を根拠に選んだかが分かる。
+  迷ったら「最悪ならこうなるかも」ではなく**検査で確認できた事実**で選ぶ。
+  代表例（反射型 XSS・IDOR・CSRF 等）から始めて選び直すこともできる。
+- **状態**: 下書き（要レビュー）→ 確定（報告対象）/ 取り下げ（誤検知）/ 解消（再テストで直った）。
+  タスクの自動チェックは「下書きが残っていない」「CVSS 未評価が無い」を見る。
+- 所見の詳細ページから、各エビデンスの**実施記録の該当手順**（深いリンク）とファイル自体に飛べる。
+- WSTG 詳細ページは、確定所見があるのにどのアクティビティでも `fail` になっていなければ警告する。
+- 同時編集: 保存時に読み込んだ版と違えば拒否する（他の人の更新を上書きしない）。
+- CLI でも扱える:
   ```bash
-  uv run scripts/serve_record.py --open        # 索引 http://127.0.0.1:8765/（127.0.0.1 のみ待受）
-  uv run scripts/serve_record.py evidence/recon-osint-example.com-20260913 --open  # そのページを直接開く
+  uv run scripts/findings.py list
+  uv run scripts/findings.py new --title "…" --wstg WSTG-ATHZ-01 --evidence <フォルダ>/cmd/x.txt
+  uv run scripts/cvss31.py "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"   # 6.1 Medium
   ```
-  http 配信になるので Chrome でも iframe/img が確実に表示され、各手順の
-  『📷 この手順のスクショを撮る』が有効になる（サーバが save_shot --grab を実行→その手順の直下に画像）。
-  待ち時間（秒）を上部の入力で指定し、その間に対象ウィンドウを前面へ出して範囲選択する。
-  間違って撮ったスクショは各画像の『🗑 削除』で消せる（`artifacts/shot-*.png` のみ・確認あり）。
-  さらに各タブ内に **verdict のセレクト・finding・所見（findings.md）のテキストボックス**が出て、
-  『保存』で `run.yaml`／`findings.md` に直接反映される（エディタを開かずに判定・所見を書ける。
-  finding は複数行のまま保存すると `run.yaml` では YAML ブロックに、CSV では1行に畳まれる）。
-  各コマンド結果の下の **『✎ 結果を貼る/編集』** では、その出力ファイル（`cmd/…txt`）を直接編集できる。
-  会社で network error になったコマンドを**自宅で実行して結果を貼る**、といった使い方向け
-  （書けるのは `cmd/`・`artifacts/` 直下の `.txt` のみ）。
-
-**エビデンス本体は `cmd/`・`artifacts/` の各ファイルに、判定は `run.yaml` にあるので、
-上流（`criteria.yaml` 等）を更新して手順が変わっても、`gen_record.py` で作り直すだけでよく、
-過去のエビデンスを別ファイルからコピーし直す必要がない。**
-
-- **`finding` は要約のみ**。生トークン・資格情報・生ホスト名は書かず、`evidence:` のパス参照で示す。
+- 旧形式（各アクティビティの `findings.md`）が残っていれば `uv run scripts/findings.py migrate` で
+  所見ファイル（下書き）に移す（元は `findings.md.migrated` に改名して残す）。
 
 ### 3. 進捗を確認する
 
@@ -279,21 +272,43 @@ uv run scripts/tasks.py
 `evidence/*/run.yaml` の `verdict` を見て、アクティビティ単位の進捗と「次にやること」
 （前提が終わっていて着手できるもの）を出す。
 
-### 4. チェックリストを出力する
+Web の「タスク」ページでも同じ進捗が見られる。各アクティビティの✓は実施状況から自動で付く
+（フォルダ・コマンド出力・手動観察・判定・所見）。「合意した」「リーダー確認済み」などは人が押し、
+誰がいつ押したかが `evidence/_state/checks.yaml` に残る。
+
+### 4. 一覧（CSV）を取り出す
+
+日常の確認は Web の **WSTG 索引**（カテゴリ別の完了数・未実施/FAIL/所見ありの絞り込み）で行う。
+報告書に添付する等で一覧を外に出すときだけ CSV にする:
 
 ```bash
 uv run scripts/export_checklist.py --summary
 # -> checklist_export.csv（全 97 項目。未実施は todo のまま）
 ```
 
-集約ステータスは `fail > todo > info > pass > na` の優先度。同じ WSTG-ID を複数の
-アクティビティが触っていれば、最も注意すべきものが採用される。
+Web の「CSV」（`/export.csv`）からも同じものをダウンロードできる。集約ステータスは
+`fail > todo > info > pass > na` の優先度。`finding_summary` には判定理由に続けて、
+その WSTG に紐づく所見が `[F-003 High 8.1] タイトル` の形で入る（取り下げは除く）。
+**外に出す前に目視レビュー**（生値・資格情報が混じっていないか）。
 
-出力後は **目視レビュー** し、Google Sheets で
-「ファイル → インポート → アップロード → 現在のシートを置換」で取り込む。
+## チームで共有する（nginx）
 
-（任意）`--push --sheet-id <ID>` でシートへ直接反映もできる。既定は CSV 出力のみ。
-機密が混じっていないか自分で確認してから使うこと。
+共用の Kali 1台にリポジトリと `evidence/` を置き、コマンドは各自がそこへ SSH して実行する。
+Web は同じ機械で動かし、nginx から公開する（`serve_record.py` 自体は 127.0.0.1 でしか待ち受けない）。
+
+```bash
+uv run scripts/serve_record.py --behind-proxy     # 常駐は templates/nginx/wstg-web.service
+sudo apt install -y nginx apache2-utils
+sudo htpasswd -c /etc/nginx/wstg.htpasswd alice    # 2人目以降は -c なし
+sudo cp templates/nginx/wstg.conf /etc/nginx/sites-available/wstg   # 証明書・許可ネットワークを直す
+sudo ln -s /etc/nginx/sites-available/wstg /etc/nginx/sites-enabled/wstg
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+- `--behind-proxy` では、nginx の認証ユーザ（`X-Remote-User`）が所見・チェックの編集者名になる。
+  サーバ機の画面を撮る『📷 スクショを撮る』は無効になり、各自の PC で撮って**貼り付け**る。
+- 書き込み API は独自ヘッダと Origin を検査する（他サイトからの書き込みを弾く）。書き込みは直列化される。
+- **evidence がそのまま見えるので、社内ネットワーク限定・TLS・認証を外さない**（設定例はその前提）。
 
 ## リポジトリ構成
 
@@ -308,9 +323,10 @@ uv run scripts/export_checklist.py --summary
 | `TASKS.md` | 実施順のタスクリスト（自動生成） | ✅ |
 | `templates/run.yaml` | run.yaml のスキーマ兼雛形 | ✅ |
 | `templates/artifacts/` | `.md` 成果物の検索用フォーマット雛形（**手編集**） | ✅ |
+| `templates/nginx/` | チーム共有用の nginx 設定・systemd ユニットの例 | ✅ |
 | `pyproject.toml` / `uv.lock` / `.python-version` | uv による環境定義 | ✅ |
 | `docs/owasp/` | WSTG 原文（`FETCH.md` 以外は追跡しない） | ❌ |
-| `evidence/` | 生エビデンス（社内PCのローカルのみ） | ❌ |
+| `evidence/` | 生エビデンス（共用 Kali のみ）。`_findings/` に所見、`_state/` に手動チェック | ❌ |
 | `checklist_export.csv` | 集約 CSV（レビュー用の一時物） | ❌ |
 
 ## 生成物を作り直すとき
@@ -340,7 +356,9 @@ uv run scripts/tasks.py --write       # coverage.yaml の phase/order -> TASKS.m
 
 ## 機密境界
 
-- `evidence/**` は社内PCのローカルのみ。コミットしない。AI にも渡さない。
+- `evidence/**` は共用 Kali（または社内PC）のローカルのみ。コミットしない。AI にも渡さない。
+- 共有は nginx 経由の社内ネットワーク限定・TLS・認証あり（`templates/nginx/wstg.conf`）。
+  `serve_record.py` を 127.0.0.1 以外で待ち受けさせない（起動時に拒否する）。
 - 会社PC では repo を pull → スクリプト実行 → 生成物とカードを参照、で回す。
 - 実データの分析はローカル手作業または社内 Gemini。カードは「データと一緒に貼る
   前提の説明文」として使える粒度で作ってある。

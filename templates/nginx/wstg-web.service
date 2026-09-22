@@ -1,0 +1,21 @@
+# serve_record.py を常駐させる systemd ユニットの例（共用 Kali 上で nginx の後ろに置く）。
+#
+#   User と WorkingDirectory をリポジトリの持ち主・場所に合わせてから:
+#     sudo cp templates/nginx/wstg-web.service /etc/systemd/system/
+#     sudo systemctl daemon-reload && sudo systemctl enable --now wstg-web
+#     journalctl -u wstg-web -f          # ログ（書き込み API の記録が出る）
+#
+#   uv が無い環境では ExecStart を /usr/bin/python3 scripts/serve_record.py --behind-proxy にする。
+
+[Unit]
+Description=WSTG 実施 Web（serve_record.py）
+After=network.target
+
+[Service]
+User=kali
+WorkingDirectory=/home/kali/cld_owasp_wstg
+ExecStart=/usr/bin/env uv run scripts/serve_record.py --behind-proxy
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

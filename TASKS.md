@@ -21,21 +21,18 @@
 Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の `apt` をまとめてある。
 まず `sudo apt update`。`pipx` / `npm` / `go` を使う個別導入もフェーズ内に記載。
 
-## 実施記録の見方（record.html）
+## Web で進める（ダッシュボード・タスク・WSTG 索引・所見）
 
-各アクティビティのフォルダに `record.html`（WSTG-ID ごとのタブ）ができる。閲覧はダブルクリック
-（`file://`・Firefox 推奨）でよい。結果とスクショは `cmd/`・`artifacts/` のファイルを参照表示する
-ので、`.txt` を手で編集したらリロードで反映される（`evidence.js` の作り直しは不要）。
+このリストと同じ内容（＋自動チェック・手動チェック・エビデンスへのリンク）を Web で見られる。
+判定の記入・スクショ/画像の追加・所見（CVSS 付き）の作成も Web で行う。
 
-- **スクショの撮影・削除ボタンを使う／Chrome で確実に表示する**には、ローカルサーバ経由で開く。
-  1つのサーバで `evidence/` 全体を配信し、トップの索引から全アクティビティを辿れる
-  （アクティビティごとに立てなくてよい。判定サマリ付き）:
-  `uv run scripts/serve_record.py --open`（索引）／`uv run scripts/serve_record.py evidence/<activity>-<yyyymmdd> --open`（直接開く）
-  （127.0.0.1 のみ待受。GET のたびに最新化するので findings.md/run.yaml の手編集はリロードで反映）
-- 手順ごとの『📷 この手順のスクショを撮る』→ 上部の待ち時間(秒)の間に対象ウィンドウを前面へ→範囲選択。
-  間違えたら各画像の『🗑 削除』で消せる（`artifacts/shot-*.png` のみ）。
-- CLI で撮るなら: `uv run scripts/save_shot.py evidence/<activity>-<yyyymmdd> --wid <WSTG-ID> [--step n] --grab --delay 3`
-  （`--list-tools` で使える撮影ツール確認。X11=maim/xfce4-screenshooter、Wayland=grim+slurp を自動判定）
+- 自分の機械だけで使う: `uv run scripts/serve_record.py --open`（127.0.0.1 のみ待受）
+- チームで共有する: `uv run scripts/serve_record.py --behind-proxy` を nginx（TLS＋認証）の後ろで動かす
+  （設定例は `templates/nginx/wstg.conf`。編集者名は nginx の認証ユーザで残る）
+- 各アクティビティの `record.html`（WSTG-ID ごとのタブ）で、出力・スクショの『📎 所見に添付』から所見を作れる。
+  1つの WSTG に複数の所見、1つの所見に複数の WSTG・エビデンスを紐づけられる（`evidence/_findings/F-*.md`）
+- 所見の深刻度は選ばない。CVSS v3.1 の設問（起こりやすさ4問＋影響4問）に答えると自動で決まる
+- ファイルだけで見るなら `record.html` をダブルクリック（`file://`。編集・添付はできない）
 
 ## フェーズ1 — 受動的収集
 
@@ -55,9 +52,8 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 - [ ] `uv run scripts/run_activity.py evidence/recon-osint-<yyyymmdd>` でコマンド手順（2 項目・theHarvester, crt.sh, whois, Google/Bing dorking, subfinder）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/recon-osint-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/recon-osint-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/recon-osint-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ## フェーズ2 — 外形調査・構成
 
@@ -79,9 +75,8 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 - [ ] `uv run scripts/run_activity.py evidence/fingerprint-stack-<yyyymmdd>` でコマンド手順（4 項目・nmap -sV, whatweb, Wappalyzer, httpx-toolkit）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/fingerprint-stack-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/fingerprint-stack-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/fingerprint-stack-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 3. `tls-scan` — TLS 設定スキャン
 
@@ -94,9 +89,8 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 - [ ] `uv run scripts/run_activity.py evidence/tls-scan-<yyyymmdd>` でコマンド手順（3 項目・testssl.sh, sslyze, nmap --script ssl-enum-ciphers）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/tls-scan-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/tls-scan-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/tls-scan-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 4. `http-methods` — HTTP メソッドの列挙と検証
 
@@ -109,9 +103,8 @@ OPTIONS 応答を鵜呑みにせず、実際に各メソッドを投げて許可
 - [ ] `uv run scripts/run_activity.py evidence/http-methods-<yyyymmdd>` でコマンド手順（2 項目・curl, nmap http-methods NSE, ncat, Burp Repeater）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/http-methods-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/http-methods-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/http-methods-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 5. `metafiles-crawl` — メタファイル・公開コンテンツの収集
 
@@ -124,9 +117,8 @@ robots.txt・sitemap・.well-known・security.txt・HTML コメント・JS ソ�
 - [ ] `uv run scripts/run_activity.py evidence/metafiles-crawl-<yyyymmdd>` でコマンド手順（3 項目・curl, wget, grep/ripgrep, Burp Suite）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/metafiles-crawl-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/metafiles-crawl-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/metafiles-crawl-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 6. `enum-apps` — 仮想ホスト・パスの列挙
 
@@ -139,9 +131,8 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 - [ ] `uv run scripts/run_activity.py evidence/enum-apps-<yyyymmdd>` でコマンド手順（2 項目・ffuf, dirsearch, gobuster, nmap -p-）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/enum-apps-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/enum-apps-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/enum-apps-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 7. `backup-unref` — 旧・バックアップ・未参照ファイルの探索
 
@@ -154,9 +145,8 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 - [ ] `uv run scripts/run_activity.py evidence/backup-unref-<yyyymmdd>` でコマンド手順（2 項目・ffuf, dirsearch, nikto）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/backup-unref-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/backup-unref-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/backup-unref-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 8. `cloud-and-takeover` — クラウドストレージ・サブドメイン乗っ取りの確認
 
@@ -169,9 +159,8 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 - [ ] `uv run scripts/run_activity.py evidence/cloud-and-takeover-<yyyymmdd>` でコマンド手順（2 項目・dig, curl, grep, aws cli）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/cloud-and-takeover-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/cloud-and-takeover-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/cloud-and-takeover-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 9. `ria-legacy-check` — RIA クロスドメインポリシーとレガシー Flash の確認
 
@@ -184,9 +173,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/ria-legacy-check-<yyyymmdd>` でコマンド手順（2 項目・curl, 手動レビュー）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/ria-legacy-check-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/ria-legacy-check-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/ria-legacy-check-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 10. `server-config-review` — サーバ／プラットフォーム構成レビュー
 
@@ -199,9 +187,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/server-config-review-<yyyymmdd>` でコマンド手順（3 項目・手動レビュー, ls -l / icacls, nikto, CIS Benchmark チェックリスト）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/server-config-review-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/server-config-review-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/server-config-review-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ## フェーズ3 — アプリ把握
 
@@ -222,9 +209,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/burp-crawl-authn-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, OWASP ZAP）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/burp-crawl-authn-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/burp-crawl-authn-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/burp-crawl-authn-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 12. `headers-review` — レスポンスヘッダ一括精査（匿名 + 認証済み）
 
@@ -237,9 +223,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/headers-review-<yyyymmdd>` でコマンド手順（6 項目・curl, Burp Suite, securityheaders.io 相当の手動チェック）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/headers-review-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/headers-review-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/headers-review-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 13. `error-handling-review` — エラーハンドリングのレビュー
 
@@ -252,9 +237,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/error-handling-review-<yyyymmdd>` でコマンド手順（3 項目・Burp Suite, curl, 手動）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/error-handling-review-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/error-handling-review-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/error-handling-review-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 14. `identity-model-review` — ロール定義・登録・払い出しプロセスのレビュー
 
@@ -267,9 +251,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/identity-model-review-<yyyymmdd>` でコマンド手順（4 項目・手動レビュー, ヒアリング, Burp Suite）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/identity-model-review-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/identity-model-review-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/identity-model-review-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ## フェーズ4 — 認証・セッション
 
@@ -290,9 +273,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/authn-flow-review-<yyyymmdd>` でコマンド手順（8 項目・Burp Suite, curl, ブラウザ開発者ツール）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/authn-flow-review-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/authn-flow-review-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/authn-flow-review-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 16. `account-enum-probe` — アカウント列挙とロックアウトの検証
 
@@ -305,9 +287,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/account-enum-probe-<yyyymmdd>` でコマンド手順（3 項目・Burp Intruder, ffuf, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/account-enum-probe-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/account-enum-probe-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/account-enum-probe-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 17. `password-reset-review` — パスワード変更・リセット機能のレビュー
 
@@ -320,9 +301,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/password-reset-review-<yyyymmdd>` でコマンド手順（2 項目・Burp Suite, メールクライアント, 手動レビュー）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/password-reset-review-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/password-reset-review-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/password-reset-review-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 18. `session-capture` — セッション取得とログイン/ログアウト解析
 
@@ -335,9 +315,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/session-capture-<yyyymmdd>` でコマンド手順（6 項目・Burp Suite, Burp Sequencer, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/session-capture-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/session-capture-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/session-capture-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 19. `session-abuse-tests` — セッションの悪用系テスト（露出・CSRF・パズリング・ハイジャック）
 
@@ -350,9 +329,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/session-abuse-tests-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, curl, ブラウザ2枚）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/session-abuse-tests-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/session-abuse-tests-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/session-abuse-tests-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ## フェーズ5 — 認可
 
@@ -373,9 +351,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/authz-matrix-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, Autorize / AuthMatrix, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/authz-matrix-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/authz-matrix-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/authz-matrix-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 21. `traversal-probe` — ディレクトリトラバーサル・ファイルインクルードの検証
 
@@ -388,9 +365,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/traversal-probe-<yyyymmdd>` でコマンド手順（2 項目・Burp Suite, ffuf, 手動 payload）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/traversal-probe-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/traversal-probe-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/traversal-probe-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ## フェーズ6 — 入力検証・クライアントサイド
 
@@ -414,9 +390,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - [ ] `uv run scripts/run_activity.py evidence/xss-probe-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, DOM Invader, 手動 payload）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/xss-probe-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/xss-probe-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/xss-probe-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 23. `clientside-js-review` — クライアントサイド JS のシンク・ストレージレビュー
 
@@ -429,9 +404,8 @@ JS のソース/シンクを追い、URL リダイレクト・CSS/リソース�
 - [ ] `uv run scripts/run_activity.py evidence/clientside-js-review-<yyyymmdd>` でコマンド手順（7 項目・ブラウザ開発者ツール, DOM Invader, Retire.js, Burp Suite）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/clientside-js-review-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/clientside-js-review-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/clientside-js-review-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 24. `cors-websocket-check` — CORS と WebSocket の検証
 
@@ -444,9 +418,8 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
 - [ ] `uv run scripts/run_activity.py evidence/cors-websocket-check-<yyyymmdd>` でコマンド手順（2 項目・curl, Burp Suite, wscat）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/cors-websocket-check-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/cors-websocket-check-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/cors-websocket-check-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 25. `injection-fuzz-server` — サーバサイド・インジェクション系の一括ファジング
 
@@ -459,9 +432,8 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
 - [ ] `uv run scripts/run_activity.py evidence/injection-fuzz-server-<yyyymmdd>` でコマンド手順（11 項目・Burp Intruder, sqlmap, 手動 payload）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/injection-fuzz-server-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/injection-fuzz-server-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/injection-fuzz-server-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 26. `http-request-tamper` — HTTP リクエスト改変系の検証
 
@@ -474,9 +446,8 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
 - [ ] `uv run scripts/run_activity.py evidence/http-request-tamper-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, Burp HTTP Request Smuggler, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/http-request-tamper-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/http-request-tamper-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/http-request-tamper-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 27. `ssrf-probe` — SSRF の検証
 
@@ -489,9 +460,8 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - [ ] `uv run scripts/run_activity.py evidence/ssrf-probe-<yyyymmdd>` でコマンド手順（1 項目・curl, interactsh-client, Burp Collaborator）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/ssrf-probe-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/ssrf-probe-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/ssrf-probe-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 28. `file-upload-tests` — ファイルアップロードの検証
 
@@ -504,9 +474,8 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - [ ] `uv run scripts/run_activity.py evidence/file-upload-tests-<yyyymmdd>` でコマンド手順（3 項目・Burp Suite, EICAR テストファイル, 手動）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/file-upload-tests-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/file-upload-tests-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/file-upload-tests-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 29. `crypto-review` — 暗号利用のレビュー（パディングオラクル・弱い暗号・平文送出）
 
@@ -519,9 +488,8 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - [ ] `uv run scripts/run_activity.py evidence/crypto-review-<yyyymmdd>` でコマンド手順（3 項目・padbuster, testssl.sh, Burp Suite, 手動レビュー）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/crypto-review-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/crypto-review-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/crypto-review-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ### 30. `api-graphql-test` — API / GraphQL の検証
 
@@ -534,9 +502,8 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - [ ] `uv run scripts/run_activity.py evidence/api-graphql-test-<yyyymmdd>` でコマンド手順（2 項目・Burp Suite, GraphQL Voyager, InQL, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/api-graphql-test-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/api-graphql-test-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/api-graphql-test-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ## フェーズ7 — 業務ロジック
 
@@ -556,14 +523,12 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - [ ] `uv run scripts/run_activity.py evidence/business-logic-walkthrough-<yyyymmdd>` でコマンド手順（8 項目・Burp Suite, 手動操作, 業務仕様書）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/business-logic-walkthrough-<yyyymmdd> -- <コマンド>`
-- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
-- [ ] `uv run scripts/gen_record.py evidence/business-logic-walkthrough-<yyyymmdd>` で `record.html` を最新化して確認
-      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/business-logic-walkthrough-<yyyymmdd> --open`（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）
+- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
+- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
 ## 仕上げ
 
-- [ ] `uv run scripts/tasks.py` で todo の残りが無いことを確認
-- [ ] `uv run scripts/export_checklist.py --summary` で CSV を出力
-- [ ] CSV を目視レビュー（機密が混じっていないか）
-- [ ] Google Sheets へ取り込み（ファイル → インポート → 現在のシートを置換）
+- [ ] Web の WSTG 索引（または `uv run scripts/tasks.py`）で未実施の残りが無いことを確認
+- [ ] 下書きの所見が無く、すべて CVSS 評価済みであることを確認（Web の所見一覧）
+- [ ] 一覧が要るときは Web の CSV（`/export.csv`）か `uv run scripts/export_checklist.py --summary`。外に出す前に目視レビュー
 - [ ] `fail` の項目について報告書とカードの判定基準を見直す

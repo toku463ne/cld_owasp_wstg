@@ -7,13 +7,5 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
-[project.optional-dependencies]
-# export_checklist.py --push（Google Sheets 直接反映）を使うときだけ:
-#   uv sync --extra sheets
-sheets = [
-    "gspread>=6.0",
-    "google-auth>=2.0",
-]
-
 [tool.uv]
 package = false

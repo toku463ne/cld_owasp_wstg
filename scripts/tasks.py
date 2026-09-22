@@ -229,22 +229,18 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
     w("まず `sudo apt update`。`pipx` / `npm` / `go` を使う個別導入もフェーズ内に記載。")
     w("")
 
-    w("## 実施記録の見方（record.html）")
+    w("## Web で進める（ダッシュボード・タスク・WSTG 索引・所見）")
     w("")
-    w("各アクティビティのフォルダに `record.html`（WSTG-ID ごとのタブ）ができる。閲覧はダブルクリック")
-    w("（`file://`・Firefox 推奨）でよい。結果とスクショは `cmd/`・`artifacts/` のファイルを参照表示する")
-    w("ので、`.txt` を手で編集したらリロードで反映される（`evidence.js` の作り直しは不要）。")
+    w("このリストと同じ内容（＋自動チェック・手動チェック・エビデンスへのリンク）を Web で見られる。")
+    w("判定の記入・スクショ/画像の追加・所見（CVSS 付き）の作成も Web で行う。")
     w("")
-    w("- **スクショの撮影・削除ボタンを使う／Chrome で確実に表示する**には、ローカルサーバ経由で開く。")
-    w("  1つのサーバで `evidence/` 全体を配信し、トップの索引から全アクティビティを辿れる")
-    w("  （アクティビティごとに立てなくてよい。判定サマリ付き）:")
-    w("  `uv run scripts/serve_record.py --open`（索引）／"
-      "`uv run scripts/serve_record.py evidence/<activity>-<yyyymmdd> --open`（直接開く）")
-    w("  （127.0.0.1 のみ待受。GET のたびに最新化するので findings.md/run.yaml の手編集はリロードで反映）")
-    w("- 手順ごとの『📷 この手順のスクショを撮る』→ 上部の待ち時間(秒)の間に対象ウィンドウを前面へ→範囲選択。")
-    w("  間違えたら各画像の『🗑 削除』で消せる（`artifacts/shot-*.png` のみ）。")
-    w("- CLI で撮るなら: `uv run scripts/save_shot.py evidence/<activity>-<yyyymmdd> --wid <WSTG-ID> [--step n] --grab --delay 3`")
-    w("  （`--list-tools` で使える撮影ツール確認。X11=maim/xfce4-screenshooter、Wayland=grim+slurp を自動判定）")
+    w("- 自分の機械だけで使う: `uv run scripts/serve_record.py --open`（127.0.0.1 のみ待受）")
+    w("- チームで共有する: `uv run scripts/serve_record.py --behind-proxy` を nginx（TLS＋認証）の後ろで動かす")
+    w("  （設定例は `templates/nginx/wstg.conf`。編集者名は nginx の認証ユーザで残る）")
+    w("- 各アクティビティの `record.html`（WSTG-ID ごとのタブ）で、出力・スクショの『📎 所見に添付』から所見を作れる。")
+    w("  1つの WSTG に複数の所見、1つの所見に複数の WSTG・エビデンスを紐づけられる（`evidence/_findings/F-*.md`）")
+    w("- 所見の深刻度は選ばない。CVSS v3.1 の設問（起こりやすさ4問＋影響4問）に答えると自動で決まる")
+    w("- ファイルだけで見るなら `record.html` をダブルクリック（`file://`。編集・添付はできない）")
     w("")
 
     current = None
@@ -276,18 +272,16 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
           f"コマンド手順（{len(covers)} 項目・{tools}）を実行 ← `cmd/` に純粋なエビデンスが残る")
         w("      - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く")
         w(f"      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/{a['id']}-<yyyymmdd> -- <コマンド>`")
-        w("- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入")
-        w(f"- [ ] `uv run scripts/gen_record.py evidence/{a['id']}-<yyyymmdd>` で `record.html` を最新化して確認")
-        w(f"      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/{a['id']}-<yyyymmdd> --open`"
-          "（`--open` 無し引数なしなら全アクティビティの索引。閲覧だけなら record.html を直接開く）")
+        w("- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入"
+          "（`run.yaml` の covers を直接編集してもよい）")
+        w("- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）")
         w("")
 
     w("## 仕上げ")
     w("")
-    w("- [ ] `uv run scripts/tasks.py` で todo の残りが無いことを確認")
-    w("- [ ] `uv run scripts/export_checklist.py --summary` で CSV を出力")
-    w("- [ ] CSV を目視レビュー（機密が混じっていないか）")
-    w("- [ ] Google Sheets へ取り込み（ファイル → インポート → 現在のシートを置換）")
+    w("- [ ] Web の WSTG 索引（または `uv run scripts/tasks.py`）で未実施の残りが無いことを確認")
+    w("- [ ] 下書きの所見が無く、すべて CVSS 評価済みであることを確認（Web の所見一覧）")
+    w("- [ ] 一覧が要るときは Web の CSV（`/export.csv`）か `uv run scripts/export_checklist.py --summary`。外に出す前に目視レビュー")
     w("- [ ] `fail` の項目について報告書とカードの判定基準を見直す")
     w("")
     return "\n".join(out)
@@ -332,7 +326,7 @@ def show_progress(coverage: dict, evidence_root: Path) -> int:
         if len(ready) > 1:
             print(f"  （並行して着手可: {', '.join(a['id'] for a in ready[1:4])}）")
     else:
-        print("すべて完了。仕上げへ: uv run scripts/export_checklist.py --summary")
+        print("すべて完了。仕上げへ: Web の /tasks#finish（または uv run scripts/export_checklist.py --summary）")
     return 0
 
 

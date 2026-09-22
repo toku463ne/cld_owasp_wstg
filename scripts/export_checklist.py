@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
-"""全 evidence/*/run.yaml を WSTG-ID 主キーで集約し、checklist_export.csv を出力する。
+"""全 evidence/*/run.yaml と所見を WSTG-ID 主キーで集約し、checklist_export.csv を出力する。
 
     uv run scripts/export_checklist.py
     uv run scripts/export_checklist.py --root evidence --out checklist_export.csv --summary
+
+日常の確認は Web（serve_record.py の WSTG 索引）で行う。CSV は報告書に添付する等、
+一覧を外に持ち出すときの出力（Web の /export.csv からも同じものが取れる）。
 
 集約ステータス:
     fail > todo > info > pass > na  の優先度で「最も注意すべきもの」を採用。
     全 WSTG-ID を todo で初期化するので、未実施が一目で分かる。
 
-このスクリプトは run.yaml の要約フィールドだけを読む。cmd/ や artifacts/ の中身は開かない。
-出力した CSV は必ず人が目視レビューしてから Google Sheets に取り込む（機密境界の保護）。
+このスクリプトは run.yaml の要約フィールドと所見のタイトル・深刻度だけを読む。
+cmd/ や artifacts/ の中身は開かない。CSV を外に出すときは必ず人が目視レビューする（機密境界の保護）。
+
+finding_summary には、各アクティビティの判定理由（covers[].finding）に続けて、その WSTG に
+紐づく所見（取り下げ以外）を「[F-003 High 8.1] タイトル」の形で入れる。
 """
 
 from __future__ import annotations
@@ -47,6 +53,23 @@ def load_tests() -> dict:
     return {t["id"]: t for t in data["tests"]}
 
 
+def load_findings(root: Path) -> list:
+    """evidence/_findings/ の所見（無ければ空）。"""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import findings as _findings
+    return _findings.list_all(root) if root.exists() else []
+
+
+def to_csv(rows: list[dict]) -> str:
+    """CSV 本文（Web の /export.csv と共用。BOM は付けない＝呼び側で付ける）。"""
+    import io
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=COLUMNS, lineterminator="\r\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    return buf.getvalue()
+
+
 def one_line(text) -> str:
     return " ".join(str(text).split())
 
@@ -63,7 +86,7 @@ def collect_runs(root: Path) -> list[tuple[Path, dict]]:
     return runs
 
 
-def build_rows(tests: dict, runs: list, root: Path) -> tuple[list[dict], list[str]]:
+def build_rows(tests: dict, runs: list, root: Path, findings=None) -> tuple[list[dict], list[str]]:
     warnings: list[str] = []
     rows = {
         wid: {
@@ -118,6 +141,15 @@ def build_rows(tests: dict, runs: list, root: Path) -> tuple[list[dict], list[st
             if date > row["updated"]:
                 row["updated"] = date
 
+    for f in findings or []:
+        if f.get("status") == "rejected":
+            continue
+        score = f" {f['base']}" if f.get("base") is not None else ""
+        for wid in f.get("wstg") or []:
+            if wid in rows:
+                rows[wid]["finding_summary"].append(
+                    f"[{f['id']} {f.get('severity_label', '')}{score}] {one_line(f.get('title', ''))}")
+
     out = []
     for wid, row in rows.items():
         if row["_verdicts"]:
@@ -150,42 +182,11 @@ def print_summary(rows: list[dict]) -> None:
         print(f"  → fail: {', '.join(fails)}")
 
 
-def push_to_sheets(rows: list[dict], sheet_id: str, worksheet: str, creds: str, assume_yes: bool) -> int:
-    """任意機能: 目視レビュー済みの内容を Google Sheets に反映する。"""
-    try:
-        import gspread  # type: ignore
-    except ImportError:
-        print("gspread が必要です: uv sync --extra sheets（または pip install gspread google-auth）", file=sys.stderr)
-        return 2
-
-    print(f"\n{len(rows)} 行を Google Sheets ({sheet_id} / {worksheet}) に上書きします。")
-    print("CSV の中身を目視レビュー済みであることを確認してください（機密が混じっていないか）。")
-    if not assume_yes and input("続行しますか? [y/N] ").strip().lower() != "y":
-        print("中止しました。")
-        return 1
-
-    gc = gspread.service_account(filename=creds)
-    sh = gc.open_by_key(sheet_id)
-    try:
-        ws = sh.worksheet(worksheet)
-    except gspread.WorksheetNotFound:
-        ws = sh.add_worksheet(title=worksheet, rows=len(rows) + 10, cols=len(COLUMNS))
-    ws.clear()
-    ws.update([COLUMNS] + [[r[c] for c in COLUMNS] for r in rows])
-    print("反映しました。")
-    return 0
-
-
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", default=str(DEFAULT_ROOT), help="エビデンスのルート（既定: evidence/）")
     ap.add_argument("--out", default=str(DEFAULT_OUT), help="出力 CSV（既定: checklist_export.csv）")
     ap.add_argument("--summary", action="store_true", help="ステータス別の件数を表示する")
-    ap.add_argument("--push", action="store_true", help="任意: Google Sheets へ反映（既定は CSV 出力のみ）")
-    ap.add_argument("--sheet-id", help="--push 時の対象スプレッドシート ID")
-    ap.add_argument("--worksheet", default="WSTG", help="--push 時のワークシート名")
-    ap.add_argument("--creds", default="service_account.json", help="--push 時のサービスアカウント JSON")
-    ap.add_argument("--yes", action="store_true", help="--push の確認プロンプトを省略する")
     args = ap.parse_args()
 
     root = Path(args.root)
@@ -194,26 +195,17 @@ def main() -> int:
     if not root.exists():
         print(f"[情報] {root} がありません。全項目 todo の雛形を出力します。")
 
-    rows, warnings = build_rows(tests, runs, root)
+    rows, warnings = build_rows(tests, runs, root, load_findings(root))
     for w in warnings:
         print(f"[警告] {w}", file=sys.stderr)
 
     out_path = Path(args.out)
-    with out_path.open("w", encoding="utf-8-sig", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=COLUMNS)
-        writer.writeheader()
-        writer.writerows(rows)
+    out_path.write_text(to_csv(rows), encoding="utf-8-sig", newline="")
 
     print(f"{out_path} を出力: {len(rows)} 行 / エビデンス {len(runs)} 件")
     if args.summary:
         print_summary(rows)
-    print("\n次: CSV を目視レビュー → Google Sheets で「ファイル → インポート → アップロード → 現在のシートを置換」")
-
-    if args.push:
-        if not args.sheet_id:
-            print("--push には --sheet-id が必要です", file=sys.stderr)
-            return 2
-        return push_to_sheets(rows, args.sheet_id, args.worksheet, args.creds, args.yes)
+    print("\n次: CSV を外に出す前に目視レビュー（生値・資格情報が混じっていないか）")
     return 0
 
 

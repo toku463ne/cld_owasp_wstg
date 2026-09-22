@@ -125,13 +125,13 @@ grep -qF 'r.output && r.output' "${TDIR}/record.html" \
   && ng "record.html にエビデンス本体が埋め込まれている（参照でなく複製）" || true
 ok "record.html / evidence.js 生成（target/OUTDIR 置換・手動ひな型）"
 
-# A+B: findings.md（詳しい所見の本文）と run.yaml の複数行 finding
-[ -f "${TDIR}/findings.md" ] || ng "findings.md が作られない"
+# 判定理由（run.yaml の複数行 finding）と所見（evidence/_findings/F-*.md）
+[ -f "${TDIR}/findings.md" ] && ng "旧 findings.md が作られている（所見は evidence/_findings/ に移行済み）" || true
 "${PY[@]}" - "${TDIR}" <<'AB'
 import sys, re, subprocess
 from pathlib import Path
 d = Path(sys.argv[1])
-# INFO-01 に複数行 finding（ブロック）と findings.md 本文を入れる
+# INFO-01 に複数行 finding（ブロック）を入れる
 rp = d / "run.yaml"; t = rp.read_text().split("\n")
 i = next(k for k, l in enumerate(t) if re.match(r"^\s*-\s*id:\s*WSTG-INFO-01(\s|$|#)", l))
 for k in range(i, i + 7):
@@ -139,30 +139,68 @@ for k in range(i, i + 7):
         t[k] = "    finding: |\n      1行目の見出し。\n      2行目。"
         break
 rp.write_text("\n".join(t))
-fm = d / "findings.md"; body = fm.read_text()
-body = re.sub(r"(## WSTG-INFO-01[^\n]*\n\n)（ここに詳細な所見[^\n]*）", r"\1詳細本文テスト", body, count=1)
-fm.write_text(body)
-subprocess.run([sys.executable, "scripts/gen_record.py", str(d)], check=True,
-               stdout=subprocess.DEVNULL)
+# 所見を CLI で作る（1所見に2つの WSTG・エビデンス付き）。traversal・未知 ID は拒否
+root = d.parent
+new = [sys.executable, "scripts/findings.py", "--root", str(root), "new", "--title", "所見テストA",
+       "--wstg", "WSTG-INFO-01", "--wstg", "WSTG-CONF-10",
+       "--evidence", f"{d.name}/artifacts/manual-WSTG-INFO-01-s5.txt",
+       "--cvss", "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"]
+subprocess.run(new, check=True, stdout=subprocess.DEVNULL)
+for bad in (["--evidence", "../../etc/passwd"], ["--wstg", "WSTG-NOPE-99"]):
+    r = subprocess.run(new[:5] + ["--title", "x", "--wstg", "WSTG-INFO-01"] + bad,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    assert r.returncode != 0, ("不正な所見を作れてしまう", bad)
+f = (root / "_findings" / "F-001.md").read_text()
+assert "WSTG-CONF-10" in f and "manual-WSTG-INFO-01-s5.txt" in f, f
+subprocess.run([sys.executable, "scripts/gen_record.py", str(d)], check=True, stdout=subprocess.DEVNULL)
 import json
 ev = json.loads((d / "evidence.js").read_text().split("window.WSTG_EVIDENCE = ", 1)[1].rstrip(";\n"))
 it = next(x for x in ev["items"] if x["wid"] == "WSTG-INFO-01")
 assert "\n" in it["finding"], ("複数行 finding が反映されない", it["finding"])
-assert it["writeup"] == "詳細本文テスト", ("findings.md 本文が反映されない", it["writeup"])
+assert [x["id"] for x in it["findings"]] == ["F-001"], ("所見が record に紐づかない", it["findings"])
+assert it["findings"][0]["severity"] == "high" and it["findings"][0]["base"] == 7.5, it["findings"][0]
 it2 = next(x for x in ev["items"] if x["wid"] == "WSTG-CONF-10")
-assert it2["writeup"] == "", ("未記入のプレースホルダが本文として入っている", it2["writeup"])
+assert [x["id"] for x in it2["findings"]] == ["F-001"], "1所見→複数 WSTG の紐づけが効かない"
+# 旧 findings.md の移行: 記入のあるセクションだけ F ファイル（draft）になり、元は .migrated に残る
+(d / "findings.md").write_text("# 所見メモ\n\n## WSTG-INFO-01 — x\n\n旧本文テスト\n\n## WSTG-CONF-10 — y\n\n"
+                               "（ここに詳細な所見を書く。無ければ空のままでよい。生値は書かず evidence を参照）\n")
+subprocess.run([sys.executable, "scripts/findings.py", "--root", str(root), "migrate"], check=True,
+               stdout=subprocess.DEVNULL)
+assert not (d / "findings.md").exists() and (d / "findings.md.migrated").exists(), "移行後の改名がされない"
+f2 = (root / "_findings" / "F-002.md").read_text()
+assert "旧本文テスト" in f2 and "status: draft" in f2 and "1行目の見出し。" in f2, f2
+assert not (root / "_findings" / "F-003.md").exists(), "未記入のセクションまで移行している"
 AB
-[ $? -eq 0 ] || ng "findings.md / 複数行 finding が evidence.js に反映されない"
-grep -qF 'class="writeup"' "${TDIR}/record.html" 2>/dev/null || grep -qF '"writeup"' "${TDIR}/record.html" \
-  || ng "record.html が所見（詳細）を表示しない"
-# CSV は複数行 finding を1行に畳むこと
+[ $? -eq 0 ] || ng "所見（F ファイル）/ 複数行 finding / 移行 が想定通りでない"
+grep -qF 'findingsBox(it)' "${TDIR}/record.html" || ng "record.html が所見を表示しない"
+grep -qF 'location.hash' "${TDIR}/record.html" || ng "record.html が深いリンク（#WSTG-ID/s<n>）に対応していない"
+# CVSS v3.1 の計算が仕様どおり（既知ベクトル）
+"${PY[@]}" - <<'CV' || ng "CVSS v3.1 の計算が仕様とずれている"
+import sys; sys.path.insert(0, "scripts")
+import cvss31
+cases = {"AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H": 9.8, "AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N": 6.1,
+         "AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N": 6.5, "AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H": 7.8,
+         "AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H": 10.0, "AV:N/AC:H/PR:H/UI:R/S:U/C:L/I:N/A:N": 2.0,
+         "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N": 0.0, "AV:N/AC:L/PR:H/UI:R/S:C/C:L/I:L/A:N": 4.8}
+for v, want in cases.items():
+    got = cvss31.score("CVSS:3.1/" + v)["base"]
+    assert got == want, (v, got, want)
+assert cvss31.score("CVSS:3.1/" + "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N")["severity"] == "none"
+for bad in ("", "CVSS:3.0/AV:N", "CVSS:3.1/AV:X/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H", "CVSS:3.1/AV:N"):
+    try:
+        cvss31.score(bad); raise SystemExit(f"不正なベクトルを通した: {bad}")
+    except cvss31.CvssError:
+        pass
+CV
+# CSV は複数行 finding を1行に畳み、所見は [F-ID 深刻度 スコア] タイトル で載る
 "${PY[@]}" scripts/export_checklist.py --root "${TMP}/ev" --out "${TMP}/ab.csv" >/dev/null
 "${PY[@]}" -c "
 import csv
 r=[x for x in csv.DictReader(open('${TMP}/ab.csv',encoding='utf-8-sig')) if x['wstg_id']=='WSTG-INFO-01'][0]
 assert '\n' not in r['finding_summary'] and '見出し' in r['finding_summary'], r['finding_summary']
-" || ng "CSV が複数行 finding を1行に畳めていない"
-ok "findings.md 本文＋複数行 finding（record.html 表示・CSV は1行）"
+assert '[F-001 High 7.5] 所見テストA' in r['finding_summary'], r['finding_summary']
+" || ng "CSV が複数行 finding を1行に畳めていない / 所見が載らない"
+ok "所見 F ファイル（多対多・CVSS 自動深刻度・移行）＋複数行 finding（CSV は1行）"
 
 # save_shot.py: クリップボード画像の代わりに --from で保存し、record.html に <img> 参照で出る
 "${PY[@]}" - "${TMP}/dummy.png" <<'MKPNG'
@@ -191,62 +229,132 @@ printf 'not a png' > "${TMP}/nope.txt"
   && ng "PNG でないデータを保存してしまう" || true
 ok "save_shot: 画像を artifacts/ に保存し record.html に <img> 参照（非PNGは拒否）"
 
-# serve_record.py: evidence ルートを統一配信し、/<フォルダ>/... で索引・record・capture・delete を検査
-"${PY[@]}" - "${TMP}/ev" "recon-osint-ex.test-20260101" <<'SRV'
-import sys, threading, json, urllib.request
+# serve_record.py: evidence ルートを統一配信（ページ群・record・書き込み API・CSRF・共有モード）
+"${PY[@]}" - "${TMP}/ev" "recon-osint-ex.test-20260101" "${TMP}/dummy.png" <<'SRV'
+import sys, threading, json, base64, urllib.request, urllib.error
 from pathlib import Path
 sys.path.insert(0, "scripts")
 import serve_record
-root, folder = sys.argv[1], sys.argv[2]
+root, folder, png = sys.argv[1], sys.argv[2], sys.argv[3]
 httpd = serve_record.build_server(Path(root), "127.0.0.1", 0)
 port = httpd.server_address[1]
 threading.Thread(target=httpd.serve_forever, daemon=True).start()
-def post(route, obj):
-    req = urllib.request.Request(f"http://127.0.0.1:{port}/{folder}{route}",
-        data=json.dumps(obj).encode(), headers={"Content-Type": "application/json"}, method="POST")
-    return json.load(urllib.request.urlopen(req, timeout=30))
+B = f"http://127.0.0.1:{port}"
+def get(path, hdr=None):
+    r = urllib.request.urlopen(urllib.request.Request(B + path, headers=hdr or {}), timeout=30)
+    return r.status, r.read().decode("utf-8", "replace")
+def post(path, obj, hdr=None):
+    h = {"Content-Type": "application/json", "X-WSTG-Request": "1"}
+    h.update(hdr or {})
+    h = {k: v for k, v in h.items() if v is not None}
+    req = urllib.request.Request(B + path, data=json.dumps(obj).encode(), headers=h, method="POST")
+    try:
+        return json.load(urllib.request.urlopen(req, timeout=30))
+    except urllib.error.HTTPError as e:
+        return {"status": e.code, **json.load(e)}
+def fpost(route, obj):
+    return post(f"/{folder}{route}", obj)
 try:
-    # 索引（/）にこのアクティビティが載る
-    idx = urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5).read().decode()
-    assert "実施記録 — 索引" in idx and folder in idx, "索引にアクティビティが出ない"
-    # /<フォルダ>/record.html を配信
-    r = urllib.request.urlopen(f"http://127.0.0.1:{port}/{folder}/record.html", timeout=5)
+    # ページ群（ダッシュボード・タスク・WSTG 索引/詳細・所見・カード・CSV）
+    s, idx = get("/")
+    assert "WSTG 実施状況" in idx and folder in idx, "ダッシュボードにアクティビティが出ない"
+    s, t = get("/tasks")
+    assert f"evidence/{folder}" in t and 'data-check="p0:agree"' in t, "タスクに実行コマンド/手動チェックが出ない"
+    s, w = get("/wstg/")
+    assert f"/{folder}/record.html#WSTG-INFO-01" in w and "F-001" in w, "WSTG 索引から記録・所見へリンクしない"
+    s, wd = get("/wstg/WSTG-INFO-01")
+    assert "所見テストA" in wd, "WSTG 詳細に所見が出ない"
+    s, fp = get("/findings/F-001")
+    assert "7.5" in fp and f"/{folder}/record.html#WSTG-INFO-01/s5" in fp, "所見からエビデンスへの深いリンクがない"
+    assert get("/findings/new?wid=WSTG-INFO-01")[0] == 200 and get("/findings/F-001/edit")[0] == 200
+    assert get("/playbooks/WSTG-INFO-01")[0] == 200
+    s, csv_text = get("/export.csv")
+    assert csv_text.lstrip("﻿").startswith("wstg_id,category,title,status"), "CSV の列契約が崩れた"
+    assert json.loads(get("/api/cvss?vector=CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H")[1])["score"]["base"] == 9.8
+    for bad in ("/findings/F-999", "/wstg/WSTG-NOPE-01", "/.git/config"):
+        try:
+            get(bad); raise SystemExit(f"404 にならない: {bad}")
+        except urllib.error.HTTPError as e:
+            assert e.code == 404, (bad, e.code)
+    r = urllib.request.urlopen(f"{B}/{folder}/record.html", timeout=5)
     assert r.status == 200 and b"WSTG_EVIDENCE" in r.read(), "record.html を配信していない"
-    assert post("/api/capture", {"wid": "nope", "step": 1, "delay": 0})["ok"] is False, "不正 wid を弾かない"
-    # 撮影ツールが無い環境なので ok:false（＝API 経路は生きている）
-    assert post("/api/capture", {"wid": "WSTG-INFO-01", "step": 1, "delay": 0})["ok"] is False
-    # delete_shot: 直前の save_shot テストで作った shot を消せる。traversal/非shot は拒否
-    assert post("/api/delete_shot", {"path": "../../etc/passwd"})["ok"] is False, "traversal を許した"
-    assert post("/api/delete_shot", {"path": "run.yaml"})["ok"] is False, "shot 以外を消せてしまう"
-    import glob, os
-    shots = glob.glob(os.path.join(root, folder, "artifacts", "shot-WSTG-INFO-01-*.png"))
-    assert shots, "削除対象の shot が無い（save_shot テストが先に走る前提）"
-    rel = "artifacts/" + os.path.basename(shots[0])
-    assert post("/api/delete_shot", {"path": rel})["ok"] is True, "shot を削除できない"
-    assert not os.path.exists(shots[0]), "shot が消えていない"
-    # /api/save: verdict/finding を run.yaml、所見を findings.md にテキスト部分置換で保存
+    # CSRF: 独自ヘッダなし・Origin 不一致の書き込みは 403
+    assert post("/api/check", {"key": "p0:agree", "on": True}, {"X-WSTG-Request": None})["status"] == 403
+    assert post("/api/check", {"key": "p0:agree", "on": True}, {"Origin": "http://evil.example"})["status"] == 403
+    assert post("/api/check", {"key": "p0:agree", "on": True}, {"Origin": B})["ok"] is True
+    assert "p0:agree" in (Path(root) / "_state" / "checks.yaml").read_text()
+    assert post("/api/check", {"key": "bad key!", "on": True})["ok"] is False
+    # capture: 不正 wid を弾く・撮影ツールが無い環境なので ok:false（＝API 経路は生きている）
+    assert fpost("/api/capture", {"wid": "nope", "step": 1, "delay": 0})["ok"] is False, "不正 wid を弾かない"
+    # upload_shot: ブラウザから貼った PNG を artifacts/shot-* に保存。PNG 以外は拒否
+    data = base64.b64encode(Path(png).read_bytes()).decode()
+    up = fpost("/api/upload_shot", {"wid": "WSTG-INFO-01", "step": 5, "data": data})
+    assert up["ok"] and up["path"].startswith("artifacts/shot-WSTG-INFO-01-s5-"), up
+    assert fpost("/api/upload_shot", {"wid": "WSTG-INFO-01", "data": base64.b64encode(b"GIF89a").decode()})["ok"] is False
+    # delete_shot: traversal/非shot は拒否、shot は消せる
+    assert fpost("/api/delete_shot", {"path": "../../etc/passwd"})["ok"] is False, "traversal を許した"
+    assert fpost("/api/delete_shot", {"path": "run.yaml"})["ok"] is False, "shot 以外を消せてしまう"
+    assert fpost("/api/delete_shot", {"path": up["path"]})["ok"] is True, "shot を削除できない"
+    assert not (Path(root) / folder / up["path"]).exists(), "shot が消えていない"
+    # /api/save: verdict/finding（判定理由）を run.yaml にテキスト部分置換で保存
     import yaml as _yaml
-    assert post("/api/save", {"wid": "WSTG-INFO-01", "verdict": "bad"})["ok"] is False, "不正 verdict を通した"
-    assert post("/api/save", {"wid": "WSTG-INFO-01", "verdict": "fail",
-                              "finding": "見出しA\n見出しB", "writeup": "本文X"})["ok"] is True
+    assert fpost("/api/save", {"wid": "WSTG-INFO-01", "verdict": "bad"})["ok"] is False, "不正 verdict を通した"
+    assert fpost("/api/save", {"wid": "WSTG-INFO-01", "verdict": "fail", "finding": "見出しA\n見出しB"})["ok"]
     y = _yaml.safe_load((Path(root) / folder / "run.yaml").read_text())
     cov = {x["id"]: x for x in y["covers"]}
     assert cov["WSTG-INFO-01"]["verdict"] == "fail" and "\n" in cov["WSTG-INFO-01"]["finding"], cov["WSTG-INFO-01"]
     assert cov["WSTG-CONF-10"]["verdict"] == "todo", "他ブロックが壊れた"
-    from new_activity import parse_findings
-    wr = parse_findings((Path(root) / folder / "findings.md").read_text())
-    assert wr.get("WSTG-INFO-01") == "本文X", wr.get("WSTG-INFO-01")
-    # /api/save_output: コマンド出力/手動観察の .txt に貼れる（別環境の結果を貼る用途）。cmd/artifacts 直下の .txt のみ
-    assert post("/api/save_output", {"path": "cmd/WSTG-INFO-01-s1-c1.txt", "content": "貼った結果X"})["ok"] is True
+    # /api/save_output: cmd/・artifacts/ 直下の .txt のみ
+    assert fpost("/api/save_output", {"path": "cmd/WSTG-INFO-01-s1-c1.txt", "content": "貼った結果X"})["ok"] is True
     assert (Path(root) / folder / "cmd" / "WSTG-INFO-01-s1-c1.txt").read_text() == "貼った結果X"
-    assert post("/api/save_output", {"path": "../../etc/x.txt", "content": "x"})["ok"] is False, "traversal を許した"
-    assert post("/api/save_output", {"path": "run.yaml", "content": "x"})["ok"] is False, "run.yaml を書けてしまう"
-    assert post("/api/save_output", {"path": "cmd/x.png", "content": "x"})["ok"] is False, ".txt 以外を書けてしまう"
+    assert fpost("/api/save_output", {"path": "../../etc/x.txt", "content": "x"})["ok"] is False, "traversal を許した"
+    assert fpost("/api/save_output", {"path": "run.yaml", "content": "x"})["ok"] is False, "run.yaml を書けてしまう"
+    assert fpost("/api/save_output", {"path": "cmd/x.png", "content": "x"})["ok"] is False, ".txt 以外を書けてしまう"
+    # 所見 API: 作成（CVSS から深刻度）・添付・楽観ロック（古い rev は 409）
+    ev = f"{folder}/cmd/WSTG-INFO-01-s1-c1.txt"
+    r = post("/api/finding/save", {"title": "Web 作成", "status": "draft", "wstg": ["WSTG-INFO-01"],
+                                   "evidence": [ev], "cvss": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+                                   "cvss_notes": {"UI": "リンクを踏ませる"}, "body": "本文"})
+    assert r["ok"], r
+    fid = r["id"]
+    assert post("/api/finding/save", {"title": "x", "wstg": [], "body": ""})["ok"] is False, "WSTG なしで作れる"
+    assert post("/api/finding/save", {"title": "x", "wstg": ["WSTG-INFO-01"], "cvss": "CVSS:3.1/AV:N"})["ok"] is False
+    assert post("/api/finding/attach", {"id": fid, "ev": "../../etc/passwd", "wid": ""})["ok"] is False
+    assert post("/api/finding/attach", {"id": fid, "ev": f"{folder}/artifacts/manual-WSTG-INFO-01-s5.txt",
+                                        "wid": "WSTG-CONF-10"})["ok"]
+    import findings as _f
+    cur = _f.get(Path(root), fid)
+    assert cur["severity"] == "medium" and cur["base"] == 6.1 and len(cur["evidence"]) == 2, cur
+    assert cur["wstg"] == ["WSTG-INFO-01", "WSTG-CONF-10"], cur["wstg"]
+    stale = post("/api/finding/save", {"id": fid, "rev": "0000", "title": "上書き", "wstg": ["WSTG-INFO-01"]})
+    assert stale.get("status") == 409, ("古い版の上書きを通した", stale)
+    ok = post("/api/finding/save", {"id": fid, "rev": cur["rev"], "title": "上書き", "status": "confirmed",
+                                    "wstg": ["WSTG-INFO-01"], "cvss": cur["cvss"], "body": "b"})
+    assert ok["ok"] and _f.get(Path(root), fid)["status"] == "confirmed", ok
+finally:
+    httpd.shutdown(); httpd.server_close()
+
+# 共有モード（nginx の後ろ）: 編集者名は X-Remote-User、サーバ画面の撮影は無効
+httpd = serve_record.build_server(Path(root), "127.0.0.1", 0, behind_proxy=True)
+port = httpd.server_address[1]
+B = f"http://127.0.0.1:{port}"
+threading.Thread(target=httpd.serve_forever, daemon=True).start()
+try:
+    info = json.loads(get("/api/info", {"X-Remote-User": "alice"})[1])
+    assert info == {"capture": False, "user": "alice"}, info
+    r = fpost("/api/capture", {"wid": "WSTG-INFO-01", "step": 1, "delay": 0})
+    assert r["ok"] is False and "共有モード" in r["error"], r
+    r = post("/api/finding/save", {"title": "共有で作成", "wstg": ["WSTG-INFO-01"], "body": ""},
+             {"X-Remote-User": "alice"})
+    assert r["ok"] and _f.get(Path(root), r["id"])["author"] == "alice", r
 finally:
     httpd.shutdown(); httpd.server_close()
 SRV
-[ $? -eq 0 ] || ng "serve_record の配信 / capture API が想定通りでない"
-ok "serve_record: 統一配信＋編集API（record・capture・delete・save・save_output）"
+[ $? -eq 0 ] || ng "serve_record の配信 / API が想定通りでない"
+ok "serve_record: ページ群（索引・WSTG・所見・タスク・CSV）＋書き込み API＋CSRF＋共有モード"
+timeout 10 "${PY[@]}" scripts/serve_record.py "${TMP}/ev" --host 0.0.0.0 --port 0 >/dev/null 2>&1 \
+  && ng "serve_record が 127.0.0.1 以外での待受を許した（共有は nginx 経由だけ）" || true
+ok "serve_record は 127.0.0.1 以外での待受を拒否"
 
 # fingerprint-stack: NVD 照合が curl/jq、受動観測が curl、確認コマンドは重複しないこと
 "${PY[@]}" scripts/new_activity.py fingerprint-stack --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null
