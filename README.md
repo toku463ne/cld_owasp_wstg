@@ -174,12 +174,18 @@ uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --dry-r
 
 - 手動手順（Burp・ヒアリング・ブラウザ操作）は実行されない。`artifacts/manual-<WSTG-ID>-s<n>.txt`
   に、① 操作した URL・手順 ② 確認できたこと（無ければ「該当なし」）③ スクショのパス ④ 件数を書く。
-- スクショはクリップボードから直接保存できる（X11=`xclip` / Wayland=`wl-clipboard` を自動判定）。
-  `--wid` を付けると record.html のそのカードに `<img>` 参照で出る:
+- スクショは `save_shot.py` で `artifacts/` に保存する。`--wid` を付けると record.html の
+  そのカードに `<img>` 参照で出る（差し替えはリロードで反映）。
   ```bash
+  # 推奨: その場で範囲選択してキャプチャ（クリップボード不要・環境差に強い）
+  uv run scripts/save_shot.py evidence/recon-osint-example.com-20260913 --wid WSTG-INFO-01 --grab
+  # クリップボードの画像から（X11=xclip / Wayland=wl-paste を自動判定）
   uv run scripts/save_shot.py evidence/recon-osint-example.com-20260913 --wid WSTG-INFO-01
-  # 撮影から一気に: flameshot gui -c でクリップボードへ入れてから上を実行
   ```
+  `--grab` は flameshot（X11/Wayland 両対応、`sudo apt install -y flameshot`）を最優先に、
+  Wayland は grim+slurp、X11 は maim/scrot/xfce4-screenshooter を自動判定する。
+  クリップボードが空のときは、入っている型を表示して `--grab` を案内する
+  （DE のスクショがファイル保存だとクリップボードには入らない）。
 - 動的入力が要る手順（`hosts.txt`・`cookies.txt` を用意してからのループ等）は、先に入力を置いてから
   `--only` でその手順だけ回す。
 - 単発の CLI を回して `cmd/` に残すだけなら、従来どおりロガーも使える:
