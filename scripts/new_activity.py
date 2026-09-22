@@ -68,7 +68,7 @@ GUI_TOOLS = {"burp suite", "owasp zap", "wappalyzer", "burp sequencer", "burp in
 # record.html は静的なビューア（表示専用）。生のエビデンスは cmd/・artifacts/ に置き、
 # 中身は同フォルダの evidence.js（run_activity.py / gen_record.py が生成）から読み込む。
 # file:// で開くと .txt の fetch はブラウザに遮断されるため、<script src> でデータを渡す。
-RECORD_HTML = """<!DOCTYPE html>
+RECORD_HTML = r"""<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
@@ -439,10 +439,13 @@ def write_evidence_js(activity_dir: Path, data: dict) -> Path:
 
 
 def write_record_html(activity_dir: Path, force: bool = False) -> Path:
-    """record.html（表示専用ビューア）を書き出す。中身は evidence.js から読む。"""
+    """record.html（表示専用ビューア）を書き出す。中身は evidence.js から読む。
+
+    ユーザ固有のデータは持たない静的テンプレートなので、常に上書きする
+    （テンプレートを直したら gen_record.py / run_activity.py で既存フォルダにも反映される）。
+    force は互換のため残すが挙動は同じ。
+    """
     path = activity_dir / "record.html"
-    if path.exists() and not force:
-        return path
     path.write_text(RECORD_HTML, encoding="utf-8")
     return path
 

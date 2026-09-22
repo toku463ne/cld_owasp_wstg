@@ -108,6 +108,9 @@ ejs_has "${EJS}" "grep -iaE" || ng "OUTDIR に書く grep 後処理コマンド�
 ejs_has "${EJS}" "tee ${TDIR}/artifacts/takeover-candidates.md" || ng "grep の tee 出力先が置換されていない"
 # 手動手順は observe を書く .txt ひな型が作られること（dork は手動）
 [ -f "${TDIR}/artifacts/manual-WSTG-INFO-01-s5.txt" ] || ng "手動手順の .txt ひな型が作られない"
+# record.html の JS 内の \n が実改行に化けていないこと（RECORD_HTML は raw 文字列）
+grep -qF '.join("\n")' "${TDIR}/record.html" \
+  || ng "record.html の JS 内 \\n が実改行に化けている（テンプレートが raw 文字列でない）"
 ok "record.html / evidence.js 生成（target/OUTDIR 置換・手動ひな型）"
 
 # fingerprint-stack: NVD 照合が curl/jq、受動観測が curl、確認コマンドは重複しないこと
