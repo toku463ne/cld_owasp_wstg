@@ -229,6 +229,22 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
     w("まず `sudo apt update`。`pipx` / `npm` / `go` を使う個別導入もフェーズ内に記載。")
     w("")
 
+    w("## 実施記録の見方（record.html）")
+    w("")
+    w("各アクティビティのフォルダに `record.html`（WSTG-ID ごとのタブ）ができる。閲覧はダブルクリック")
+    w("（`file://`・Firefox 推奨）でよい。結果とスクショは `cmd/`・`artifacts/` のファイルを参照表示する")
+    w("ので、`.txt` を手で編集したらリロードで反映される（`evidence.js` の作り直しは不要）。")
+    w("")
+    w("- **スクショの撮影・削除ボタンを使う／Chrome で確実に表示する**には、ローカルサーバ経由で開く。")
+    w("  どのアクティビティでも同じで、`fingerprint-stack` でも `recon-osint` でも効く:")
+    w("  `uv run scripts/serve_record.py evidence/<activity>-<yyyymmdd> --open`")
+    w("  （127.0.0.1 のみ待受。起動時に record.html を最新化するので `git pull` 後は再起動するだけ）")
+    w("- 手順ごとの『📷 この手順のスクショを撮る』→ 上部の待ち時間(秒)の間に対象ウィンドウを前面へ→範囲選択。")
+    w("  間違えたら各画像の『🗑 削除』で消せる（`artifacts/shot-*.png` のみ）。")
+    w("- CLI で撮るなら: `uv run scripts/save_shot.py evidence/<activity>-<yyyymmdd> --wid <WSTG-ID> [--step n] --grab --delay 3`")
+    w("  （`--list-tools` で使える撮影ツール確認。X11=maim/xfce4-screenshooter、Wayland=grim+slurp を自動判定）")
+    w("")
+
     current = None
     for a in acts:
         if a["phase"] != current:
@@ -260,6 +276,8 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
         w(f"      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/{a['id']}-<yyyymmdd> -- <コマンド>`")
         w("- [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入")
         w(f"- [ ] `uv run scripts/gen_record.py evidence/{a['id']}-<yyyymmdd>` で `record.html` を最新化して確認")
+        w(f"      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/{a['id']}-<yyyymmdd> --open`"
+          "（閲覧だけなら record.html を直接開く）")
         w("")
 
     w("## 仕上げ")

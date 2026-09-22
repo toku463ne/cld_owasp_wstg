@@ -21,6 +21,21 @@
 Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の `apt` をまとめてある。
 まず `sudo apt update`。`pipx` / `npm` / `go` を使う個別導入もフェーズ内に記載。
 
+## 実施記録の見方（record.html）
+
+各アクティビティのフォルダに `record.html`（WSTG-ID ごとのタブ）ができる。閲覧はダブルクリック
+（`file://`・Firefox 推奨）でよい。結果とスクショは `cmd/`・`artifacts/` のファイルを参照表示する
+ので、`.txt` を手で編集したらリロードで反映される（`evidence.js` の作り直しは不要）。
+
+- **スクショの撮影・削除ボタンを使う／Chrome で確実に表示する**には、ローカルサーバ経由で開く。
+  どのアクティビティでも同じで、`fingerprint-stack` でも `recon-osint` でも効く:
+  `uv run scripts/serve_record.py evidence/<activity>-<yyyymmdd> --open`
+  （127.0.0.1 のみ待受。起動時に record.html を最新化するので `git pull` 後は再起動するだけ）
+- 手順ごとの『📷 この手順のスクショを撮る』→ 上部の待ち時間(秒)の間に対象ウィンドウを前面へ→範囲選択。
+  間違えたら各画像の『🗑 削除』で消せる（`artifacts/shot-*.png` のみ）。
+- CLI で撮るなら: `uv run scripts/save_shot.py evidence/<activity>-<yyyymmdd> --wid <WSTG-ID> [--step n] --grab --delay 3`
+  （`--list-tools` で使える撮影ツール確認。X11=maim/xfce4-screenshooter、Wayland=grim+slurp を自動判定）
+
 ## フェーズ1 — 受動的収集
 
 対象に触れずに分かることを集め、以降のスコープと入力を確定させる。
@@ -41,6 +56,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/recon-osint-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/recon-osint-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/recon-osint-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ## フェーズ2 — 外形調査・構成
 
@@ -64,6 +80,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/fingerprint-stack-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/fingerprint-stack-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/fingerprint-stack-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 3. `tls-scan` — TLS 設定スキャン
 
@@ -78,6 +95,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/tls-scan-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/tls-scan-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/tls-scan-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 4. `http-methods` — HTTP メソッドの列挙と検証
 
@@ -92,6 +110,7 @@ OPTIONS 応答を鵜呑みにせず、実際に各メソッドを投げて許可
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/http-methods-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/http-methods-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/http-methods-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 5. `metafiles-crawl` — メタファイル・公開コンテンツの収集
 
@@ -106,6 +125,7 @@ robots.txt・sitemap・.well-known・security.txt・HTML コメント・JS ソ�
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/metafiles-crawl-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/metafiles-crawl-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/metafiles-crawl-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 6. `enum-apps` — 仮想ホスト・パスの列挙
 
@@ -120,6 +140,7 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/enum-apps-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/enum-apps-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/enum-apps-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 7. `backup-unref` — 旧・バックアップ・未参照ファイルの探索
 
@@ -134,6 +155,7 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/backup-unref-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/backup-unref-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/backup-unref-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 8. `cloud-and-takeover` — クラウドストレージ・サブドメイン乗っ取りの確認
 
@@ -148,6 +170,7 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/cloud-and-takeover-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/cloud-and-takeover-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/cloud-and-takeover-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 9. `ria-legacy-check` — RIA クロスドメインポリシーとレガシー Flash の確認
 
@@ -162,6 +185,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/ria-legacy-check-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/ria-legacy-check-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/ria-legacy-check-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 10. `server-config-review` — サーバ／プラットフォーム構成レビュー
 
@@ -176,6 +200,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/server-config-review-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/server-config-review-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/server-config-review-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ## フェーズ3 — アプリ把握
 
@@ -198,6 +223,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/burp-crawl-authn-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/burp-crawl-authn-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/burp-crawl-authn-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 12. `headers-review` — レスポンスヘッダ一括精査（匿名 + 認証済み）
 
@@ -212,6 +238,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/headers-review-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/headers-review-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/headers-review-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 13. `error-handling-review` — エラーハンドリングのレビュー
 
@@ -226,6 +253,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/error-handling-review-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/error-handling-review-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/error-handling-review-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 14. `identity-model-review` — ロール定義・登録・払い出しプロセスのレビュー
 
@@ -240,6 +268,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/identity-model-review-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/identity-model-review-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/identity-model-review-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ## フェーズ4 — 認証・セッション
 
@@ -262,6 +291,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/authn-flow-review-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/authn-flow-review-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/authn-flow-review-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 16. `account-enum-probe` — アカウント列挙とロックアウトの検証
 
@@ -276,6 +306,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/account-enum-probe-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/account-enum-probe-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/account-enum-probe-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 17. `password-reset-review` — パスワード変更・リセット機能のレビュー
 
@@ -290,6 +321,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/password-reset-review-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/password-reset-review-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/password-reset-review-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 18. `session-capture` — セッション取得とログイン/ログアウト解析
 
@@ -304,6 +336,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/session-capture-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/session-capture-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/session-capture-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 19. `session-abuse-tests` — セッションの悪用系テスト（露出・CSRF・パズリング・ハイジャック）
 
@@ -318,6 +351,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/session-abuse-tests-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/session-abuse-tests-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/session-abuse-tests-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ## フェーズ5 — 認可
 
@@ -340,6 +374,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/authz-matrix-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/authz-matrix-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/authz-matrix-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 21. `traversal-probe` — ディレクトリトラバーサル・ファイルインクルードの検証
 
@@ -354,6 +389,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/traversal-probe-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/traversal-probe-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/traversal-probe-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ## フェーズ6 — 入力検証・クライアントサイド
 
@@ -379,6 +415,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/xss-probe-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/xss-probe-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/xss-probe-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 23. `clientside-js-review` — クライアントサイド JS のシンク・ストレージレビュー
 
@@ -393,6 +430,7 @@ JS のソース/シンクを追い、URL リダイレクト・CSS/リソース�
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/clientside-js-review-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/clientside-js-review-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/clientside-js-review-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 24. `cors-websocket-check` — CORS と WebSocket の検証
 
@@ -407,6 +445,7 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/cors-websocket-check-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/cors-websocket-check-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/cors-websocket-check-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 25. `injection-fuzz-server` — サーバサイド・インジェクション系の一括ファジング
 
@@ -421,6 +460,7 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/injection-fuzz-server-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/injection-fuzz-server-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/injection-fuzz-server-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 26. `http-request-tamper` — HTTP リクエスト改変系の検証
 
@@ -435,6 +475,7 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/http-request-tamper-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/http-request-tamper-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/http-request-tamper-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 27. `ssrf-probe` — SSRF の検証
 
@@ -449,6 +490,7 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/ssrf-probe-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/ssrf-probe-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/ssrf-probe-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 28. `file-upload-tests` — ファイルアップロードの検証
 
@@ -463,6 +505,7 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/file-upload-tests-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/file-upload-tests-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/file-upload-tests-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 29. `crypto-review` — 暗号利用のレビュー（パディングオラクル・弱い暗号・平文送出）
 
@@ -477,6 +520,7 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/crypto-review-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/crypto-review-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/crypto-review-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ### 30. `api-graphql-test` — API / GraphQL の検証
 
@@ -491,6 +535,7 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/api-graphql-test-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/api-graphql-test-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/api-graphql-test-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ## フェーズ7 — 業務ロジック
 
@@ -512,6 +557,7 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/business-logic-walkthrough-<yyyymmdd> -- <コマンド>`
 - [ ] `run.yaml` の covers に WSTG-ID ごとの `verdict`（pass|fail|info|na|todo）と `finding`（要約のみ）を直接記入
 - [ ] `uv run scripts/gen_record.py evidence/business-logic-walkthrough-<yyyymmdd>` で `record.html` を最新化して確認
+      - 見る/スクショを撮る/消す: `uv run scripts/serve_record.py evidence/business-logic-walkthrough-<yyyymmdd> --open`（閲覧だけなら record.html を直接開く）
 
 ## 仕上げ
 
