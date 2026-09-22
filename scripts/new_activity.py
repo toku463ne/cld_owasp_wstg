@@ -148,6 +148,11 @@ RECORD_HTML = r"""<!DOCTYPE html>
   .save-btn{font:inherit;font-size:.85rem;margin-top:6px;padding:5px 14px;border:1px solid var(--line);
             border-radius:8px;background:var(--cmdbg);color:var(--cmd);cursor:pointer;font-weight:700;}
   .save-btn:disabled{opacity:.6;cursor:default;}
+  .edit-out-btn{font:inherit;font-size:.78rem;margin:2px 0 8px;padding:3px 10px;border:1px solid var(--line);
+                border-radius:6px;background:transparent;color:var(--mut);cursor:pointer;}
+  textarea.out-edit{width:100%;margin:6px 0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+                    background:var(--bg);color:var(--fg);resize:vertical;
+                    font:.82rem/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
   .rc{font-size:.78rem;color:var(--mut);}
   .rc.bad{color:#c62828;font-weight:700;}
   .empty{color:var(--mut);font-style:italic;font-size:.85rem;}
@@ -278,6 +283,39 @@ RECORD_HTML = r"""<!DOCTYPE html>
         btn.disabled = false; btn.textContent = old; });
   }
 
+  function editOutput(pathRel, btn) {
+    // 現在のファイル内容を取ってきて textarea で編集し、保存でサーバに書き戻す
+    btn.disabled = true;
+    fetch(pathRel).then(function (r) { return r.ok ? r.text() : ""; })
+      .catch(function () { return ""; })
+      .then(function (text) {
+        var wrap = el("div", "edit");
+        wrap.appendChild(el("div", "cap", "結果を貼る/編集: " + pathRel));
+        var ta = document.createElement("textarea");
+        ta.className = "out-edit"; ta.value = text; ta.rows = 12;
+        ta.placeholder = "別環境で実行した結果をここに貼る（保存で " + pathRel + " に書き込む）";
+        wrap.appendChild(ta);
+        var save = el("button", "save-btn", "保存");
+        var cancel = el("button", "del-btn", "キャンセル");
+        wrap.appendChild(save); wrap.appendChild(document.createTextNode(" ")); wrap.appendChild(cancel);
+        btn.parentNode.insertBefore(wrap, btn.nextSibling);
+        btn.style.display = "none";
+        ta.focus();
+        cancel.addEventListener("click", function () { wrap.remove(); btn.style.display = ""; btn.disabled = false; });
+        save.addEventListener("click", function () {
+          save.disabled = true; save.textContent = "保存中…";
+          fetch("api/save_output", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: pathRel, content: ta.value }) })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+              if (res.ok) { location.reload(); }
+              else { alert("保存できませんでした:\n" + (res.error || "")); save.disabled = false; save.textContent = "保存"; }
+            })
+            .catch(function () { alert("サーバに接続できません。"); save.disabled = false; save.textContent = "保存"; });
+        });
+      });
+  }
+
   function renderItem(it) {
     var box = el("div", "item");
     var h = el("h2");
@@ -321,6 +359,11 @@ RECORD_HTML = r"""<!DOCTYPE html>
           s.appendChild(el("p", "empty", r.role === "manual"
             ? "未記入（" + r.output_path + " に観察を書く）"
             : "未実行（uv run scripts/run_activity.py でこのコマンドを実行）"));
+        }
+        if (served && r.output_path) {   // 別環境で取った結果を貼る/直す
+          var eb = el("button", "edit-out-btn", "✎ 結果を貼る/編集");
+          eb.addEventListener("click", function () { editOutput(r.output_path, eb); });
+          s.appendChild(eb);
         }
       });
       if (served) {

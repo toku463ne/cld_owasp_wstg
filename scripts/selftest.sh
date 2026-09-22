@@ -236,11 +236,17 @@ try:
     from new_activity import parse_findings
     wr = parse_findings((Path(root) / folder / "findings.md").read_text())
     assert wr.get("WSTG-INFO-01") == "本文X", wr.get("WSTG-INFO-01")
+    # /api/save_output: コマンド出力/手動観察の .txt に貼れる（別環境の結果を貼る用途）。cmd/artifacts 直下の .txt のみ
+    assert post("/api/save_output", {"path": "cmd/WSTG-INFO-01-s1-c1.txt", "content": "貼った結果X"})["ok"] is True
+    assert (Path(root) / folder / "cmd" / "WSTG-INFO-01-s1-c1.txt").read_text() == "貼った結果X"
+    assert post("/api/save_output", {"path": "../../etc/x.txt", "content": "x"})["ok"] is False, "traversal を許した"
+    assert post("/api/save_output", {"path": "run.yaml", "content": "x"})["ok"] is False, "run.yaml を書けてしまう"
+    assert post("/api/save_output", {"path": "cmd/x.png", "content": "x"})["ok"] is False, ".txt 以外を書けてしまう"
 finally:
     httpd.shutdown(); httpd.server_close()
 SRV
 [ $? -eq 0 ] || ng "serve_record の配信 / capture API が想定通りでない"
-ok "serve_record: 統一配信＋編集API（索引・record・capture・delete・save）"
+ok "serve_record: 統一配信＋編集API（record・capture・delete・save・save_output）"
 
 # fingerprint-stack: NVD 照合が curl/jq、受動観測が curl、確認コマンドは重複しないこと
 "${PY[@]}" scripts/new_activity.py fingerprint-stack --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null

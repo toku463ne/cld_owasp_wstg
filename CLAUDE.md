@@ -57,8 +57,9 @@ coverage.yaml ─┬─▶ TASKS.md（実施順）
                         └─▶ evidence.js（gen_record.py も同じ）
                      save_shot.py ─▶ artifacts/shot-<WID>[-s<n>]-*.png（スクショ）
                      record.html（WSTG-ID タブ）◀─(iframe/img 参照)─ cmd/・artifacts/（evidence.js はメタデータ）
-                     serve_record.py ─▶ evidence/ 全体を http 配信（索引＋各 record.html）＋/<フォルダ>/api/{capture,delete_shot,save}
-                        └─ /api/save ─▶ update_cover(run.yaml)・update_findings(findings.md)（テキスト部分置換）
+                     serve_record.py ─▶ evidence/ 全体を http 配信（索引＋各 record.html）＋/<フォルダ>/api/{capture,delete_shot,save,save_output}
+                        ├─ /api/save ─▶ update_cover(run.yaml)・update_findings(findings.md)（テキスト部分置換）
+                        └─ /api/save_output ─▶ cmd/・artifacts/ 直下の .txt に貼る（別環境で取った結果の貼付け）
                      findings.md ─(WSTG-ID ごとの本文)─▶ record.html「所見（詳細）」（CSV には出ない）
                      run.yaml の covers ─(人が verdict/finding=1行見出しを直接記入)
                         └─▶ export_checklist.py ─▶ CSV（finding は one_line で1行に畳む）

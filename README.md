@@ -256,6 +256,9 @@ uv run scripts/gen_record.py evidence/recon-osint-example.com-20260913
   さらに各タブ内に **verdict のセレクト・finding・所見（findings.md）のテキストボックス**が出て、
   『保存』で `run.yaml`／`findings.md` に直接反映される（エディタを開かずに判定・所見を書ける。
   finding は複数行のまま保存すると `run.yaml` では YAML ブロックに、CSV では1行に畳まれる）。
+  各コマンド結果の下の **『✎ 結果を貼る/編集』** では、その出力ファイル（`cmd/…txt`）を直接編集できる。
+  会社で network error になったコマンドを**自宅で実行して結果を貼る**、といった使い方向け
+  （書けるのは `cmd/`・`artifacts/` 直下の `.txt` のみ）。
 
 **エビデンス本体は `cmd/`・`artifacts/` の各ファイルに、判定は `run.yaml` にあるので、
 上流（`criteria.yaml` 等）を更新して手順が変わっても、`gen_record.py` で作り直すだけでよく、

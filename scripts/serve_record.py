@@ -174,8 +174,39 @@ class RecordHandler(SimpleHTTPRequestHandler):
             self._delete_shot(act)
         elif route.endswith("/api/save"):
             self._save(act)
+        elif route.endswith("/api/save_output"):
+            self._save_output(act)
         else:
             self._json(404, {"ok": False, "error": "not found"})
+
+    def _save_output(self, act: Path) -> None:
+        """コマンド出力/手動観察のファイル（cmd/・artifacts/ 直下の .txt）に本文を書き込む。
+
+        会社で network error になったコマンドを自宅で実行して結果を貼る、等の用途。
+        書けるのは cmd/・artifacts/ 直下の .txt だけ（run.yaml・スクショ等は不可）。
+        """
+        data = self._read_json()
+        if data is None:
+            self._json(200, {"ok": False, "error": "リクエストが不正です"})
+            return
+        rel = str(data.get("path", ""))
+        content = data.get("content")
+        if not isinstance(content, str) or len(content) > 10_000_000:
+            self._json(200, {"ok": False, "error": "content が不正です（文字列・10MB 以内）"})
+            return
+        target = (act / rel).resolve()
+        allowed = {(act / "cmd").resolve(), (act / "artifacts").resolve()}
+        if target.parent not in allowed or target.suffix.lower() != ".txt":
+            self._json(200, {"ok": False, "error": f"編集できるのは cmd/・artifacts/ 直下の .txt だけです: {rel}"})
+            return
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
+            refresh_record(act)
+        except OSError as exc:
+            self._json(200, {"ok": False, "error": str(exc)})
+            return
+        self._json(200, {"ok": True})
 
     def _save(self, act: Path) -> None:
         """run.yaml の verdict/finding と findings.md の本文を、テキスト部分置換で更新する。"""
