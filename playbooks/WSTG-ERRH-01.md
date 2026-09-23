@@ -20,7 +20,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. 不正入力・存在しないパス・型不一致を `curl`/Burp で送り、詳細エラー（スタックトレース・SQL 文・パス）が返るか確認
+1. エラーを誘発して内部情報の漏れを確認する: `for u in '/nope-$(date +%s)' '/%c0%ae/' '/?id=%27' '/api/nope'; do echo "===== $u ====="; curl -s -m 10 "https://target$u" | grep -iE 'exception|stack trace|at [a-z0-9_.]+\(|sql|syntax error|ORA-|PDOException|Traceback|line [0-9]+|/var/www|C:\\\\|Warning:|Fatal error' | head -20; done | tee evidence/<活動フォルダ>/artifacts/error-leak.txt`。ヒットしたら詳細エラーが露出＝finding。存在しないパスに加え、各エンドポイントの型不一致・不正入力も手動で試す
 2. 4xx/5xx の両方、API（JSON）とフロント（HTML）の両方で応答本文を確認
 3. エラー時に内部情報（フレームワーク・DB・内部 IP・バージョン）が漏れないか確認
 4. 詳細が出る箇所を列挙。v4.2 では ERRH-02（スタックトレース）もここに統合して判定
@@ -28,7 +28,6 @@ WSTG の Test Objectives:
 ## 使用ツール
 
 - curl
-- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

@@ -21,7 +21,7 @@ WSTG の Test Objectives:
 ## 手順
 
 1. 既知ファイルの拡張子を変えて取得: `curl -s https://target/index.php.bak`（`.old .inc .txt .src ~`）
-2. 設定/ソース拡張子（`.config .inc .sql .java .cs`）が平文配信されないか（200 で中身が返るか）確認
+2. 設定/ソース拡張子が平文配信されないか一括確認: `for f in web.config app.config config.inc database.sql schema.sql Main.java Program.cs .env config.php.inc; do echo "$f -> $(curl -s -o /dev/null -w '%{http_code} %{content_type}' https://target/$f)"; done | tee evidence/<活動フォルダ>/artifacts/source-ext.txt`。200 かつ text/plain 等で中身が返るものは手順1同様に取得し、要約のみ finding に（実物は evidence 参照）
 3. 大文字小文字違い（`.PHP`）・二重拡張子（`.php.jpg`）でハンドラ差が出ないか試す
 4. 取得できたソース/設定は要約のみ finding に、実物は evidence にパス参照で保存
 

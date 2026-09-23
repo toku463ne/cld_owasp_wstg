@@ -93,8 +93,8 @@ WSTG-INFO-05:
   fail: "ソース中に API キー・パスワード・内部ホスト名・デバッグ用エンドポイントが含まれる。"
   note: "minify 済み JS の source map（.map）も確認する。"
   steps:
-    - "ブラウザで対象ページを開き、Ctrl+U（ソース表示）で HTML コメント `<!-- -->` を確認"
-    - "開発者ツール→Sources で読み込まれる JS を一覧し、`grep -iE \"password|apikey|token|internal|todo|debug\"` 相当で走査"
+    - "トップページの HTML コメントを機械抽出する: `curl -s https://target/ -o OUTDIR/index.html && grep -aoE '<!--.*-->' OUTDIR/index.html | tee OUTDIR/html-comments.txt`。開発メモ・無効化されたリンク・内部パス・認証情報が残っていないか読む（複数行コメントや JS でレンダリングされる DOM 上のコメントは取りこぼすので、主要画面はブラウザの Ctrl+U でも目視する）"
+    - "読み込まれる JS を集めて機微語を走査する（手順1で取った index.html の script を辿る）: `grep -oiE 'src=\"[^\"]+\\.js[^\"]*' OUTDIR/index.html | sed -E 's/^src=\"//I' | while read -r j; do case \"$j\" in http*) curl -s \"$j\";; /*) curl -s \"https://target$j\";; *) curl -s \"https://target/$j\";; esac; echo; done > OUTDIR/app-js.txt; grep -inE 'password|passwd|apikey|api[_-]?key|secret|token|bearer|authorization|internal|todo|fixme|debug' OUTDIR/app-js.txt OUTDIR/index.html | tee OUTDIR/js-secrets.txt`。ヒット行は変数名だけの空振りも多いので1つずつ真偽判定し、資格情報・内部 URL は evidence にパス参照で残す"
     - "minify JS の `//# sourceMappingURL` を辿り `.map` を取得、原本コードにコメント/内部情報が無いか見る"
     - "`<meta>`・生成コメント（CMS 名・バージョン）・非公開エンドポイントの記述を記録"
 
@@ -180,7 +180,7 @@ WSTG-CONF-03:
   note: "大文字小文字違い・二重拡張子（.php.jpg）も試す。"
   steps:
     - "既知ファイルの拡張子を変えて取得: `curl -s https://target/index.php.bak`（`.old .inc .txt .src ~`）"
-    - "設定/ソース拡張子（`.config .inc .sql .java .cs`）が平文配信されないか（200 で中身が返るか）確認"
+    - "設定/ソース拡張子が平文配信されないか一括確認: `for f in web.config app.config config.inc database.sql schema.sql Main.java Program.cs .env config.php.inc; do echo \"$f -> $(curl -s -o /dev/null -w '%{http_code} %{content_type}' https://target/$f)\"; done | tee OUTDIR/source-ext.txt`。200 かつ text/plain 等で中身が返るものは手順1同様に取得し、要約のみ finding に（実物は evidence 参照）"
     - "大文字小文字違い（`.PHP`）・二重拡張子（`.php.jpg`）でハンドラ差が出ないか試す"
     - "取得できたソース/設定は要約のみ finding に、実物は evidence にパス参照で保存"
 
@@ -239,7 +239,7 @@ WSTG-CONF-08:
   fail: "allow-access-from domain=\"*\" のようなワイルドカード許可がある。"
   note: "Flash は終息済みだが、ファイルが残っていると他クライアントが参照する場合がある。"
   steps:
-    - "`curl -s https://target/crossdomain.xml` と `clientaccesspolicy.xml` を取得"
+    - "クロスドメインポリシーを取得: `for f in crossdomain.xml clientaccesspolicy.xml; do echo \"===== $f =====\"; curl -s -w '\\n[status %{http_code} type %{content_type}]\\n' https://target/$f; done | tee OUTDIR/crossdomain.txt`"
     - "`allow-access-from domain=\"*\"` などワイルドカード許可になっていないか確認"
     - "`secure=\"false\"` や過度に広い許可ドメインが指定されていないか見る"
     - "該当ファイルが存在しない/最小限なら pass、緩い許可があれば影響を finding に記載"
@@ -776,7 +776,7 @@ WSTG-INPV-17:
   fail: "偽装した Host がリセットリンクや絶対 URL に反映される、キャッシュポイズニングにつながる。"
   note: "X-Forwarded-Host など類似ヘッダも試す。"
   steps:
-    - "`Host:` ヘッダを `curl -H`/Burp で任意値に書き換え（`Host: evil.example`）て応答に反映/リダイレクトされるか確認"
+    - "`Host:` を任意値に書き換えて応答への反映を確認: `curl -s -D - -o OUTDIR/host-body.html -H 'Host: evil.example' https://target/ | tee OUTDIR/host-headers.txt; echo '--- 反映チェック ---'; grep -in 'evil.example' OUTDIR/host-headers.txt OUTDIR/host-body.html`。`Location`/絶対 URL/本文に `evil.example` が現れたら Host 依存のリンク生成があり、手順2（リセットリンク等）へ進む"
     - "パスワードリセットのリンク生成に Host が使われ、リセット URL を攻撃者ドメインに向けられないか試す"
     - "`X-Forwarded-Host` 等でキャッシュポイズニング・認可迂回ができないか確認"
     - "Host 依存のリンク生成・ルーティングがある場合は影響を finding に"
@@ -809,7 +809,7 @@ WSTG-ERRH-01:
   fail: "例外のスタックトレース・SQL エラー・内部パス・デバッグ情報がそのまま表示される。"
   note: "4xx/5xx の両方、API とフロントの両方で確認する。v4.2 では ERRH-02 がここに統合。"
   steps:
-    - "不正入力・存在しないパス・型不一致を `curl`/Burp で送り、詳細エラー（スタックトレース・SQL 文・パス）が返るか確認"
+    - "エラーを誘発して内部情報の漏れを確認する: `for u in '/nope-$(date +%s)' '/%c0%ae/' '/?id=%27' '/api/nope'; do echo \"===== $u =====\"; curl -s -m 10 \"https://target$u\" | grep -iE 'exception|stack trace|at [a-z0-9_.]+\\(|sql|syntax error|ORA-|PDOException|Traceback|line [0-9]+|/var/www|C:\\\\\\\\|Warning:|Fatal error' | head -20; done | tee OUTDIR/error-leak.txt`。ヒットしたら詳細エラーが露出＝finding。存在しないパスに加え、各エンドポイントの型不一致・不正入力も手動で試す"
     - "4xx/5xx の両方、API（JSON）とフロント（HTML）の両方で応答本文を確認"
     - "エラー時に内部情報（フレームワーク・DB・内部 IP・バージョン）が漏れないか確認"
     - "詳細が出る箇所を列挙。v4.2 では ERRH-02（スタックトレース）もここに統合して判定"
@@ -1115,7 +1115,7 @@ WSTG-APIT-01:
   fail: "introspection が有効でスキーマ全体を取得できる、深い入れ子やバッチクエリで DoS 相当になる、認可を経ずに他人のデータを取得できる。"
   note: "REST API も同じ枠で扱う。認可漏れは ATHZ 系のカードと合わせて報告する。"
   steps:
-    - "GraphQL エンドポイント（`/graphql`）に `curl`/Burp でイントロスペクション（`{__schema{types{name}}}`）が有効か確認"
+    - "GraphQL エンドポイントのイントロスペクションが有効か確認: `for ep in /graphql /api/graphql /v1/graphql /graphql/console; do echo \"===== $ep =====\"; curl -s -m 10 -H 'Content-Type: application/json' -d '{\"query\":\"{__schema{types{name}}}\"}' \"https://target$ep\" | head -c 800; echo; done | tee OUTDIR/graphql-introspection.txt`。`__schema` や型名が返れば有効＝スキーマ露出。返る ep を手順2以降の対象にする"
     - "スキーマから機微な query/mutation を洗い、認可なしで呼べないか確認"
     - "深いネスト/エイリアス量産でクエリコスト制限（DoS 耐性）・レート制限の有無を確認"
     - "バッチクエリで認可迂回・列挙ができないか試し、成立点を finding に"

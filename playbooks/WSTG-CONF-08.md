@@ -19,7 +19,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `curl -s https://target/crossdomain.xml` と `clientaccesspolicy.xml` を取得
+1. クロスドメインポリシーを取得: `for f in crossdomain.xml clientaccesspolicy.xml; do echo "===== $f ====="; curl -s -w '\n[status %{http_code} type %{content_type}]\n' https://target/$f; done | tee evidence/<活動フォルダ>/artifacts/crossdomain.txt`
 2. `allow-access-from domain="*"` などワイルドカード許可になっていないか確認
 3. `secure="false"` や過度に広い許可ドメインが指定されていないか見る
 4. 該当ファイルが存在しない/最小限なら pass、緩い許可があれば影響を finding に記載

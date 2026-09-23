@@ -21,7 +21,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. GraphQL エンドポイント（`/graphql`）に `curl`/Burp でイントロスペクション（`{__schema{types{name}}}`）が有効か確認
+1. GraphQL エンドポイントのイントロスペクションが有効か確認: `for ep in /graphql /api/graphql /v1/graphql /graphql/console; do echo "===== $ep ====="; curl -s -m 10 -H 'Content-Type: application/json' -d '{"query":"{__schema{types{name}}}"}' "https://target$ep" | head -c 800; echo; done | tee evidence/<活動フォルダ>/artifacts/graphql-introspection.txt`。`__schema` や型名が返れば有効＝スキーマ露出。返る ep を手順2以降の対象にする
 2. スキーマから機微な query/mutation を洗い、認可なしで呼べないか確認
 3. 深いネスト/エイリアス量産でクエリコスト制限（DoS 耐性）・レート制限の有無を確認
    > ⚠️ **負荷注意（手順3）**: 深いネスト/エイリアス量産のクエリは、まさに GraphQL の DoS を誘発する検証。コスト制限が無いと1リクエストでサーバを落としうる。ネスト段数を段階的に上げる。
@@ -36,7 +36,6 @@ WSTG の Test Objectives:
 ## 使用ツール
 
 - curl
-- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 

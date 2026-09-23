@@ -20,7 +20,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `Host:` ヘッダを `curl -H`/Burp で任意値に書き換え（`Host: evil.example`）て応答に反映/リダイレクトされるか確認
+1. `Host:` を任意値に書き換えて応答への反映を確認: `curl -s -D - -o evidence/<活動フォルダ>/artifacts/host-body.html -H 'Host: evil.example' https://target/ | tee evidence/<活動フォルダ>/artifacts/host-headers.txt; echo '--- 反映チェック ---'; grep -in 'evil.example' evidence/<活動フォルダ>/artifacts/host-headers.txt evidence/<活動フォルダ>/artifacts/host-body.html`。`Location`/絶対 URL/本文に `evil.example` が現れたら Host 依存のリンク生成があり、手順2（リセットリンク等）へ進む
 2. パスワードリセットのリンク生成に Host が使われ、リセット URL を攻撃者ドメインに向けられないか試す
 3. `X-Forwarded-Host` 等でキャッシュポイズニング・認可迂回ができないか確認
 4. Host 依存のリンク生成・ルーティングがある場合は影響を finding に
@@ -28,7 +28,6 @@ WSTG の Test Objectives:
 ## 使用ツール
 
 - curl
-- Burp Suite
 
 ## 判定基準（pass / fail の見分け）
 
