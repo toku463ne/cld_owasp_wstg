@@ -156,11 +156,11 @@ WSTG-CONF-01:
   steps:
     - "`nmap -sV -p- --open -oN OUTDIR/nmap-allports.txt target` で公開ポート/サービスを洗い出す"
     - "公開が危険なポート（SSH/RDP/DB/管理系）を手順1のスキャン結果から抽出する（再スキャンせず既存結果を grep するので追加負荷なし）: `grep -E '^(22|23|3389|3306|5432|1433|1521|6379|27017|9200|5601|8080|8443|9000|9090|9990|10000|7001|8161|15672|2375|5900)/(tcp|udp)' OUTDIR/nmap-allports.txt | tee OUTDIR/sensitive-ports.txt`。1行でも出たら、そのポートが本来アクセスできるべき範囲（社内のみ等）を超えて開いていないか手順4の FW/セキュリティグループ設定と突き合わせる。管理コンソールは製品ごとにポートが違うので、ヒットが無くても手順1の全開放ポート一覧に見慣れないサービスが無いか併せて目視する"
-    - "`nikto -h https://target ${https_proxy:+-useproxy \"$https_proxy\"} -o OUTDIR/nikto.txt` と特定製品の既知脆弱性・既定資格情報を照合（nikto は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `-useproxy` を明示する。上の `${https_proxy:+...}` は https_proxy が設定されているときだけ付く＝直接届く環境ではそのまま直行する）"
+    - "`nikto -h https://target ${WSTG_PAUSE:+-Pause \"$WSTG_PAUSE\"} ${https_proxy:+-useproxy \"$https_proxy\"} -o OUTDIR/nikto.txt` と特定製品の既知脆弱性・既定資格情報を照合。nikto は既定でリクエスト間の待ちが無く、非力な対象は CPU 100%・504 になりやすい。`WSTG_PAUSE`（秒）を設定するとリクエスト間にその秒数だけ空ける（例: `export WSTG_PAUSE=2`。落ちるなら 3〜5 に上げる）。さらに絞るなら `-maxtime 30m` で打ち切り、`-T` で試験カテゴリを限定する。nikto は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `-useproxy` を明示する（`${...:+}` は各変数が設定されているときだけ付く）"
     - "クラウドのセキュリティグループ/FW 設定（ヒアリング）と実スキャン結果を突き合わせ、差分を指摘"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
     1: "`nmap -p-` は全ポート走査で重い。IDS/IPS や機器を刺激しうるので時間帯に注意（`--max-rate` で調整）。"
-    3: "nikto は既知パスへ大量のリクエストを送る非常に騒がしいスキャン。WAF/IPS の遮断や機器の高負荷を招きやすい。合意した時間内で、対象を1つずつ。"
+    3: "nikto は既知パスへ大量のリクエストを送る非常に騒がしいスキャン。既定はリクエスト間の待ちが無く、非力な対象は CPU 100%・504 になりやすい。`export WSTG_PAUSE=2`（落ちるなら 3〜5）でリクエスト間に待ちを入れる。さらに `-maxtime` で打ち切り、対象は1つずつ。"
 
 WSTG-CONF-02:
   purpose: "Web サーバ・アプリサーバの既定構成が残っていないかを確認する。"
@@ -190,12 +190,12 @@ WSTG-CONF-04:
   fail: ".bak/.old/~/.swp/.zip、リポジトリメタデータ（.git/、.svn/）等が取得できる。"
   note: ".git/config が取れたらリポジトリ全体を復元できる可能性がある。重大度は高く扱う。"
   steps:
-    - "`ffuf -w wordlist ${https_proxy:+-x \"$https_proxy\"} -u https://target/FUZZ -e .bak,.old,.zip,.tar.gz,.swp,~ -o OUTDIR/ffuf-backup.json -of json` で旧版/バックアップを総当り（ffuf は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `-x` を明示する）"
+    - "`ffuf -w wordlist ${WSTG_PAUSE:+-p \"$WSTG_PAUSE\" -t 1} ${https_proxy:+-x \"$https_proxy\"} -u https://target/FUZZ -e .bak,.old,.zip,.tar.gz,.swp,~ -o OUTDIR/ffuf-backup.json -of json` で旧版/バックアップを総当り。非力な対象では `export WSTG_PAUSE=2` でリクエスト間に待ちを入れ、スレッドも1にして直列化する（既定は 40 並列で対象を飽和させやすい）。ffuf は環境変数のプロキシを見ないので、プロキシ経由なら `-x` を明示する"
     - "既知ファイルの残骸を狙って取得: `for f in login.php.bak .login.php.swp index.php~ config.php.bak .env.bak web.config.old; do echo \"$f -> $(curl -s -o /dev/null -w '%{http_code}' https://target/$f)\"; done | tee OUTDIR/backup-residue.txt`。200 で中身が返るものは取得して evidence に、要約のみ finding に"
     - "リポジトリメタデータ `curl -s https://target/.git/config` `/.svn/entries` を確認（取れたら重大）"
     - "`.git/` が取れる場合は git-dumper 等で復元可否を検証し、重大度・影響範囲を finding に明記"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
-    1: "ffuf のバックアップ総当りは大量リクエスト。`-rate` でレートを制限し、ワードリストを対象に合わせて絞る。"
+    1: "ffuf のバックアップ総当りは大量リクエスト。非力な対象は飽和しやすいので `export WSTG_PAUSE=2` で待ち＋スレッド1に落とす（手順のコマンドが対応済み）。ワードリストも対象に合わせて絞る。"
 
 WSTG-CONF-05:
   purpose: "管理インタフェース（インフラ・アプリ両方）の露出と保護状況を確認する。"
@@ -203,12 +203,12 @@ WSTG-CONF-05:
   fail: "管理画面が公開ネットワークから到達でき、既定パス・既定資格情報・弱い認証で入れる。"
   note: "パスを秘匿しているだけの状態は fail 寄り。列挙で見つかる時点で保護になっていない。"
   steps:
-    - "`ffuf -w admin-wordlist ${https_proxy:+-x \"$https_proxy\"} -u https://target/FUZZ -o OUTDIR/ffuf-admin.json -of json`（`/admin /manager /wp-admin /phpmyadmin` 等）で管理画面を探索（ffuf は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `-x` を明示する）"
+    - "`ffuf -w admin-wordlist ${WSTG_PAUSE:+-p \"$WSTG_PAUSE\" -t 1} ${https_proxy:+-x \"$https_proxy\"} -u https://target/FUZZ -o OUTDIR/ffuf-admin.json -of json`（`/admin /manager /wp-admin /phpmyadmin` 等）で管理画面を探索。非力な対象では `export WSTG_PAUSE=2` で待ちを入れ、スレッドも1にする。ffuf は環境変数のプロキシを見ないので、プロキシ経由なら `-x` を明示する"
     - "インフラ側の管理ポートも確認: `nmap -Pn -sV -p8080,8443,9990,10000,7001,8161,9000,9090 -oN OUTDIR/nmap-mgmt.txt target`。open のポートの製品・バージョンを控え、管理コンソールなら手順3の認証確認へ"
     - "見つけた管理画面の認証（既定資格情報・接続元制限・MFA）を確認。既定資格情報は必ず試す"
     - "「パスを秘匿しているだけ」で列挙で出てくる状態は保護不十分として扱う"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
-    1: "ffuf の管理画面総当りは大量リクエスト。ログイン系パスを叩くとアカウントロックや誤検知アラートを誘発しうる。`-rate` で抑え、ログインを含むパスは慎重に。"
+    1: "ffuf の管理画面総当りは大量リクエスト。ログイン系パスはアカウントロック・誤検知アラートも誘発しうる。`export WSTG_PAUSE=2` で待ち＋スレッド1に落とし、ログインを含むパスは慎重に。"
     2: "`nmap` の管理ポート走査。応答の無い機器へ繰り返すと接続数を圧迫しうる。"
 
 WSTG-CONF-06:
@@ -643,9 +643,9 @@ WSTG-INPV-05:
     - "各パラメータに `'` `\"` を入れ、SQL エラー・応答差・500 が出るか確認"
     - "`' OR '1'='1' -- ` や `1 AND 1=1`/`1 AND 1=2` の真偽差でブラインド SQLi を確認"
     - "時間差（`' OR SLEEP(5)-- `）で盲目的注入を確認。文脈（数値/文字列）に応じて調整"
-    - "`sqlmap -u \"https://target/x?id=1\" ${https_proxy:+--proxy=\"$https_proxy\"} --batch --output-dir=OUTDIR`（許可範囲で）で確証。取得データは要約のみ finding に（sqlmap は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `--proxy` を明示する）"
+    - "`sqlmap -u \"https://target/x?id=1\" ${WSTG_PAUSE:+--delay \"$WSTG_PAUSE\"} ${https_proxy:+--proxy=\"$https_proxy\"} --batch --output-dir=OUTDIR`（許可範囲で）で確証。取得データは要約のみ finding に。sqlmap は多数の試行を送るので、非力な対象では `export WSTG_PAUSE=2` でリクエスト間に待ちを入れる（既定 `--threads 1` のまま上げない）。sqlmap は環境変数のプロキシを見ないので、プロキシ経由なら `--proxy` を明示する"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
-    4: "sqlmap は多数の試行リクエストを送り、time-based 検出では遅延も伴う。`--batch` でも重い。許可範囲・時間帯を守り、`--threads` を上げすぎない。"
+    4: "sqlmap は多数の試行リクエストを送り、time-based 検出では遅延も伴う。`--batch` でも重い。非力な対象は `export WSTG_PAUSE=2` でリクエスト間に待ちを入れ、`--threads` は上げない。許可範囲・時間帯を守る。"
 
 WSTG-INPV-06:
   purpose: "入力が LDAP フィルタの構造に影響しないかを確認する。"

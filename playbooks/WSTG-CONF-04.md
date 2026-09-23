@@ -19,8 +19,8 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `ffuf -w wordlist ${https_proxy:+-x "$https_proxy"} -u https://target/FUZZ -e .bak,.old,.zip,.tar.gz,.swp,~ -o evidence/<活動フォルダ>/artifacts/ffuf-backup.json -of json` で旧版/バックアップを総当り（ffuf は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `-x` を明示する）
-   > ⚠️ **負荷注意（手順1）**: ffuf のバックアップ総当りは大量リクエスト。`-rate` でレートを制限し、ワードリストを対象に合わせて絞る。
+1. `ffuf -w wordlist ${WSTG_PAUSE:+-p "$WSTG_PAUSE" -t 1} ${https_proxy:+-x "$https_proxy"} -u https://target/FUZZ -e .bak,.old,.zip,.tar.gz,.swp,~ -o evidence/<活動フォルダ>/artifacts/ffuf-backup.json -of json` で旧版/バックアップを総当り。非力な対象では `export WSTG_PAUSE=2` でリクエスト間に待ちを入れ、スレッドも1にして直列化する（既定は 40 並列で対象を飽和させやすい）。ffuf は環境変数のプロキシを見ないので、プロキシ経由なら `-x` を明示する
+   > ⚠️ **負荷注意（手順1）**: ffuf のバックアップ総当りは大量リクエスト。非力な対象は飽和しやすいので `export WSTG_PAUSE=2` で待ち＋スレッド1に落とす（手順のコマンドが対応済み）。ワードリストも対象に合わせて絞る。
 2. 既知ファイルの残骸を狙って取得: `for f in login.php.bak .login.php.swp index.php~ config.php.bak .env.bak web.config.old; do echo "$f -> $(curl -s -o /dev/null -w '%{http_code}' https://target/$f)"; done | tee evidence/<活動フォルダ>/artifacts/backup-residue.txt`。200 で中身が返るものは取得して evidence に、要約のみ finding に
 3. リポジトリメタデータ `curl -s https://target/.git/config` `/.svn/entries` を確認（取れたら重大）
 4. `.git/` が取れる場合は git-dumper 等で復元可否を検証し、重大度・影響範囲を finding に明記
@@ -29,7 +29,7 @@ WSTG の Test Objectives:
 
 本調査は社内のプライベートネットワークで行う前提だが、想定外（古い機器・共有アカウント・外部 API 依存）は起こりうる。次の手順は**対象や外部サービスに負荷をかける／レート制限・アカウントロック・DoS を誘発しうる**。実施前に時間帯・範囲の合意を確認し、少量から段階的に。
 
-- **手順1**: ffuf のバックアップ総当りは大量リクエスト。`-rate` でレートを制限し、ワードリストを対象に合わせて絞る。
+- **手順1**: ffuf のバックアップ総当りは大量リクエスト。非力な対象は飽和しやすいので `export WSTG_PAUSE=2` で待ち＋スレッド1に落とす（手順のコマンドが対応済み）。ワードリストも対象に合わせて絞る。
 
 ## 使用ツール
 

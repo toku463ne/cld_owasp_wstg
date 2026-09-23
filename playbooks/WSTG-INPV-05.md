@@ -23,14 +23,14 @@ WSTG の Test Objectives:
 1. 各パラメータに `'` `"` を入れ、SQL エラー・応答差・500 が出るか確認
 2. `' OR '1'='1' -- ` や `1 AND 1=1`/`1 AND 1=2` の真偽差でブラインド SQLi を確認
 3. 時間差（`' OR SLEEP(5)-- `）で盲目的注入を確認。文脈（数値/文字列）に応じて調整
-4. `sqlmap -u "https://target/x?id=1" ${https_proxy:+--proxy="$https_proxy"} --batch --output-dir=evidence/<活動フォルダ>/artifacts`（許可範囲で）で確証。取得データは要約のみ finding に（sqlmap は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `--proxy` を明示する）
-   > ⚠️ **負荷注意（手順4）**: sqlmap は多数の試行リクエストを送り、time-based 検出では遅延も伴う。`--batch` でも重い。許可範囲・時間帯を守り、`--threads` を上げすぎない。
+4. `sqlmap -u "https://target/x?id=1" ${WSTG_PAUSE:+--delay "$WSTG_PAUSE"} ${https_proxy:+--proxy="$https_proxy"} --batch --output-dir=evidence/<活動フォルダ>/artifacts`（許可範囲で）で確証。取得データは要約のみ finding に。sqlmap は多数の試行を送るので、非力な対象では `export WSTG_PAUSE=2` でリクエスト間に待ちを入れる（既定 `--threads 1` のまま上げない）。sqlmap は環境変数のプロキシを見ないので、プロキシ経由なら `--proxy` を明示する
+   > ⚠️ **負荷注意（手順4）**: sqlmap は多数の試行リクエストを送り、time-based 検出では遅延も伴う。`--batch` でも重い。非力な対象は `export WSTG_PAUSE=2` でリクエスト間に待ちを入れ、`--threads` は上げない。許可範囲・時間帯を守る。
 
 ## ⚠️ 負荷・レート制限・想定外への注意
 
 本調査は社内のプライベートネットワークで行う前提だが、想定外（古い機器・共有アカウント・外部 API 依存）は起こりうる。次の手順は**対象や外部サービスに負荷をかける／レート制限・アカウントロック・DoS を誘発しうる**。実施前に時間帯・範囲の合意を確認し、少量から段階的に。
 
-- **手順4**: sqlmap は多数の試行リクエストを送り、time-based 検出では遅延も伴う。`--batch` でも重い。許可範囲・時間帯を守り、`--threads` を上げすぎない。
+- **手順4**: sqlmap は多数の試行リクエストを送り、time-based 検出では遅延も伴う。`--batch` でも重い。非力な対象は `export WSTG_PAUSE=2` でリクエスト間に待ちを入れ、`--threads` は上げない。許可範囲・時間帯を守る。
 
 ## 使用ツール
 

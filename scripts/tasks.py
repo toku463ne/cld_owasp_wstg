@@ -227,6 +227,8 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
     w("- Burp 内蔵ブラウザが reCAPTCHA / ボット検知で弾かれるときは、普段のブラウザ＋Burp プロキシ、"
       "または人が一度 CAPTCHA を解いて Cookie を引き継ぐ（README「Burp のブラウザが reCAPTCHA "
       "/ ボット検知で弾かれるとき」）")
+    w("- 対象が非力で 504 / CPU 100% になるときは `export WSTG_PAUSE=2`（秒）でスキャンをゆっくり実行"
+      "（nikto/ffuf/sqlmap に効く。README「対象が非力で落ちる / 504 になるとき」。nmap は `--max-rate`）")
     w("")
     w("Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の `apt` をまとめてある。")
     w("まず `sudo apt update`。`pipx` / `npm` / `go` を使う個別導入もフェーズ内に記載。")
