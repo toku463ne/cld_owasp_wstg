@@ -125,6 +125,29 @@ grep -qF 'r.output && r.output' "${TDIR}/record.html" \
   && ng "record.html にエビデンス本体が埋め込まれている（参照でなく複製）" || true
 ok "record.html / evidence.js 生成（target/OUTDIR 置換・手動ひな型）"
 
+# 負荷・レート制限・ロック・DoS を招きうる手順の強調注釈（criteria.yaml の load_notes）
+"${PY[@]}" scripts/new_activity.py account-enum-probe --root "${TMP}/ev" --date 20260101 >/dev/null
+AEP="${TMP}/ev/account-enum-probe-20260101"
+"${PY[@]}" - "${AEP}/evidence.js" <<'LOAD'
+import json, sys
+d = json.loads(open(sys.argv[1], encoding="utf-8").read().split("window.WSTG_EVIDENCE = ", 1)[1].rstrip(";\n"))
+notes = {(it["wid"], st["idx"]): st.get("load_note", "") for it in d["items"] for st in it["steps"]}
+# ATHN-03 手順1（意図的ロック）に注釈があり、同じ項目の手順2には無いこと
+assert notes.get(("WSTG-ATHN-03", 1)), ("ATHN-03 s1 に load_note が付いていない", notes.get(("WSTG-ATHN-03", 1)))
+assert "テストアカウント" in notes[("WSTG-ATHN-03", 1)], notes[("WSTG-ATHN-03", 1)]
+assert not notes.get(("WSTG-ATHN-03", 2)), "注釈の無い手順にまで load_note が付いている"
+LOAD
+[ $? -eq 0 ] || ng "load_note が evidence.js に反映されていない"
+grep -qF 'st.load_note' "${AEP}/record.html" && grep -qF 'loadwarn' "${AEP}/record.html" \
+  || ng "record.html が load_note を強調表示しない"
+# カード側にも「負荷・レート制限」セクションと手順注釈が出ること
+if compgen -G "docs/owasp/*" > /dev/null; then
+  grep -qF "負荷・レート制限・想定外への注意" playbooks/WSTG-ATHN-03.md \
+    && grep -qF "負荷注意（手順1）" playbooks/WSTG-ATHN-03.md \
+    || ng "カードに負荷注意が出ていない: uv run scripts/gen_playbooks.py"
+fi
+ok "負荷・レート制限・ロック・DoS の強調注釈（load_notes → record.html / カード）"
+
 # 判定理由（run.yaml の複数行 finding）と所見（evidence/_findings/F-*.md）
 [ -f "${TDIR}/findings.md" ] && ng "旧 findings.md が作られている（所見は evidence/_findings/ に移行済み）" || true
 "${PY[@]}" - "${TDIR}" <<'AB'

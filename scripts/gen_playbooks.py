@@ -196,12 +196,27 @@ def render_card(test, criteria: dict, activities: list, act_defs: dict) -> str:
     w("")
     steps = c.get("steps") or condense_steps(test.section("how_to_test"))
     steps = [s.replace("OUTDIR", CARD_OUTDIR) for s in steps]
+    load_notes = c.get("load_notes") or {}
     if steps:
         for i, s in enumerate(steps, 1):
             w(f"{i}. {s}")
+            ln = load_notes.get(i) or load_notes.get(str(i))
+            if ln:
+                w(f"   > ⚠️ **負荷注意（手順{i}）**: {clean(ln)}")
     else:
         w("1. 原文の How to Test を参照（このカードは要約のみ）")
     w("")
+
+    if load_notes:
+        w("## ⚠️ 負荷・レート制限・想定外への注意")
+        w("")
+        w("本調査は社内のプライベートネットワークで行う前提だが、想定外（古い機器・共有アカウント・"
+          "外部 API 依存）は起こりうる。次の手順は**対象や外部サービスに負荷をかける／レート制限・"
+          "アカウントロック・DoS を誘発しうる**。実施前に時間帯・範囲の合意を確認し、少量から段階的に。")
+        w("")
+        for i in sorted(load_notes, key=lambda k: int(k)):
+            w(f"- **手順{i}**: {clean(load_notes[i])}")
+        w("")
 
     w("## 使用ツール")
     w("")

@@ -23,7 +23,14 @@ WSTG の Test Objectives:
 1. サブドメインの各 CNAME をまとめて引く。手順4で作った evidence/<活動フォルダ>/artifacts/subfinder.txt を入力に `while read -r h; do echo "$h -> $(dig +short CNAME $h | head -1)"; done < evidence/<活動フォルダ>/artifacts/subfinder.txt | tee evidence/<活動フォルダ>/artifacts/cname-check.txt` を実行する（`->` の右が埋まっている行＝CNAME を持つサブドメインが乗っ取り確認の対象。空欄は A/AAAA 直指定なので対象外。crt.sh で拾った分も subfinder.txt に足してから回す）
 2. cname-check.txt を乗っ取り可能サービスの CNAME フィンガープリントで絞り込む: `grep -iaE "s3[.-]|\.s3\.amazonaws|\.github\.io|heroku(dns|app)|\.azurewebsites\.net|\.cloudfront\.net|\.fastly\.net|pantheonsite|\.ghost\.io" evidence/<活動フォルダ>/artifacts/cname-check.txt | tee evidence/<活動フォルダ>/artifacts/takeover-candidates.md`。ヒットした行（`サブドメイン -> CNAME`）が要確認。出力が空なら該当なし＝この時点で pass 相当（対象サービス: S3 / GitHub Pages / Heroku / Azure / CloudFront / Fastly / Pantheon / Ghost 等。漏れが心配なら evidence/<活動フォルダ>/artifacts/cname-check.txt 全体も目視する）
 3. 要確認リストの各サブドメインの応答をまとめて取得する: `while read -r line; do h=${line%% *}; echo "===== $h ====="; curl -s -m 10 https://$h/ | head -c 800; echo; done < evidence/<活動フォルダ>/artifacts/takeover-candidates.md | tee evidence/<活動フォルダ>/artifacts/takeover-responses.txt`。各応答に、サービス既定の「リソースが存在しない」エラーが出ているか見る。乗っ取り可能な典型応答: S3=`NoSuchBucket`、GitHub Pages=`There isn’t a GitHub Pages site here`、Heroku=`No such app`、Azure=`404 Web Site not found`、Fastly=`Fastly error: unknown domain`。このエラーが出る＝第三者が同名リソースを登録して掌握できる状態（fail）。正常なコンテンツが返る＝実在リソース（この観点は pass）
+   > ⚠️ **負荷注意（手順3）**: 確認対象の各サブドメインへ順に HTTP 接続する。件数が多いと外部サービス（乗っ取り確認先）への負荷になる。
 4. 乗っ取り可能と判断しても、実際の取得（バケット作成・リポジトリ/アプリ登録等）は行わない。CNAME・エラー応答本体・ステータスを証跡（artifacts/）に残し、finding には該当サブドメイン名と「どのサービスの未登録リソースを指すか」を要約で書く（生の CNAME 先ホスト名は evidence 参照に留める）
+
+## ⚠️ 負荷・レート制限・想定外への注意
+
+本調査は社内のプライベートネットワークで行う前提だが、想定外（古い機器・共有アカウント・外部 API 依存）は起こりうる。次の手順は**対象や外部サービスに負荷をかける／レート制限・アカウントロック・DoS を誘発しうる**。実施前に時間帯・範囲の合意を確認し、少量から段階的に。
+
+- **手順3**: 確認対象の各サブドメインへ順に HTTP 接続する。件数が多いと外部サービス（乗っ取り確認先）への負荷になる。
 
 ## 使用ツール
 

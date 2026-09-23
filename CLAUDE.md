@@ -32,7 +32,7 @@
 | ファイル | 中身 |
 |---|---|
 | `matrix/coverage.yaml` の `phases:` と `activities:` | アクティビティ定義・実施順（唯一の真実） |
-| `matrix/criteria.yaml` | カードの目的・pass/fail 判定基準 |
+| `matrix/criteria.yaml` | カードの目的・pass/fail 判定基準・負荷注釈（`load_notes`） |
 | `scripts/*` | ツール本体 |
 | `README.md` / `CLAUDE.md` / `templates/**` | ドキュメントと雛形（`run.yaml`・`artifacts/` の成果物フォーマット・`nginx/` の共有設定例） |
 
@@ -125,6 +125,10 @@ run.yaml ─▶ tasks.py（端末の進捗表示）
   finding_summary, updated`）を変えるときは、人間に確認してから。`/export.csv` も同じ関数（`to_csv`）を使う。
 - **集約ステータスの優先度は `fail > todo > info > pass > na`**。
   全 WSTG-ID を `todo` で初期化する（未実施が一目で分かることが目的）。
+- **負荷・レート制限・アカウントロック・DoS を招きうる手順には `criteria.yaml` の `load_notes`
+  （`{手順番号: 注釈}`）で強調注釈を付ける**。`gen_playbooks.py`（カードの「負荷・レート制限」節）と
+  `new_activity.py` の `iter_steps`/`build_evidence` → `record.html` の `.loadwarn` に流れる。
+  重い/騒がしい/ロックさせる手順を新設・変更したら注釈も足す（内部網でも想定外は起こりうる前提）。
 - **`finding`・所見タイトルは要約のみ**。生トークン・資格情報・生ホスト名を CSV や
   `matrix/`・`playbooks/` に持ち込まない。実物はエビデンスのパス参照で示す。
 - **WSTG は v4.2 にピン留め**。バージョンを上げるときは

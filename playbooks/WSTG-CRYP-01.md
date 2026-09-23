@@ -22,9 +22,18 @@ WSTG の Test Objectives:
 ## 手順
 
 1. `testssl.sh --logfile evidence/<活動フォルダ>/artifacts/testssl.log https://target` または `sslyze --json_out evidence/<活動フォルダ>/artifacts/sslyze.json target:443` で全 TLS ポートを一括検査（sslyze v5 は引数なしで標準スキャン。`--regular` は廃止）
+   > ⚠️ **負荷注意（手順1）**: testssl.sh / sslyze は多数の TLS ハンドシェイクを張る。低スペックな終端やロードバランサに負荷がかかることがある。
 2. SSLv3/TLS1.0/1.1・弱い暗号スイート（RC4/3DES/EXPORT）・弱い鍵長が有効でないか確認
 3. 証明書の有効期限・発行者・ホスト名一致、既知脆弱性（Heartbleed/ROBOT 等）を確認
 4. `nmap --script ssl-enum-ciphers -p443 -oN evidence/<活動フォルダ>/artifacts/nmap-ssl-ciphers.txt target` で裏取り。結果は artifacts/tls-summary.md に
+   > ⚠️ **負荷注意（手順4）**: `nmap --script ssl-enum-ciphers` も多数のハンドシェイクを試みる。手順1と重ねて連続実行しない。
+
+## ⚠️ 負荷・レート制限・想定外への注意
+
+本調査は社内のプライベートネットワークで行う前提だが、想定外（古い機器・共有アカウント・外部 API 依存）は起こりうる。次の手順は**対象や外部サービスに負荷をかける／レート制限・アカウントロック・DoS を誘発しうる**。実施前に時間帯・範囲の合意を確認し、少量から段階的に。
+
+- **手順1**: testssl.sh / sslyze は多数の TLS ハンドシェイクを張る。低スペックな終端やロードバランサに負荷がかかることがある。
+- **手順4**: `nmap --script ssl-enum-ciphers` も多数のハンドシェイクを試みる。手順1と重ねて連続実行しない。
 
 ## 使用ツール
 

@@ -155,6 +155,10 @@ RECORD_HTML = r"""<!DOCTYPE html>
   .rc.bad{color:#c62828;font-weight:700;}
   .empty{color:var(--mut);font-style:italic;font-size:.85rem;}
   .warn{color:#b26a00;} .mut{color:var(--mut);}
+  .loadwarn{margin:6px 0 4px;padding:8px 10px;border-radius:8px;font-size:.86rem;
+            background:#fff4e5;color:#8a4b00;border:1px solid #f0c98a;border-left:4px solid #e07a00;}
+  @media (prefers-color-scheme:dark){.loadwarn{background:#3a2410;color:#ffcf99;border-color:#7a4f1e;border-left-color:#e07a00;}}
+  .loadwarn .lwtag{font-weight:700;margin-right:4px;}
   .nav{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:.85rem;margin:0 0 14px;
        padding-bottom:8px;border-bottom:1px solid var(--line);}
   .nav a{color:inherit;} .nav .who{margin-left:auto;color:var(--mut);}
@@ -432,6 +436,12 @@ RECORD_HTML = r"""<!DOCTYPE html>
       t.appendChild(document.createTextNode(" 手順" + st.idx + "： " + (st.desc || "")));
       t.appendChild(link("#" + s.id, "anchor", "#"));
       s.appendChild(t);
+      if (st.load_note) {   // 負荷・レート制限・ロック・DoS を招きうる手順の強調注釈
+        var lw = el("div", "loadwarn");
+        lw.appendChild(el("span", "lwtag", "⚠ 負荷注意"));
+        lw.appendChild(document.createTextNode(" " + st.load_note));
+        s.appendChild(lw);
+      }
       (st.runs || []).forEach(function (r) {
         if (r.role === "check") s.appendChild(el("div", "cap", "取得できたかの確認（サイズ・行数・先頭）"));
         else if (r.role === "manual") s.appendChild(el("div", "cap", "手動での観察"));
@@ -686,7 +696,9 @@ def iter_steps(activity: dict, criteria: dict, target, act_dir: str) -> list:
     for cov in activity.get("covers", []):
         wid = cov["id"]
         crit = criteria.get(wid, {})
+        load_notes = crit.get("load_notes") or {}
         for idx, step in enumerate(crit.get("steps", []), 1):
+            load_note = load_notes.get(idx) or load_notes.get(str(idx)) or ""
             cmds = [sub_outdir(cmd, act_dir) for cmd in extract_commands([step], target)]
             checks = []
             for cmd in cmds:
@@ -711,6 +723,7 @@ def iter_steps(activity: dict, criteria: dict, target, act_dir: str) -> list:
                 "kind": "cmd" if cmds else "manual",
                 "runs": runs,                       # コマンド手順: 1コマンド=1要素
                 "manual_output": (None if cmds else f"artifacts/manual-{wid}-s{idx}.txt"),
+                "load_note": load_note,             # 負荷・レート制限等の強調注釈（空可）
             })
     return out
 
@@ -862,6 +875,7 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
                 "idx": step["idx"],
                 "kind": step["kind"],
                 "desc": step["desc"],
+                "load_note": step.get("load_note", ""),
                 "runs": runs_out,
                 "images": step_imgs,
             })

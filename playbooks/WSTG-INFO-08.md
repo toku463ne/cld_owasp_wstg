@@ -23,7 +23,16 @@ WSTG の Test Objectives:
 2. 応答ヘッダと Cookie を保存して基盤を推定: `curl -sD evidence/<活動フォルダ>/artifacts/headers.txt -o /dev/null https://target/ && grep -iE '^(set-cookie|x-powered-by|server|x-aspnet-version|x-generator):' evidence/<活動フォルダ>/artifacts/headers.txt`。Cookie 名（`JSESSIONID`=Java / `ASP.NET_SessionId`=.NET / `laravel_session`=Laravel / `ci_session`=CodeIgniter）・`X-Powered-By`・URL パスから基盤を特定
 3. 取得したフロント JS を `retire --path <JSフォルダ> --outputformat json --outputpath evidence/<活動フォルダ>/artifacts/retire.json`（Retire.js）で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認
 4. 手順1・2 で特定した CMS/フレームワークごとに CPE 名を引く（retire.js が CVE まで出したフロント JS は不要）: `curl -s --get --data-urlencode "keywordSearch=wordpress 6.4.2" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o evidence/<活動フォルダ>/artifacts/nvd-cpe-cms.json` → `jq -r '.totalResults, (.products[].cpe.cpeName)' evidence/<活動フォルダ>/artifacts/nvd-cpe-cms.json`
+   > ⚠️ **負荷注意（手順4）**: NVD API はキー無しで 30 秒 5 リクエストまで（超過は 403）。CMS ごとに繰り返すなら間隔を空ける。
 5. その cpeName で CVE を一覧し、finding にバージョン根拠（どこで判ったか）を添える: `curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0?virtualMatchString=cpe:2.3:a:wordpress:wordpress:6.4.2&resultsPerPage=100' -o evidence/<活動フォルダ>/artifacts/nvd-cve-cms.json` → `jq -r '.vulnerabilities[].cve | [.id, (.metrics.cvssMetricV31[0].cvssData.baseScore // "-" | tostring), .descriptions[0].value[0:100]] | @tsv' evidence/<活動フォルダ>/artifacts/nvd-cve-cms.json`
+   > ⚠️ **負荷注意（手順5）**: NVD API はキー無しで 30 秒 5 リクエストまで。手順4と連続で叩かない。
+
+## ⚠️ 負荷・レート制限・想定外への注意
+
+本調査は社内のプライベートネットワークで行う前提だが、想定外（古い機器・共有アカウント・外部 API 依存）は起こりうる。次の手順は**対象や外部サービスに負荷をかける／レート制限・アカウントロック・DoS を誘発しうる**。実施前に時間帯・範囲の合意を確認し、少量から段階的に。
+
+- **手順4**: NVD API はキー無しで 30 秒 5 リクエストまで（超過は 403）。CMS ごとに繰り返すなら間隔を空ける。
+- **手順5**: NVD API はキー無しで 30 秒 5 リクエストまで。手順4と連続で叩かない。
 
 ## 使用ツール
 

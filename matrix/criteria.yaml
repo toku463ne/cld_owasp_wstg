@@ -17,6 +17,11 @@
 #             new_activity.py がそのエビデンスフォルダの `artifacts/` の実パスに
 #             置換する（結果をエビデンスの外に散らかさないため）。カード上は
 #             `evidence/<活動フォルダ>/artifacts` と表示される。
+#   load_notes … 負荷・レート制限・アカウントロック・DoS を招きうる手順への強調注釈。
+#             {手順番号: "注釈"} のマップ（手順番号は steps の 1 始まり）。カードの
+#             「## 負荷・レート制限・想定外への注意」と record.html の該当手順に強調表示される。
+#             本調査は社内プライベート網が前提だが、想定外（古い機器・共有アカウント・外部 API
+#             依存）は起こりうるので、重い/騒がしい/ロックさせる手順には必ず付ける。
 #   tools   … 「## 使用ツール」を明示上書きしたいときだけ（リスト）。既定では
 #             steps に出てきたツール名を gen_playbooks.py が自動抽出する
 #             （TOOL_PATTERNS 参照）。つまり手順で使うツールは手順に書けば載る。
@@ -37,6 +42,10 @@ WSTG-INFO-01:
     - "dork③ 管理画面・管理系パスの露出: `inurl:admin site:target.co.jp` を検索（`login`/`phpmyadmin`/`wp-admin` 等でも同様に）。Google と Bing の両方で検索し、結果（件数 or `該当なし`）とスクショを記録する（`did not match any documents` = このdorkでは露出なし＝問題なし）。ヒットがあれば URL・スニペットを artifacts/dorking-hits.md に記録し [creds]/[internal] 等のタグを付ける"
     - "dork④ エラー/スタックトレースの露出: `site:target.co.jp \"error\" OR \"exception\" OR \"stack trace\"` を検索。Google と Bing の両方で検索し、結果（件数 or `該当なし`）とスクショを記録する（`did not match any documents` = このdorkでは露出なし＝問題なし）。ヒットがあれば URL・スニペットを artifacts/dorking-hits.md に記録し [creds]/[internal] 等のタグを付ける"
     - "dork①〜④の総合判定と過去分の確認: 4本すべて `該当なし` なら dork 観点は pass、1本でも機微なヒットがあれば fail 側の材料。加えて Wayback Machine（web.archive.org）で、今は消えている旧版に①〜④の露出が残っていないか確認する（過去に出ていたものは削除依頼の対象）"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    2: "theHarvester は複数の外部ソースへ一斉に問い合わせる。ソース側のレート制限に当たると 0 件や 429 になる。対象アプリではなく外部サービスへの負荷である点に注意し、失敗時は `-b` を絞って時間を置く。"
+    3: "hackertarget は無料枠の日次上限があり、超えると本文が API count exceeded になる。連続実行しない。"
+    4: "subfinder -all は多数の外部 API を総当りする。API 上限に達すると取りこぼす（これも対象ではなく外部サービスへの負荷）。"
 
 WSTG-INFO-02:
   purpose: "Web サーバの種類とバージョンがどこまで外部から判別できるかを確認する。"
@@ -49,6 +58,9 @@ WSTG-INFO-02:
     - "存在しないパス（`curl -s https://target/nope123`）を叩き、404 ページの体裁からも製品を推定"
     - "手順2 で特定した製品名+バージョンから CPE 名（CVE 照合のキー）を引く: `curl -s --get --data-urlencode \"keywordSearch=apache http server 2.4.49\" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o OUTDIR/nvd-cpe.json` の中身を `jq -r '.totalResults, (.products[].cpe.cpeName)' OUTDIR/nvd-cpe.json` で確認する（keywordSearch は実際に特定した製品名+バージョンに置き換える。0 件なら note の言い換えを試す）"
     - "引いた cpeName で既知 CVE を一覧する: `curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0?virtualMatchString=cpe:2.3:a:apache:http_server:2.4.49&resultsPerPage=100' -o OUTDIR/nvd-cve.json` → `jq -r '.totalResults' OUTDIR/nvd-cve.json` と `jq -r '.vulnerabilities[].cve | [.id, (.metrics.cvssMetricV31[0].cvssData.baseScore // \"-\" | tostring), .descriptions[0].value[0:100]] | @tsv' OUTDIR/nvd-cve.json`。CVSS 7.0 以上の CVE があれば CVE-ID と「バージョンをどこで特定したか」を finding に書く"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    4: "NVD API は API キー無しだと 30 秒あたり 5 リクエストまで。超えると 403。連続で叩かない（対象ではなく NVD への負荷）。"
+    5: "NVD API は API キー無しだと 30 秒あたり 5 リクエストまで。手順4と続けて叩くと 403 になりやすいので間隔を空ける。"
 
 WSTG-INFO-03:
   purpose: "robots.txt・sitemap・security.txt・.well-known 配下から情報が漏れていないかを確認する。"
@@ -71,6 +83,9 @@ WSTG-INFO-04:
     - "同一 IP の他ホストを `crt.sh`（証明書）とバーチャルホスト総当り（`ffuf -H \"Host: FUZZ.target\"`）で列挙"
     - "見つけたホスト/ポートを OUTDIR/hosts.txt に1行1件で置き（手順1・2 の結果から）、用途判別の材料を一括取得: `while read -r hp; do echo \"===== $hp =====\"; curl -s -k -m 8 -D - -o OUTDIR/_body \"https://$hp/\" | grep -iE '^(HTTP/|server:|x-powered-by:|www-authenticate:)'; grep -oiE '<title>[^<]*' OUTDIR/_body | head -1; done < OUTDIR/hosts.txt | tee OUTDIR/vhosts-fingerprint.txt`。取得したタイトル・`Server`・realm と、`dev`/`stg`/`test`/`old`/`admin`/`jenkins`/`grafana`/`phpmyadmin` などのホスト名から用途（検証環境・管理コンソールの疑い）を判別し、各ホストの用途と根拠を artifacts/vhosts.md に1行ずつ書く"
     - "スコープ外のものは攻撃せず「存在の報告」に留め、artifacts に一覧化"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    1: "`nmap -p-` は全 65535 ポートへ接続を試みる重いスキャン。IDS/IPS や機器の接続数上限を刺激しうる。時間帯に注意し、詰まるなら `--max-rate` で抑える。内部網でも想定外の機器（産業機器・古い装置）が落ちることがある。"
+    2: "バーチャルホスト総当り（`ffuf -H \"Host: FUZZ\"`）はワードリストの大きさに比例して大量のリクエストを送る。リストを対象に合わせて絞る。"
 
 WSTG-INFO-05:
   purpose: "HTML コメント・JS・メタデータに、開発時の情報が残っていないかを確認する。"
@@ -116,6 +131,9 @@ WSTG-INFO-08:
     - "取得したフロント JS を `retire --path <JSフォルダ> --outputformat json --outputpath OUTDIR/retire.json`（Retire.js）で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認"
     - "手順1・2 で特定した CMS/フレームワークごとに CPE 名を引く（retire.js が CVE まで出したフロント JS は不要）: `curl -s --get --data-urlencode \"keywordSearch=wordpress 6.4.2\" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o OUTDIR/nvd-cpe-cms.json` → `jq -r '.totalResults, (.products[].cpe.cpeName)' OUTDIR/nvd-cpe-cms.json`"
     - "その cpeName で CVE を一覧し、finding にバージョン根拠（どこで判ったか）を添える: `curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0?virtualMatchString=cpe:2.3:a:wordpress:wordpress:6.4.2&resultsPerPage=100' -o OUTDIR/nvd-cve-cms.json` → `jq -r '.vulnerabilities[].cve | [.id, (.metrics.cvssMetricV31[0].cvssData.baseScore // \"-\" | tostring), .descriptions[0].value[0:100]] | @tsv' OUTDIR/nvd-cve-cms.json`"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    4: "NVD API はキー無しで 30 秒 5 リクエストまで（超過は 403）。CMS ごとに繰り返すなら間隔を空ける。"
+    5: "NVD API はキー無しで 30 秒 5 リクエストまで。手順4と連続で叩かない。"
 
 WSTG-INFO-10:
   purpose: "WAF・LB・リバースプロキシ・API GW・DB など、経路上の構成要素を推定する。"
@@ -127,6 +145,8 @@ WSTG-INFO-10:
     - "経路上のホップを観測: `traceroute -w2 -q1 target | tee OUTDIR/traceroute.txt`（TTL・応答差から CDN/リバースプロキシの位置を推定）。WAF の有無は後続 INPV 系での不正入力への 403/406 で炙り出す"
     - "recon で得たホストを OUTDIR/hosts.txt に1行1件で置き（subfinder.txt 等から）、本来内部向けの装置が外から開いていないか一括確認: `while read -r h; do for pp in :9200 :5601 :15672 :8081 :2375 /phpmyadmin/ /adminer/; do echo \"$h$pp -> $(curl -s -k -m 8 -o /dev/null -w '%{http_code}' \"https://$h$pp\")\"; done; done < OUTDIR/hosts.txt | tee OUTDIR/internal-exposure.txt`。200/401 が返る＝外部露出（:9200 Elasticsearch・:5601 Kibana・:15672 RabbitMQ・:8081・:2375 Docker・phpmyadmin/adminer=DB管理）。意図しない露出のみ finding に"
     - "推定した構成図を描き、ヒアリング結果と突き合わせて確定（推測のまま報告しない）"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    3: "多数のホスト×ポートへ順次接続する。ホスト数が多いと接続数と時間がかさみ、内部の装置に想定外の負荷がかかりうる。まず件数を絞って挙動を見る。"
 
 WSTG-CONF-01:
   purpose: "ネットワーク構成として、公開すべきでないサービス・ポート・管理経路が外部に出ていないかを確認する。"
@@ -138,6 +158,9 @@ WSTG-CONF-01:
     - "SSH(22)/RDP(3389)/DB(3306,5432,1433)/管理コンソール等が公開されていないか確認"
     - "`nikto -h https://target -o OUTDIR/nikto.txt` と特定製品の既知脆弱性・既定資格情報を照合"
     - "クラウドのセキュリティグループ/FW 設定（ヒアリング）と実スキャン結果を突き合わせ、差分を指摘"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    1: "`nmap -p-` は全ポート走査で重い。IDS/IPS や機器を刺激しうるので時間帯に注意（`--max-rate` で調整）。"
+    3: "nikto は既知パスへ大量のリクエストを送る非常に騒がしいスキャン。WAF/IPS の遮断や機器の高負荷を招きやすい。合意した時間内で、対象を1つずつ。"
 
 WSTG-CONF-02:
   purpose: "Web サーバ・アプリサーバの既定構成が残っていないかを確認する。"
@@ -171,6 +194,8 @@ WSTG-CONF-04:
     - "既知ファイルの残骸を狙って取得: `for f in login.php.bak .login.php.swp index.php~ config.php.bak .env.bak web.config.old; do echo \"$f -> $(curl -s -o /dev/null -w '%{http_code}' https://target/$f)\"; done | tee OUTDIR/backup-residue.txt`。200 で中身が返るものは取得して evidence に、要約のみ finding に"
     - "リポジトリメタデータ `curl -s https://target/.git/config` `/.svn/entries` を確認（取れたら重大）"
     - "`.git/` が取れる場合は git-dumper 等で復元可否を検証し、重大度・影響範囲を finding に明記"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    1: "ffuf のバックアップ総当りは大量リクエスト。`-rate` でレートを制限し、ワードリストを対象に合わせて絞る。"
 
 WSTG-CONF-05:
   purpose: "管理インタフェース（インフラ・アプリ両方）の露出と保護状況を確認する。"
@@ -182,6 +207,9 @@ WSTG-CONF-05:
     - "インフラ側の管理ポートも確認: `nmap -Pn -sV -p8080,8443,9990,10000,7001,8161,9000,9090 -oN OUTDIR/nmap-mgmt.txt target`。open のポートの製品・バージョンを控え、管理コンソールなら手順3の認証確認へ"
     - "見つけた管理画面の認証（既定資格情報・接続元制限・MFA）を確認。既定資格情報は必ず試す"
     - "「パスを秘匿しているだけ」で列挙で出てくる状態は保護不十分として扱う"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    1: "ffuf の管理画面総当りは大量リクエスト。ログイン系パスを叩くとアカウントロックや誤検知アラートを誘発しうる。`-rate` で抑え、ログインを含むパスは慎重に。"
+    2: "`nmap` の管理ポート走査。応答の無い機器へ繰り返すと接続数を圧迫しうる。"
 
 WSTG-CONF-06:
   purpose: "サーバが受け付ける HTTP メソッドを列挙し、危険なメソッドや迂回の余地がないかを確認する。"
@@ -237,6 +265,8 @@ WSTG-CONF-10:
     - "cname-check.txt を乗っ取り可能サービスの CNAME フィンガープリントで絞り込む: `grep -iaE \"s3[.-]|\\.s3\\.amazonaws|\\.github\\.io|heroku(dns|app)|\\.azurewebsites\\.net|\\.cloudfront\\.net|\\.fastly\\.net|pantheonsite|\\.ghost\\.io\" OUTDIR/cname-check.txt | tee OUTDIR/takeover-candidates.md`。ヒットした行（`サブドメイン -> CNAME`）が要確認。出力が空なら該当なし＝この時点で pass 相当（対象サービス: S3 / GitHub Pages / Heroku / Azure / CloudFront / Fastly / Pantheon / Ghost 等。漏れが心配なら OUTDIR/cname-check.txt 全体も目視する）"
     - "要確認リストの各サブドメインの応答をまとめて取得する: `while read -r line; do h=${line%% *}; echo \"===== $h =====\"; curl -s -m 10 https://$h/ | head -c 800; echo; done < OUTDIR/takeover-candidates.md | tee OUTDIR/takeover-responses.txt`。各応答に、サービス既定の「リソースが存在しない」エラーが出ているか見る。乗っ取り可能な典型応答: S3=`NoSuchBucket`、GitHub Pages=`There isn\u2019t a GitHub Pages site here`、Heroku=`No such app`、Azure=`404 Web Site not found`、Fastly=`Fastly error: unknown domain`。このエラーが出る＝第三者が同名リソースを登録して掌握できる状態（fail）。正常なコンテンツが返る＝実在リソース（この観点は pass）"
     - "乗っ取り可能と判断しても、実際の取得（バケット作成・リポジトリ/アプリ登録等）は行わない。CNAME・エラー応答本体・ステータスを証跡（artifacts/）に残し、finding には該当サブドメイン名と「どのサービスの未登録リソースを指すか」を要約で書く（生の CNAME 先ホスト名は evidence 参照に留める）"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    3: "確認対象の各サブドメインへ順に HTTP 接続する。件数が多いと外部サービス（乗っ取り確認先）への負荷になる。"
 
 WSTG-CONF-11:
   purpose: "クラウドストレージの公開設定が過剰でないかを確認する。"
@@ -292,6 +322,8 @@ WSTG-IDNT-04:
     - "パスワードリセット・登録・ログインの各画面で、存在/非存在ユーザの応答差・応答時間差を確認"
     - "存在するユーザ名の列挙が可能か（連番 ID・メール総当り）を少量で検証"
     - "差分が出る箇所を全て挙げ、応答本文・ステータス・時間のどれで判別できるか finding に記す"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    3: "ユーザ名列挙の総当りは大量リクエストに加えロックの恐れがある。手順の「少量で」を厳守し、挙動確認に留める。"
 
 WSTG-IDNT-05:
   purpose: "ユーザ名のポリシーが推測を助長していないかを確認する。"
@@ -325,6 +357,8 @@ WSTG-ATHN-02:
     - "既定ユーザ名の列挙（`admin`/`root`/`test`/`guest`）と、初期パスワード未変更を確認"
     - "インストーラ・セットアップ画面が残り、無認証でアクセスできないか確認"
     - "成功した組合せは要約のみ finding に、実際の資格情報は evidence にパス参照で残す"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    1: "既定資格情報を hydra / Intruder でまとめて試すとアカウントロックを誘発する。まず1つずつ手で試し、ロック閾値を把握してから。専用のテストアカウントで。"
 
 WSTG-ATHN-03:
   purpose: "総当たり攻撃に対するロックアウト等の抑止が機能しているかを確認する。"
@@ -336,6 +370,8 @@ WSTG-ATHN-03:
     - "ロック後の解除方法（時間経過・管理者解除）と、ロック中の応答差を確認"
     - "ロックがユーザ名基準か IP 基準か、API/別チャネルで回避できないか確認"
     - "ロックアウトがないか極端に緩い場合は総当りリスクとして finding に。DoS を招く強すぎる設定も併記"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    1: "これは意図的にロックさせるテスト。本番アカウントや共有アカウントでやると実利用者を締め出す。必ず専用のテストアカウントで、少数から段階的に。"
 
 WSTG-ATHN-04:
   purpose: "認証を経ずに保護対象へ到達できる経路がないかを確認する。"
@@ -391,6 +427,8 @@ WSTG-ATHN-08:
     - "質問への回答試行を Burp Intruder で繰り返し、レート制限・ロックがあるか確認"
     - "質問だけでパスワードリセットまで到達できる（多要素でない）弱いフローでないか確認"
     - "自由記述質問で任意の弱い質問を設定できないか確認"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    2: "秘密の質問の総当りはアカウントロックやリセットフロー濫用を招く。テストアカウントで少数から。"
 
 WSTG-ATHN-09:
   purpose: "パスワード変更・リセット機能に、他人のパスワードを変更できる欠陥がないかを確認する。"
@@ -424,6 +462,8 @@ WSTG-ATHZ-01:
     - "エンコード変種（`%2e%2e%2f`・二重エンコード `%252e`・`....//`）で WAF/フィルタを迂回できるか `dotdotpwn` 等で試す"
     - "絶対パス指定・null バイト・拡張子付与（`file=../../etc/passwd%00.png`）も試す"
     - "LFI で設定ファイル/ソースが読める、または include で任意ファイルを実行できるか確認"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    2: "dotdotpwn は多数のパストラバーサル変種を送る。WAF の遮断や大量のエラーログを生む。"
 
 WSTG-ATHZ-02:
   purpose: "認可チェックを回避して他ロールの機能・データにアクセスできないかを確認する。"
@@ -457,6 +497,8 @@ WSTG-ATHZ-04:
     - "連番・UUID・base64/ハッシュ ID を Burp Intruder で推測/列挙し、他人の資源にアクセスできるか確認"
     - "参照方法を変えても（GET/POST/JSON body/multipart）認可チェックが一貫しているか確認"
     - "自分の ID でのみアクセスできるべき資源に他 ID で到達できたら IDOR として finding に"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    2: "Intruder による ID 列挙は大量リクエストに加え、他人の資源への実アクセスを伴う。件数を絞り、取得データは要約のみを finding に。"
 
 WSTG-SESS-01:
   purpose: "セッション管理方式（トークンの生成・保管・検証）が健全かを確認する。"
@@ -468,6 +510,8 @@ WSTG-SESS-01:
     - "Burp Sequencer で多数のトークンを収集し、ランダム性（エントロピー）を測定"
     - "セッション ID が URL に載る・JS から読める・複数同時ログインを許すか確認"
     - "ログイン/権限変更時に ID が再発行されるか（固定でないか）確認。サンプルは artifacts に保存"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    2: "Burp Sequencer は統計に足る数（数千〜）のトークンを集めるため、大量のセッション発行リクエストを送る。セッションテーブルやログを圧迫しうる。"
 
 WSTG-SESS-02:
   purpose: "セッション Cookie の属性が適切に設定されているかを確認する。"
@@ -600,6 +644,8 @@ WSTG-INPV-05:
     - "`' OR '1'='1' -- ` や `1 AND 1=1`/`1 AND 1=2` の真偽差でブラインド SQLi を確認"
     - "時間差（`' OR SLEEP(5)-- `）で盲目的注入を確認。文脈（数値/文字列）に応じて調整"
     - "`sqlmap -u \"https://target/x?id=1\" --batch --output-dir=OUTDIR`（許可範囲で）で確証。取得データは要約のみ finding に"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    4: "sqlmap は多数の試行リクエストを送り、time-based 検出では遅延も伴う。`--batch` でも重い。許可範囲・時間帯を守り、`--threads` を上げすぎない。"
 
 WSTG-INPV-06:
   purpose: "入力が LDAP フィルタの構造に影響しないかを確認する。"
@@ -721,6 +767,8 @@ WSTG-INPV-16:
     - "リクエスト解析の甘さ（不正な行終端・重複ヘッダ）で異常応答が出ないか確認"
     - "監視・WAF が生の異常リクエストを取りこぼさないか確認"
     - "他の注入系（INPV-15/17）と併せて解釈差を検証"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    1: "巨大ヘッダ・異常リクエストはサーバのパースでリソースを食い、終端によっては不安定化しうる。サイズは段階的に上げる。"
 
 WSTG-INPV-17:
   purpose: "Host ヘッダの値を信用した処理がないかを確認する。"
@@ -776,6 +824,9 @@ WSTG-CRYP-01:
     - "SSLv3/TLS1.0/1.1・弱い暗号スイート（RC4/3DES/EXPORT）・弱い鍵長が有効でないか確認"
     - "証明書の有効期限・発行者・ホスト名一致、既知脆弱性（Heartbleed/ROBOT 等）を確認"
     - "`nmap --script ssl-enum-ciphers -p443 -oN OUTDIR/nmap-ssl-ciphers.txt target` で裏取り。結果は artifacts/tls-summary.md に"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    1: "testssl.sh / sslyze は多数の TLS ハンドシェイクを張る。低スペックな終端やロードバランサに負荷がかかることがある。"
+    4: "`nmap --script ssl-enum-ciphers` も多数のハンドシェイクを試みる。手順1と重ねて連続実行しない。"
 
 WSTG-CRYP-02:
   purpose: "暗号文の改変に対する応答差から平文を復元できないか（パディングオラクル）を確認する。"
@@ -864,6 +915,8 @@ WSTG-BUSL-05:
     - "並行リクエスト（レースコンディション）で、1回制限を複数回すり抜けられないか試す"
     - "サーバ側でカウント/ロックしているか、クライアント側制御だけでないか確認"
     - "上限超過・二重処理ができた場合、業務影響とともに finding に"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    1: "回数制限の検証は意図的な連続実行。出金・OTP など実処理を伴う機能では実際に副作用が起きる。テストデータ・テストアカウントで行う。"
 
 WSTG-BUSL-06:
   purpose: "業務フローの順序を飛ばして目的の状態に到達できないかを確認する。"
@@ -886,6 +939,8 @@ WSTG-BUSL-07:
     - "不正操作に対する監視・アラート・レート制限・アカウント制限の有無を確認"
     - "自動化ツールでの操作をアプリが検知/妨害するか確認"
     - "誤用に対する能動的防御が無い場合、悪用容易性として finding に"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    1: "高速連打・大量リクエストは事実上の負荷試験になる。検知/抑止の確認が目的なので、対象が耐えられる範囲で段階的に。"
 
 WSTG-BUSL-08:
   purpose: "想定外の種類のファイルをアップロードできないかを確認する。"
@@ -908,6 +963,8 @@ WSTG-BUSL-09:
     - "アップロードされた実行ファイルが Web ルートで実行できないか（`curl` で叩く）確認"
     - "ウイルススキャン・サイズ/型検証・保存場所の分離が機能しているか確認"
     - "実行や被害が成立したら重大度高めで finding に。検証は EICAR 等の無害検体で"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    1: "巨大ファイルや XXE 入りファイルのアップロードは処理側のメモリ/CPU/ディスクを圧迫しうる。サイズは控えめにし、検体は EICAR 等の無害なものを使う。"
 
 WSTG-CLNT-01:
   purpose: "クライアント側 JS のシンクで XSS が成立しないかを確認する。"
@@ -1062,3 +1119,5 @@ WSTG-APIT-01:
     - "スキーマから機微な query/mutation を洗い、認可なしで呼べないか確認"
     - "深いネスト/エイリアス量産でクエリコスト制限（DoS 耐性）・レート制限の有無を確認"
     - "バッチクエリで認可迂回・列挙ができないか試し、成立点を finding に"
+  load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
+    3: "深いネスト/エイリアス量産のクエリは、まさに GraphQL の DoS を誘発する検証。コスト制限が無いと1リクエストでサーバを落としうる。ネスト段数を段階的に上げる。"
