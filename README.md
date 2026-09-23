@@ -121,11 +121,34 @@ sudo curl -sI https://github.com | head -1
   `subfinder` と crt.sh / hackertarget（`playbooks/WSTG-INFO-01.md` の手順3）で足りる。
   どうしても要るなら公開 DNS 宛を社内 DNS へ DNAT する手はあるが、DNS の挙動を
   歪めるので amass を回す間だけにし、戻したことを記録に残す
-- **検査対象が社内 IP のときは `no_proxy` に入れる**（入れないとプロキシに飛んで失敗する）
-- **プロキシが要るのは外部の公開ソースへ出るときだけ**（crt.sh / hackertarget / subfinder の
-  API、retire.js の脆弱性DB更新など）。`nmap` / `nikto` / `ffuf` / `testssl.sh` / `sqlmap` の
-  ようなアクティブスキャンは**検査対象ホストに直接**つなぐので、対象が社内 IP なら
-  `no_proxy` に入れてプロキシを経由させない（TLS/生ソケットは HTTP プロキシを通らない）
+- **原則: インターネット接続が要るコマンドはすべてプロキシ経由**にする。どこへ出るかで2種類:
+  - 外部の公開ソース（crt.sh / hackertarget / subfinder API、NVD、retire.js の DB 更新）は
+    常にプロキシ経由。
+  - **検査対象そのものがプロキシ越しにしか届かない**（インターネット公開の対象を社内網から
+    検査する）ときは、対象へ出るアクティブスキャンもプロキシ経由にする。逆に**対象が
+    社内 IP で直接届く**なら `no_proxy` に入れて直行させる（この場合 `https_proxy` を
+    未設定にするか、その対象を回す間だけ外す）。
+- **多くのツールは環境変数（`http_proxy`/`https_proxy`）を見ない**ので、明示フラグが要る。
+  criteria の手順は `${https_proxy:+<flag>}` で書いてあり、**`https_proxy` が設定されている
+  ときだけ**プロキシフラグが付く（未設定なら直行）。対応表:
+
+  | ツール | プロキシ指定 | env を見るか |
+  |---|---|---|
+  | `curl` / `wget` / `git` | 環境変数 | ○（`~/.curlrc` 併用） |
+  | `theHarvester` | `-p`＋`/etc/theHarvester/proxies.yaml` | × |
+  | `subfinder` | `-proxy "$https_proxy"` | × |
+  | `nikto` | `-useproxy "$https_proxy"` | × |
+  | `testssl.sh` | `--proxy=auto`（env を使う）または `--proxy host:port` | ×（auto 指定時のみ） |
+  | `sslyze` | `--https_tunnel="$https_proxy"` | × |
+  | `ffuf` | `-x "$https_proxy"` | × |
+  | `sqlmap` | `--proxy="$https_proxy"` | × |
+  | `nmap` | **不可**（下記） | — |
+
+- **`nmap` は HTTP プロキシを通せない**（ポートスキャン/NSE は生ソケット）。対象がプロキシ越しに
+  しか届かないなら、`nmap` は経路の手当て（VPN・踏み台・ルーティング）が別途要る。TCP connect
+  スキャン（`-sT`）に限れば `proxychains nmap -sT ...` で HTTP CONNECT 経由にできるが遅く、
+  UDP/生パケット系（`-sU`・`-sS`・多くの NSE）は通らない。プロキシ越しの対象では
+  `nmap` の結果が空でも「閉じている」と即断しない。
 
 ツールが 0 件を返したときは、まず疎通を疑う。「何も無い」と「収集に失敗した」は別で、
 後者を `pass` にしてはいけない（`playbooks/WSTG-INFO-01.md` の疎通確認の手順を参照）。

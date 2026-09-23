@@ -156,7 +156,7 @@ WSTG-CONF-01:
   steps:
     - "`nmap -sV -p- --open -oN OUTDIR/nmap-allports.txt target` で公開ポート/サービスを洗い出す"
     - "公開が危険なポート（SSH/RDP/DB/管理系）を手順1のスキャン結果から抽出する（再スキャンせず既存結果を grep するので追加負荷なし）: `grep -E '^(22|23|3389|3306|5432|1433|1521|6379|27017|9200|5601|8080|8443|9000|9090|9990|10000|7001|8161|15672|2375|5900)/(tcp|udp)' OUTDIR/nmap-allports.txt | tee OUTDIR/sensitive-ports.txt`。1行でも出たら、そのポートが本来アクセスできるべき範囲（社内のみ等）を超えて開いていないか手順4の FW/セキュリティグループ設定と突き合わせる。管理コンソールは製品ごとにポートが違うので、ヒットが無くても手順1の全開放ポート一覧に見慣れないサービスが無いか併せて目視する"
-    - "`nikto -h https://target -o OUTDIR/nikto.txt` と特定製品の既知脆弱性・既定資格情報を照合"
+    - "`nikto -h https://target ${https_proxy:+-useproxy \"$https_proxy\"} -o OUTDIR/nikto.txt` と特定製品の既知脆弱性・既定資格情報を照合（nikto は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `-useproxy` を明示する。上の `${https_proxy:+...}` は https_proxy が設定されているときだけ付く＝直接届く環境ではそのまま直行する）"
     - "クラウドのセキュリティグループ/FW 設定（ヒアリング）と実スキャン結果を突き合わせ、差分を指摘"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
     1: "`nmap -p-` は全ポート走査で重い。IDS/IPS や機器を刺激しうるので時間帯に注意（`--max-rate` で調整）。"
@@ -190,7 +190,7 @@ WSTG-CONF-04:
   fail: ".bak/.old/~/.swp/.zip、リポジトリメタデータ（.git/、.svn/）等が取得できる。"
   note: ".git/config が取れたらリポジトリ全体を復元できる可能性がある。重大度は高く扱う。"
   steps:
-    - "`ffuf -w wordlist -u https://target/FUZZ -e .bak,.old,.zip,.tar.gz,.swp,~ -o OUTDIR/ffuf-backup.json -of json` で旧版/バックアップを総当り"
+    - "`ffuf -w wordlist ${https_proxy:+-x \"$https_proxy\"} -u https://target/FUZZ -e .bak,.old,.zip,.tar.gz,.swp,~ -o OUTDIR/ffuf-backup.json -of json` で旧版/バックアップを総当り（ffuf は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `-x` を明示する）"
     - "既知ファイルの残骸を狙って取得: `for f in login.php.bak .login.php.swp index.php~ config.php.bak .env.bak web.config.old; do echo \"$f -> $(curl -s -o /dev/null -w '%{http_code}' https://target/$f)\"; done | tee OUTDIR/backup-residue.txt`。200 で中身が返るものは取得して evidence に、要約のみ finding に"
     - "リポジトリメタデータ `curl -s https://target/.git/config` `/.svn/entries` を確認（取れたら重大）"
     - "`.git/` が取れる場合は git-dumper 等で復元可否を検証し、重大度・影響範囲を finding に明記"
@@ -203,7 +203,7 @@ WSTG-CONF-05:
   fail: "管理画面が公開ネットワークから到達でき、既定パス・既定資格情報・弱い認証で入れる。"
   note: "パスを秘匿しているだけの状態は fail 寄り。列挙で見つかる時点で保護になっていない。"
   steps:
-    - "`ffuf -w admin-wordlist -u https://target/FUZZ -o OUTDIR/ffuf-admin.json -of json`（`/admin /manager /wp-admin /phpmyadmin` 等）で管理画面を探索"
+    - "`ffuf -w admin-wordlist ${https_proxy:+-x \"$https_proxy\"} -u https://target/FUZZ -o OUTDIR/ffuf-admin.json -of json`（`/admin /manager /wp-admin /phpmyadmin` 等）で管理画面を探索（ffuf は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `-x` を明示する）"
     - "インフラ側の管理ポートも確認: `nmap -Pn -sV -p8080,8443,9990,10000,7001,8161,9000,9090 -oN OUTDIR/nmap-mgmt.txt target`。open のポートの製品・バージョンを控え、管理コンソールなら手順3の認証確認へ"
     - "見つけた管理画面の認証（既定資格情報・接続元制限・MFA）を確認。既定資格情報は必ず試す"
     - "「パスを秘匿しているだけ」で列挙で出てくる状態は保護不十分として扱う"
@@ -643,7 +643,7 @@ WSTG-INPV-05:
     - "各パラメータに `'` `\"` を入れ、SQL エラー・応答差・500 が出るか確認"
     - "`' OR '1'='1' -- ` や `1 AND 1=1`/`1 AND 1=2` の真偽差でブラインド SQLi を確認"
     - "時間差（`' OR SLEEP(5)-- `）で盲目的注入を確認。文脈（数値/文字列）に応じて調整"
-    - "`sqlmap -u \"https://target/x?id=1\" --batch --output-dir=OUTDIR`（許可範囲で）で確証。取得データは要約のみ finding に"
+    - "`sqlmap -u \"https://target/x?id=1\" ${https_proxy:+--proxy=\"$https_proxy\"} --batch --output-dir=OUTDIR`（許可範囲で）で確証。取得データは要約のみ finding に（sqlmap は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `--proxy` を明示する）"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
     4: "sqlmap は多数の試行リクエストを送り、time-based 検出では遅延も伴う。`--batch` でも重い。許可範囲・時間帯を守り、`--threads` を上げすぎない。"
 
@@ -820,7 +820,7 @@ WSTG-CRYP-01:
   fail: "SSLv3/TLS1.0/1.1 が有効、RC4/3DES/NULL/EXPORT が有効、証明書が期限切れ・自己署名・名前不一致。"
   note: "対象は Web だけでなく、メール・API・管理ポートの TLS も含める。"
   steps:
-    - "`testssl.sh --logfile OUTDIR/testssl.log https://target` または `sslyze --json_out OUTDIR/sslyze.json target:443` で全 TLS ポートを一括検査（sslyze v5 は引数なしで標準スキャン。`--regular` は廃止）"
+    - "`testssl.sh ${https_proxy:+--proxy=auto} --logfile OUTDIR/testssl.log https://target` または `sslyze ${https_proxy:+--https_tunnel=\"$https_proxy\"} --json_out OUTDIR/sslyze.json target:443` で全 TLS ポートを一括検査（sslyze v5 は引数なしで標準スキャン。`--regular` は廃止。プロキシ経由で対象に出る環境では testssl は `--proxy=auto`＝env の http(s)_proxy を使い、sslyze は `--https_tunnel` で CONNECT する。プロキシ配下では一部の低レベル検査が制限されることがあるので、結果に警告が出たら手順4の nmap で裏取りする）"
     - "SSLv3/TLS1.0/1.1・弱い暗号スイート（RC4/3DES/EXPORT）・弱い鍵長が有効でないか確認"
     - "証明書の有効期限・発行者・ホスト名一致、既知脆弱性（Heartbleed/ROBOT 等）を確認"
     - "`nmap --script ssl-enum-ciphers -p443 -oN OUTDIR/nmap-ssl-ciphers.txt target` で裏取り。結果は artifacts/tls-summary.md に"

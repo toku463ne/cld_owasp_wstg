@@ -19,7 +19,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `ffuf -w admin-wordlist -u https://target/FUZZ -o evidence/<活動フォルダ>/artifacts/ffuf-admin.json -of json`（`/admin /manager /wp-admin /phpmyadmin` 等）で管理画面を探索
+1. `ffuf -w admin-wordlist ${https_proxy:+-x "$https_proxy"} -u https://target/FUZZ -o evidence/<活動フォルダ>/artifacts/ffuf-admin.json -of json`（`/admin /manager /wp-admin /phpmyadmin` 等）で管理画面を探索（ffuf は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `-x` を明示する）
    > ⚠️ **負荷注意（手順1）**: ffuf の管理画面総当りは大量リクエスト。ログイン系パスを叩くとアカウントロックや誤検知アラートを誘発しうる。`-rate` で抑え、ログインを含むパスは慎重に。
 2. インフラ側の管理ポートも確認: `nmap -Pn -sV -p8080,8443,9990,10000,7001,8161,9000,9090 -oN evidence/<活動フォルダ>/artifacts/nmap-mgmt.txt target`。open のポートの製品・バージョンを控え、管理コンソールなら手順3の認証確認へ
    > ⚠️ **負荷注意（手順2）**: `nmap` の管理ポート走査。応答の無い機器へ繰り返すと接続数を圧迫しうる。

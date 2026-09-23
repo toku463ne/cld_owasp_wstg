@@ -21,7 +21,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `testssl.sh --logfile evidence/<活動フォルダ>/artifacts/testssl.log https://target` または `sslyze --json_out evidence/<活動フォルダ>/artifacts/sslyze.json target:443` で全 TLS ポートを一括検査（sslyze v5 は引数なしで標準スキャン。`--regular` は廃止）
+1. `testssl.sh ${https_proxy:+--proxy=auto} --logfile evidence/<活動フォルダ>/artifacts/testssl.log https://target` または `sslyze ${https_proxy:+--https_tunnel="$https_proxy"} --json_out evidence/<活動フォルダ>/artifacts/sslyze.json target:443` で全 TLS ポートを一括検査（sslyze v5 は引数なしで標準スキャン。`--regular` は廃止。プロキシ経由で対象に出る環境では testssl は `--proxy=auto`＝env の http(s)_proxy を使い、sslyze は `--https_tunnel` で CONNECT する。プロキシ配下では一部の低レベル検査が制限されることがあるので、結果に警告が出たら手順4の nmap で裏取りする）
    > ⚠️ **負荷注意（手順1）**: testssl.sh / sslyze は多数の TLS ハンドシェイクを張る。低スペックな終端やロードバランサに負荷がかかることがある。
 2. SSLv3/TLS1.0/1.1・弱い暗号スイート（RC4/3DES/EXPORT）・弱い鍵長が有効でないか確認
 3. 証明書の有効期限・発行者・ホスト名一致、既知脆弱性（Heartbleed/ROBOT 等）を確認
