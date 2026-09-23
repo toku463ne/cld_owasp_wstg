@@ -17,6 +17,7 @@
       - 通らないなら README「プロキシ配下での準備」を先に済ませる（`sudo` は `-E` か `env_keep`、DNS はプロキシを通らない）
 - 実施できるアクティビティ ID の一覧: `uv run scripts/new_activity.py`（引数なし）
 - 複数サイトを回すときは各アクティビティで `--target <site>` を付ける
+- Burp 内蔵ブラウザが reCAPTCHA / ボット検知で弾かれるときは、普段のブラウザ＋Burp プロキシ、または人が一度 CAPTCHA を解いて Cookie を引き継ぐ（README「Burp のブラウザが reCAPTCHA / ボット検知で弾かれるとき」）
 
 Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の `apt` をまとめてある。
 まず `sudo apt update`。`pipx` / `npm` / `go` を使う個別導入もフェーズ内に記載。

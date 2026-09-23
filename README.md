@@ -130,6 +130,44 @@ sudo curl -sI https://github.com | head -1
 ツールが 0 件を返したときは、まず疎通を疑う。「何も無い」と「収集に失敗した」は別で、
 後者を `pass` にしてはいけない（`playbooks/WSTG-INFO-01.md` の疎通確認の手順を参照）。
 
+## Burp のブラウザが reCAPTCHA / ボット検知で弾かれるとき
+
+カードの多くは「Burp で捕捉」「Burp Repeater」と書いてあるが、**Burp 内蔵ブラウザは
+自動化フラグ付きの使い捨て Chromium** なので、reCAPTCHA やボット検知（Cloudflare 等）に
+引っかかってログインすら通らないことがある。Burp を捨てる必要はなく、**「普段のブラウザで
+人間として一度通し、その後の中身をツールに渡す」** に切り替える。上流ほど確実:
+
+1. **普段のブラウザ＋プロキシ設定（まずこれ）** — Burp 内蔵ブラウザではなく、日常使いの
+   Firefox/Chrome（本物のプロファイル・UA・Cookie）を FoxyProxy 等で Burp（`127.0.0.1:8080`）に
+   向ける。Burp の CA 証明書を入れておく（`http://burp` → CA Certificate、Firefox は
+   `about:config` の `security.enterprise_roots.enabled=true` かブラウザに手動インポート）。
+   本物のブラウザ指紋なので弾かれにくく、通信は今までどおり Burp の Proxy history に溜まる。
+   - reCAPTCHA が出る画面（主にログイン）だけこのブラウザで**人間が解く**。解いた後の
+     認証済みリクエストは Repeater/Intruder にそのまま送れる。
+2. **CAPTCHA は人が一度だけ解き、セッションを引き継ぐ** — ログイン（＋CAPTCHA）を普段の
+   ブラウザで済ませ、**発行された Cookie を書き出して以降の検査に使い回す**。Burp を介さず
+   `curl` / `run_cmd.py` で回せるので、多くの手順（ATHN-06・ATHZ 系・SESS 系の「認証済みで
+   叩く」部分）はこれで自動化できる:
+
+   ```bash
+   # 例: ブラウザで手動ログイン（CAPTCHA を解く）→ Cookie をエクスポート（拡張機能や
+   #     DevTools→Application→Cookies）→ cookies.txt（Netscape 形式）に保存してから:
+   uv run scripts/run_cmd.py evidence/<活動フォルダ> --slug authed-home \
+     -- curl -s -b cookies.txt -D - https://target/mypage -o /dev/null
+   ```
+
+   Cookie の期限が切れたら、その画面だけブラウザで踏み直して cookies.txt を取り直す。
+3. **DevTools「Copy as cURL」で1本だけ持ち出す** — 検査したいリクエストを普段のブラウザで
+   起こし、DevTools→Network→対象→右クリック→**Copy as cURL** で丸ごと（Cookie・ヘッダ込み）
+   コピーできる。`run_cmd.py <フォルダ> -- <貼り付けた curl>` で実行すれば、Burp ブラウザを
+   使わずに Repeater 相当（ヘッダ改変・再送）ができ、出力が `cmd/` に純粋なエビデンスとして残る。
+4. **どうしても Burp 内蔵ブラウザを使うなら** — Proxy → Options → **Miscellaneous** で内蔵
+   ブラウザの起動オプションを調整する手はあるが、指紋の根本は変わらないので 1〜3 を優先する。
+
+いずれも「対象そのものへの攻撃的入力」ではなく、**人間が正規に取得したセッション/リクエストを
+ツールに渡し直す**だけなので、reCAPTCHA を回避（=突破）しているわけではない点に注意。
+CAPTCHA そのものの強度・レート制限は別途 `WSTG-ATHN-*` / `WSTG-BUSL-07` の観点で評価する。
+
 ## 日々の流れ
 
 Web の「タスク」（テキスト版は `TASKS.md`）を上から消化していく。1本のアクティビティで踏むのは 1〜2c、

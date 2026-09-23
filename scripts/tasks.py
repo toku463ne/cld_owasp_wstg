@@ -224,6 +224,9 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
       "（`sudo` は `-E` か `env_keep`、DNS はプロキシを通らない）")
     w("- 実施できるアクティビティ ID の一覧: `uv run scripts/new_activity.py`（引数なし）")
     w("- 複数サイトを回すときは各アクティビティで `--target <site>` を付ける")
+    w("- Burp 内蔵ブラウザが reCAPTCHA / ボット検知で弾かれるときは、普段のブラウザ＋Burp プロキシ、"
+      "または人が一度 CAPTCHA を解いて Cookie を引き継ぐ（README「Burp のブラウザが reCAPTCHA "
+      "/ ボット検知で弾かれるとき」）")
     w("")
     w("Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の `apt` をまとめてある。")
     w("まず `sudo apt update`。`pipx` / `npm` / `go` を使う個別導入もフェーズ内に記載。")
