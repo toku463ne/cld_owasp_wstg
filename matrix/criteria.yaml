@@ -520,7 +520,7 @@ WSTG-SESS-02:
   note: "認証済みで発行される Cookie を対象にする。トラッキング用 Cookie と混同しない。"
   steps:
     - "ログイン応答のヘッダを OUTDIR/login-headers.txt に保存（curl -i -c OUTDIR/cookies.txt でログインを実行してヘッダを残すか、Burp/DevTools の応答からコピー）した上で、発行 Cookie の属性を抽出: `grep -iE '^set-cookie:' OUTDIR/login-headers.txt`。出てきた Set-Cookie 行を1つずつ下の属性で確認する"
-    - "`Secure`（HTTPS 限定）・`HttpOnly`（JS 遮断）・`SameSite`（Lax/Strict）の有無を確認"
+    - "手順1で保存した Set-Cookie の属性欠落を自動抽出する: `grep -iE '^set-cookie:' OUTDIR/login-headers.txt | while read -r c; do for a in Secure HttpOnly SameSite; do echo \"$c\" | grep -qi \"$a\" || echo \"[要確認] $a なし: $(echo \"$c\" | cut -c1-70)\"; done; done | tee OUTDIR/cookie-attrs.txt`。出力が空＝全 Cookie に3属性あり。行が出たセッション/認証系 Cookie は `Secure`（HTTPS 限定）・`HttpOnly`（JS 遮断）・`SameSite`（Lax/Strict）のいずれかが欠けている（CSRF/その他の非機微 Cookie は SameSite 無しでも許容の場合があるので finding では Cookie 名で区別する）"
     - "`Domain`/`Path` が過度に広くないか、`__Host-`/`__Secure-` prefix の適否を確認"
     - "セッション Cookie と CSRF/その他 Cookie で属性が適切に分かれているか確認"
 
@@ -1038,8 +1038,8 @@ WSTG-CLNT-07:
   fail: "任意の Origin を反射しつつ Allow-Credentials: true、または null オリジンを許可している。"
   note: "プリフライトだけでなく、実リクエストの応答ヘッダで確認する。"
   steps:
-    - "`curl -sI -H \"Origin: https://evil.example\" https://target/api` で `Access-Control-Allow-Origin` の応答を確認"
-    - "Origin をそのまま反射する・`*` かつ `Allow-Credentials: true` になっていないか確認"
+    - "任意 Origin を送って CORS 応答ヘッダを保存する: `curl -s -D - -o /dev/null -H 'Origin: https://evil.example' https://target/api | tee OUTDIR/cors.txt`（HEAD だと CORS ヘッダが返らない実装があるので GET でヘッダのみ取得。`/api` は実際の API パスに置き換える）"
+    - "手順1の応答から危険な組合せを自動判定する: `grep -iE 'access-control-allow-(origin|credentials):' OUTDIR/cors.txt | tee OUTDIR/cors-verdict.txt; grep -qiE 'access-control-allow-origin:[[:space:]]*(https://evil\\.example|\\*)' OUTDIR/cors.txt && grep -qiE 'access-control-allow-credentials:[[:space:]]*true' OUTDIR/cors.txt && echo '危険: 反射/ワイルドカード Origin + credentials=true（他サイトが認証付きで機微データを読める）'`。この行が出たら fail 側の材料。`*` 単独（credentials 無し）や個別の正規 Origin 許可は、許可先の妥当性を手順3で確認する"
     - "任意/緩いオリジンからの認証付きリクエストで機微データを読めないか検証"
     - "過度に緩い CORS（旧指示の CONF-12 相当）を finding に"
 

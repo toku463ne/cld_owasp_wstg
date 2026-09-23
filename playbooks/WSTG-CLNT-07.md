@@ -20,8 +20,8 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `curl -sI -H "Origin: https://evil.example" https://target/api` で `Access-Control-Allow-Origin` の応答を確認
-2. Origin をそのまま反射する・`*` かつ `Allow-Credentials: true` になっていないか確認
+1. 任意 Origin を送って CORS 応答ヘッダを保存する: `curl -s -D - -o /dev/null -H 'Origin: https://evil.example' https://target/api | tee evidence/<活動フォルダ>/artifacts/cors.txt`（HEAD だと CORS ヘッダが返らない実装があるので GET でヘッダのみ取得。`/api` は実際の API パスに置き換える）
+2. 手順1の応答から危険な組合せを自動判定する: `grep -iE 'access-control-allow-(origin|credentials):' evidence/<活動フォルダ>/artifacts/cors.txt | tee evidence/<活動フォルダ>/artifacts/cors-verdict.txt; grep -qiE 'access-control-allow-origin:[[:space:]]*(https://evil\.example|\*)' evidence/<活動フォルダ>/artifacts/cors.txt && grep -qiE 'access-control-allow-credentials:[[:space:]]*true' evidence/<活動フォルダ>/artifacts/cors.txt && echo '危険: 反射/ワイルドカード Origin + credentials=true（他サイトが認証付きで機微データを読める）'`。この行が出たら fail 側の材料。`*` 単独（credentials 無し）や個別の正規 Origin 許可は、許可先の妥当性を手順3で確認する
 3. 任意/緩いオリジンからの認証付きリクエストで機微データを読めないか検証
 4. 過度に緩い CORS（旧指示の CONF-12 相当）を finding に
 
