@@ -5,10 +5,14 @@
     uv run scripts/run_target.py --target example.com --only recon-osint,metafiles-crawl
     uv run scripts/run_target.py --target example.com --no-run    # フォルダ作成だけ
     uv run scripts/run_target.py --target example.com --list      # 実施予定を出すだけ
+    uv run scripts/run_target.py --target example.com --reuse-latest  # 日付違いの既存フォルダを使い回す
 
 やること（coverage.yaml の activities: の順に、対象を1つ固定して）:
   1. 各アクティビティのフォルダ一式を作る（new_activity.create_activity）。
      既にあるものは作り直さない（＝作成済みは次回スキップ）。
+     フォルダ名は日付入りなので、別の日に叩くと新しいフォルダになる。過去の日付のフォルダを
+     そのまま使うには --reuse-latest（アクティビティごとに最新日付の既存フォルダを使い、
+     無いものだけ --date の日付で作る）。
   2. 各フォルダのコマンド手順を実行する（run_activity.execute_steps）。
      既定は再開モード（--skip-done）: 前回 exit_code 0 で終わったコマンドは飛ばす。
      既定は停止モード（--stop-on-error）: 非0終了が出たらそこで打ち切る。
@@ -27,7 +31,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from new_activity import (  # noqa: E402
     COVERAGE_YAML, WSTG_TESTS, CRITERIA_YAML, load_yaml,
-    create_activity, resolve_activity, iter_steps, refresh_record,
+    create_activity, resolve_activity, iter_steps, refresh_record, find_latest_dir,
 )
 from run_activity import select_steps, execute_steps  # noqa: E402
 
@@ -42,6 +46,9 @@ def main() -> int:
     ap.add_argument("--timeout", type=int, help="1コマンドあたりの秒。超えたら中断して記録")
     ap.add_argument("--list", action="store_true", help="実施予定（作成/実行対象）を出して終了")
     ap.add_argument("--no-run", action="store_true", help="フォルダ作成だけ行い、コマンドは実行しない")
+    ap.add_argument("--reuse-latest", action="store_true",
+                    help="日付違いでも既存フォルダ（<activity>-<target>-<yyyymmdd>）があれば最新のものを使う。"
+                         "無いアクティビティだけ --date の日付で作る")
     ap.add_argument("--rerun-all", action="store_true",
                     help="前回成功したコマンドも作り直して再実行する（既定は成功分をスキップ）")
     ap.add_argument("--keep-going", action="store_true",
@@ -77,15 +84,22 @@ def main() -> int:
         for a in activities:
             covered = ", ".join(c["id"] for c in a.get("covers", []))
             print(f"  {a['id']:26s} {covered}")
+            if args.reuse_latest:
+                found = find_latest_dir(root, a, args.target)
+                print(f"  {'':26s} → {'既存を使う: ' + found.name if found else '新規作成'}")
         return 0
 
     created = existed = 0
     total = {"ran": 0, "failed": 0, "skipped": 0}
     for a in activities:
         aid = a["id"]
-        result = create_activity(a, tests, criteria, target=args.target,
-                                 date=date, tester=args.tester, root=root,
-                                 force=False)
+        reused = find_latest_dir(root, a, args.target) if args.reuse_latest else None
+        if reused is not None:
+            result = {"target_dir": reused, "created": False}
+        else:
+            result = create_activity(a, tests, criteria, target=args.target,
+                                     date=date, tester=args.tester, root=root,
+                                     force=False)
         target_dir = result["target_dir"]
         if result["created"]:
             created += 1
@@ -118,7 +132,8 @@ def main() -> int:
             print(f"[run_target] {aid} で非0終了が出たため一括処理を打ち切りました。")
             print(f"  直す場所: {target_dir} の cmd/ 末尾（exit_code）と criteria.yaml の該当手順")
             print("  直したら同じコマンドを再実行してください。成功済みは自動でスキップして続きから進みます:")
-            print(f"    uv run scripts/run_target.py --target {args.target} --date {date}")
+            print(f"    uv run scripts/run_target.py --target {args.target} --date {date}"
+                  f"{' --reuse-latest' if args.reuse_latest else ''}")
             print(f"  作成 {created} / 既存 {existed}、"
                   f"実行 {total['ran']}・スキップ {total['skipped']}・非0終了 {total['failed']}")
             return 3

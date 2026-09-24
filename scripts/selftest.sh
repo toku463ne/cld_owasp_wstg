@@ -478,6 +478,11 @@ NDIR=$(ls -d "${TMP}/rt"/*/ 2>/dev/null | wc -l)
 # 2回目は作り直さない（作成 0）
 "${PY[@]}" scripts/run_target.py --target rt.test --root "${TMP}/rt" --no-run 2>&1 \
   | grep -q "作成 0 / 既存 ${NACT}" || ng "run_target 再実行で既存フォルダを作り直している"
+# --reuse-latest: 日付違いの既存フォルダを使い回す（新しい日付のフォルダを作らない）
+"${PY[@]}" scripts/run_target.py --target rt.test --root "${TMP}/rt" --no-run --reuse-latest \
+  --date 29991231 2>&1 | grep -q "作成 0 / 既存 ${NACT}" \
+  || ng "run_target --reuse-latest が日付違いの既存フォルダを使わない"
+ls -d "${TMP}/rt"/*-29991231 >/dev/null 2>&1 && ng "run_target --reuse-latest が新しい日付のフォルダを作った"
 # execute_steps の skip_done / stop_on_error（ネットワークを使わない echo で検証）
 RTD=$(ls -d "${TMP}/rt"/recon-osint-* | head -1)
 "${PY[@]}" - "${RTD}" <<'RT' || ng "execute_steps の再開/停止が期待通りでない"
@@ -495,7 +500,7 @@ assert s2 == {"ran":1,"failed":1,"skipped":1,"aborted":True}, s2        # s1 は
 s3 = execute_steps(ry, d, todo, timeout=None, skip_done=True, stop_on_error=False)
 assert s3["skipped"]==1 and s3["aborted"] is False and (d/"cmd/rt-s3.txt").exists(), s3  # keep-going
 RT
-ok "run_target: 一括作成（既存スキップ）・成功分の再開スキップ・エラーで停止"
+ok "run_target: 一括作成（既存スキップ・--reuse-latest）・成功分の再開スキップ・エラーで停止"
 
 echo "[5/8] export_checklist.py（集約規則）"
 "${PY[@]}" - <<PYEOF

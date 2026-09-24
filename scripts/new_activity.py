@@ -1030,10 +1030,29 @@ def write_manual_stubs(activity: dict, criteria: dict, target,
     return "\n".join(out) + "\n"
 
 
-def _dir_name(activity: dict, target: str | None, date: str) -> str:
+def _dir_stem(activity: dict, target: str | None) -> str:
+    """フォルダ名の日付を除いた部分（<activity_id>[-<target>]）。"""
     safe = re.sub(r"[^A-Za-z0-9._-]+", "-", target).strip("-") if target else ""
-    stem = f"{activity['id']}-{safe}" if safe else activity["id"]
-    return f"{stem}-{date}"
+    return f"{activity['id']}-{safe}" if safe else activity["id"]
+
+
+def _dir_name(activity: dict, target: str | None, date: str) -> str:
+    return f"{_dir_stem(activity, target)}-{date}"
+
+
+def find_latest_dir(root: str | Path, activity: dict, target: str | None) -> Path | None:
+    """root 直下の <activity_id>[-<target>]-<yyyymmdd>/run.yaml のうち日付が最新のフォルダ。
+
+    run_target.py --reuse-latest が、日付違いの既存フォルダを使い回すための探索。
+    フォルダ名だけを見る（中身は読まない）。無ければ None。
+    """
+    pat = re.compile(re.escape(_dir_stem(activity, target)) + r"-(\d{8})")
+    root = Path(root)
+    if not root.is_dir():
+        return None
+    hits = [(m.group(1), d) for d in root.iterdir()
+            if d.is_dir() and (m := pat.fullmatch(d.name)) and (d / "run.yaml").exists()]
+    return max(hits)[1] if hits else None
 
 
 def render_run_yaml(activity: dict, tests: dict, date: str, tester: str, target: str | None = None) -> str:

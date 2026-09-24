@@ -254,9 +254,14 @@ uv run scripts/run_target.py --target wwwtest.example.com          # 作成→�
 uv run scripts/run_target.py --target wwwtest.example.com --list   # 実施予定を出すだけ
 uv run scripts/run_target.py --target wwwtest.example.com --no-run # フォルダ作成だけ
 uv run scripts/run_target.py --target wwwtest.example.com --only recon-osint,metafiles-crawl
+uv run scripts/run_target.py --target wwwtest.example.com --reuse-latest  # 日付違いの既存フォルダを使う
 ```
 
 - **作成済みは作り直さない**（既存フォルダはそのまま）。
+- フォルダ名は日付入り（`<activity>-<target>-<yyyymmdd>`）なので、**別の日に叩くと新しいフォルダが
+  作られ、取得済みのエビデンスも取り直しになる**。過去の日付のフォルダをそのまま使うときは
+  `--reuse-latest`（アクティビティごとに最新日付の既存フォルダを使い、無いものだけ今日の日付で作る）。
+  全部が同じ日付なら `--date <yyyymmdd>` でもよい。どれを使うかは `--list --reuse-latest` で確認できる。
 - **前回 `exit_code` 0 で終わったコマンドはスキップ**して続きから進む（`--rerun-all` で全再実行）。
 - **非0終了が出たらそこで打ち切る**（`--keep-going` で最後まで継続）。
   → エラーは `cmd/*.txt` の末尾と `matrix/criteria.yaml` の該当手順を直し、同じコマンドを
