@@ -80,7 +80,7 @@ WSTG-INFO-04:
   note: "発見物が検査スコープ外なら、攻撃はせず「存在の報告」に留める。"
   steps:
     - "`nmap -sV -p- -oN OUTDIR/nmap-allports.txt target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録"
-    - "同一 IP の他ホストを `crt.sh`（証明書）とバーチャルホスト総当り（`ffuf -H \"Host: FUZZ.target\"`）で列挙"
+    - "同一 IP の他ホストを列挙する。まず証明書透明性ログから既知の名前を拾う（手順は WSTG-INFO-02 の crt.sh 参照）。次にバーチャルホスト総当りで応答するホスト名を洗う: `ffuf -w vhost-wordlist:FUZZ ${WSTG_PAUSE:+-p \"$WSTG_PAUSE\" -t 1} ${https_proxy:+-x \"$https_proxy\"} -u https://target/ -H \"Host: FUZZ.target\" -ac -o OUTDIR/ffuf-vhost.json -of json`。`-ac`（自動キャリブレーション）で既定応答を除外し、残ったホスト名を手順3の材料にする。非力な対象では `export WSTG_PAUSE=2` で待ち＋スレッド1に落とす。ffuf は環境変数のプロキシを見ないので、プロキシ経由なら `-x` を明示する"
     - "見つけたホスト/ポートを OUTDIR/hosts.txt に1行1件で置き（手順1・2 の結果から）、用途判別の材料を一括取得: `while read -r hp; do echo \"===== $hp =====\"; curl -s -k -m 8 -D - -o OUTDIR/_body \"https://$hp/\" | grep -iE '^(HTTP/|server:|x-powered-by:|www-authenticate:)'; grep -oiE '<title>[^<]*' OUTDIR/_body | head -1; done < OUTDIR/hosts.txt | tee OUTDIR/vhosts-fingerprint.txt`。取得したタイトル・`Server`・realm と、`dev`/`stg`/`test`/`old`/`admin`/`jenkins`/`grafana`/`phpmyadmin` などのホスト名から用途（検証環境・管理コンソールの疑い）を判別し、各ホストの用途と根拠を artifacts/vhosts.md に1行ずつ書く"
     - "スコープ外のものは攻撃せず「存在の報告」に留め、artifacts に一覧化"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
