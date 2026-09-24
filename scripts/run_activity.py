@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import re
 import subprocess
 import sys
 import time
@@ -46,6 +47,58 @@ def select_steps(steps: list, only: str | None) -> list:
     wid = wid.strip().upper()
     picked = [s for s in cmds if s["wid"] == wid and (not idx or str(s["idx"]) == idx)]
     return picked
+
+
+def cmd_exit_code(activity_dir: Path, output_rel: str) -> int | None:
+    """既存のコマンド出力ファイル末尾から exit_code を読む（無ければ None）。
+
+    `--skip-done` の判定に使う。エビデンス（cmd/*.txt）そのものを真実とするので、
+    run.yaml とは独立に「前回このコマンドが 0 で終わったか」を見られる。
+    """
+    path = activity_dir / output_rel
+    if not path.exists():
+        return None
+    try:
+        tail = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    for line in reversed(tail):
+        m = re.search(r"exit_code:\s*(-?\d+)", line)
+        if m:
+            return int(m.group(1))
+    return None
+
+
+def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
+                  timeout: int | None, skip_done: bool,
+                  stop_on_error: bool) -> dict:
+    """コマンド手順を順に実行する。集計 dict（ran/failed/skipped/aborted）を返す。
+
+    skip_done   … 前回 exit_code 0 で終わっているコマンドは再実行しない（再開用）。
+    stop_on_error … 非0終了が出たら、その時点で残りを実行せず打ち切る（aborted=True）。
+    """
+    ran = failed = skipped = 0
+    aborted = False
+    for s in todo:
+        print(f"\n===== {s['wid']} 手順{s['idx']}：{s['desc'][:60]} =====")
+        for r in s["runs"]:
+            if skip_done and cmd_exit_code(activity_dir, r["output"]) == 0:
+                skipped += 1
+                print(f"[run_activity] スキップ（前回成功）: {r['output']}")
+                continue
+            entry = run_command(r, s, activity_dir, timeout)
+            append_command(run_yaml, entry)
+            ran += 1
+            code = entry["exit_code"]
+            if code:
+                failed += 1
+            print(f"[run_activity] 保存: {activity_dir / entry['output']}  (exit={code}, {entry['duration_sec']}s)")
+            if code and stop_on_error:
+                aborted = True
+                print(f"[run_activity] 非0終了（exit={code}）のため打ち切ります: {s['wid']} 手順{s['idx']}",
+                      file=sys.stderr)
+                return {"ran": ran, "failed": failed, "skipped": skipped, "aborted": True}
+    return {"ran": ran, "failed": failed, "skipped": skipped, "aborted": aborted}
 
 
 def run_command(run: dict, step: dict, activity_dir: Path, timeout: int | None) -> dict:
@@ -112,6 +165,10 @@ def main() -> int:
     ap.add_argument("--list", action="store_true", help="手順一覧を出して終了（実行しない）")
     ap.add_argument("--dry-run", action="store_true", help="実行せず、走らせるコマンドだけ表示")
     ap.add_argument("--timeout", type=int, help="1手順あたりの秒。超えたら中断して記録")
+    ap.add_argument("--skip-done", action="store_true",
+                    help="前回 exit_code 0 で終わったコマンドは再実行しない（再開）")
+    ap.add_argument("--stop-on-error", action="store_true",
+                    help="非0終了が出たらその時点で打ち切る（戻り値も非0）")
     args = ap.parse_args()
 
     activity_dir = Path(args.activity_dir)
@@ -143,25 +200,20 @@ def main() -> int:
         return 0
 
     run_yaml = activity_dir / "run.yaml"
-    ran, failed = 0, 0
-    for s in todo:
-        print(f"\n===== {s['wid']} 手順{s['idx']}：{s['desc'][:60]} =====")
-        for r in s["runs"]:
-            entry = run_command(r, s, activity_dir, args.timeout)
-            append_command(run_yaml, entry)
-            ran += 1
-            if entry["exit_code"]:
-                failed += 1
-            print(f"[run_activity] 保存: {activity_dir / entry['output']}  (exit={entry['exit_code']}, {entry['duration_sec']}s)")
+    summary = execute_steps(run_yaml, activity_dir, todo, timeout=args.timeout,
+                            skip_done=args.skip_done, stop_on_error=args.stop_on_error)
 
     refresh_record(activity_dir)
-    print(f"\n[run_activity] {ran} コマンドを実行（うち非0終了 {failed}）。evidence.js を更新しました。")
+    skipped_note = f"、スキップ {summary['skipped']}" if summary["skipped"] else ""
+    print(f"\n[run_activity] {summary['ran']} コマンドを実行"
+          f"（うち非0終了 {summary['failed']}{skipped_note}）。evidence.js を更新しました。")
     print(f"  表示: {activity_dir / 'record.html'} をブラウザで開く")
     print(f"  判定: {run_yaml} の covers に verdict / finding を記入 → "
           f"uv run scripts/gen_record.py {activity_dir}")
-    if failed:
+    if summary["failed"]:
         print("  ※ 非0終了の手順は出力が空/失敗の可能性。cmd/*.txt を見て pass の根拠にしない。")
-    return 0
+    # 打ち切ったときは戻り値を非0にして、呼び出し側（run_target.py 等）が止まれるようにする
+    return 3 if summary["aborted"] else 0
 
 
 if __name__ == "__main__":

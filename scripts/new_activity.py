@@ -1152,6 +1152,50 @@ def render_notes(activity: dict, date: str) -> str:
     )
 
 
+def create_activity(activity: dict, tests: dict, criteria: dict, *,
+                    target: str | None, date: str, tester: str,
+                    root: str, force: bool) -> dict:
+    """1アクティビティのフォルダ一式（run.yaml・cmd/・artifacts/・record.html・
+    手動手順ひな型）を作る。
+
+    既に run.yaml があり `force` でなければ **何も書かず** に
+    `{"target_dir": ..., "created": False}` を返す（＝一括作成時に「うまく行った
+    分は次回スキップ」する土台）。作ったときは stubs / manual / act_dir も返す。
+    main() と run_target.py が同じ生成を共有するための唯一の入口。
+    """
+    target_dir = Path(root) / _dir_name(activity, target, date)
+    run_yaml = target_dir / "run.yaml"
+    if run_yaml.exists() and not force:
+        return {"target_dir": target_dir, "created": False}
+
+    for sub in ("cmd", "artifacts"):
+        (target_dir / sub).mkdir(parents=True, exist_ok=True)
+    run_yaml.write_text(
+        render_run_yaml(activity, tests, date, tester, target), encoding="utf-8"
+    )
+    notes = target_dir / "notes.md"
+    if not notes.exists():
+        notes.write_text(render_notes(activity, date), encoding="utf-8")
+    stubs = write_artifact_stubs(activity, target_dir, date, force)
+    # 記録に載せるパス。リポジトリ内なら相対（evidence/...）、外（--root で一時
+    # ディレクトリ等）ならそのままのパスにする。リポジトリルートから実行できること。
+    try:
+        act_dir = target_dir.resolve().relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        act_dir = target_dir.as_posix()
+
+    # 手動手順の観察を書く .txt ひな型・表示ビューア・表示データを用意する。
+    # 生のエビデンスは cmd/・artifacts/ の各ファイル。record.html はそれを読むだけ。
+    manual = write_manual_stubs(activity, criteria, target, target_dir, act_dir, force)
+    write_record_html(target_dir, force=force)
+    write_evidence_js(
+        target_dir,
+        build_evidence(activity, tests, criteria, target, target_dir, act_dir),
+    )
+    return {"target_dir": target_dir, "created": True,
+            "stubs": stubs, "manual": manual, "act_dir": act_dir}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("activity_id", nargs="?",
@@ -1184,37 +1228,16 @@ def main() -> int:
         return 2
 
     activity = activities[args.activity_id]
-    target_dir = Path(args.root) / _dir_name(activity, args.target, args.date)
-    run_yaml = target_dir / "run.yaml"
-
-    if run_yaml.exists() and not args.force:
-        print(f"既に存在します: {run_yaml}（上書きしません）")
+    result = create_activity(activity, tests, criteria, target=args.target,
+                             date=args.date, tester=args.tester, root=args.root,
+                             force=args.force)
+    if not result["created"]:
+        print(f"既に存在します: {result['target_dir'] / 'run.yaml'}（上書きしません）")
         return 1
 
-    for sub in ("cmd", "artifacts"):
-        (target_dir / sub).mkdir(parents=True, exist_ok=True)
-    run_yaml.write_text(
-        render_run_yaml(activity, tests, args.date, args.tester, args.target), encoding="utf-8"
-    )
-    notes = target_dir / "notes.md"
-    if not notes.exists():
-        notes.write_text(render_notes(activity, args.date), encoding="utf-8")
-    stubs = write_artifact_stubs(activity, target_dir, args.date, args.force)
-    # 記録に載せるパス。リポジトリ内なら相対（evidence/...）、外（--root で一時
-    # ディレクトリ等）ならそのままのパスにする。リポジトリルートから実行できること。
-    try:
-        act_dir = target_dir.resolve().relative_to(REPO_ROOT).as_posix()
-    except ValueError:
-        act_dir = target_dir.as_posix()
-
-    # 手動手順の観察を書く .txt ひな型・表示ビューア・表示データを用意する。
-    # 生のエビデンスは cmd/・artifacts/ の各ファイル。record.html はそれを読むだけ。
-    manual = write_manual_stubs(activity, criteria, args.target, target_dir, act_dir, args.force)
-    write_record_html(target_dir, force=args.force)
-    write_evidence_js(
-        target_dir,
-        build_evidence(activity, tests, criteria, args.target, target_dir, act_dir),
-    )
+    target_dir = result["target_dir"]
+    run_yaml = target_dir / "run.yaml"
+    stubs, manual = result["stubs"], result["manual"]
 
     covered = ", ".join(c["id"] for c in activity.get("covers", []))
     print(f"作成: {target_dir}")

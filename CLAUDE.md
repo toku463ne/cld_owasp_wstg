@@ -54,8 +54,11 @@
 docs/owasp（原文） ─▶ wstg_tests.yaml ─┬─▶ coverage.{yaml,md}（+ coverage.yaml の activities）
                                        └─▶ playbooks/（+ criteria.yaml）
 coverage.yaml ─┬─▶ TASKS.md（実施順・テキスト版）
+               ├─▶ run_target.py ─▶ 対象1つ固定で全 activities を一括: new_activity→run_activity
+               │      （既存フォルダ・前回成功コマンドはスキップ／非0終了で停止。中身は下の2つを呼ぶだけ）
                └─▶ new_activity.py ─▶ evidence/*/{run.yaml, record.html, cmd/, artifacts/}
                      run_activity.py ─▶ criteria.yaml の手順を bash 実行
+                        （--skip-done で前回成功を飛ばし、--stop-on-error で非0終了時に打ち切る）
                         ├─▶ cmd/<WSTG-ID>-s<n>-c<k>.txt（コマンドごとの純粋なエビデンス）
                         ├─▶ run.yaml の commands: に追記
                         └─▶ evidence.js（gen_record.py も同じ。所見の要約も載る）

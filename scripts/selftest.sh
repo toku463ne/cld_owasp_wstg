@@ -469,6 +469,34 @@ assert len(c)==2 and c[1]['exit_code']==127, c
 " || ng "コマンド未検出時に記録されない"
 ok "cmd/ 保存 + commands: 追記（正常系・異常系）"
 
+# run_target.py: 一括作成（既存はスキップ）と、実行の再開/停止ロジック
+"${PY[@]}" scripts/run_target.py --target rt.test --root "${TMP}/rt" --no-run >/dev/null \
+  || ng "run_target --no-run が失敗した"
+NACT=$("${PY[@]}" -c "import yaml;print(len(yaml.safe_load(open('matrix/coverage.yaml'))['activities']))")
+NDIR=$(ls -d "${TMP}/rt"/*/ 2>/dev/null | wc -l)
+[ "${NDIR}" = "${NACT}" ] || ng "run_target が全アクティビティ分のフォルダを作らない（${NDIR}/${NACT}）"
+# 2回目は作り直さない（作成 0）
+"${PY[@]}" scripts/run_target.py --target rt.test --root "${TMP}/rt" --no-run 2>&1 \
+  | grep -q "作成 0 / 既存 ${NACT}" || ng "run_target 再実行で既存フォルダを作り直している"
+# execute_steps の skip_done / stop_on_error（ネットワークを使わない echo で検証）
+RTD=$(ls -d "${TMP}/rt"/recon-osint-* | head -1)
+"${PY[@]}" - "${RTD}" <<'RT' || ng "execute_steps の再開/停止が期待通りでない"
+import sys; sys.path.insert(0, "scripts")
+from pathlib import Path
+from run_activity import execute_steps
+d = Path(sys.argv[1]); ry = d / "run.yaml"
+def st(i, cmd, out): return {"wid":"T","idx":i,"desc":"t","runs":[{"cmd":cmd,"output":out,"role":"primary"}]}
+todo = [st(1,"echo ok","cmd/rt-s1.txt"), st(2,"exit 5","cmd/rt-s2.txt"), st(3,"echo z","cmd/rt-s3.txt")]
+s = execute_steps(ry, d, todo, timeout=None, skip_done=True, stop_on_error=True)
+assert s == {"ran":2,"failed":1,"skipped":0,"aborted":True}, s          # s2 で停止、s3 は走らない
+assert not (d/"cmd/rt-s3.txt").exists(), "stop_on_error なのに後続が走った"
+s2 = execute_steps(ry, d, todo, timeout=None, skip_done=True, stop_on_error=True)
+assert s2 == {"ran":1,"failed":1,"skipped":1,"aborted":True}, s2        # s1 は成功済みでスキップ
+s3 = execute_steps(ry, d, todo, timeout=None, skip_done=True, stop_on_error=False)
+assert s3["skipped"]==1 and s3["aborted"] is False and (d/"cmd/rt-s3.txt").exists(), s3  # keep-going
+RT
+ok "run_target: 一括作成（既存スキップ）・成功分の再開スキップ・エラーで停止"
+
 echo "[5/8] export_checklist.py（集約規則）"
 "${PY[@]}" - <<PYEOF
 import pathlib, re

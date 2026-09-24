@@ -243,6 +243,28 @@ uv run scripts/new_activity.py recon-osint --target example.com
 対応するプレイブックカード（`playbooks/WSTG-*.md`）を開きながら進める。
 一覧は `playbooks/INDEX.md`、どのアクティビティが何を満たすかは `matrix/coverage.md`。
 
+#### 対象が1つに決まっているなら一括で（`run_target.py`）
+
+サイトを固定して全アクティビティを一気に回すときは `run_target.py` を使う。
+`coverage.yaml` の順にフォルダ一式の作成（`new_activity`）とコマンド実行（`run_activity`）を
+まとめて行う。**既定は「再開」と「エラーで停止」**なので、そのまま何度でも叩ける。
+
+```bash
+uv run scripts/run_target.py --target wwwtest.example.com          # 作成→実行を全部
+uv run scripts/run_target.py --target wwwtest.example.com --list   # 実施予定を出すだけ
+uv run scripts/run_target.py --target wwwtest.example.com --no-run # フォルダ作成だけ
+uv run scripts/run_target.py --target wwwtest.example.com --only recon-osint,metafiles-crawl
+```
+
+- **作成済みは作り直さない**（既存フォルダはそのまま）。
+- **前回 `exit_code` 0 で終わったコマンドはスキップ**して続きから進む（`--rerun-all` で全再実行）。
+- **非0終了が出たらそこで打ち切る**（`--keep-going` で最後まで継続）。
+  → エラーは `cmd/*.txt` の末尾と `matrix/criteria.yaml` の該当手順を直し、同じコマンドを
+  もう一度叩けば、成功済みを飛ばして途中から再開する。
+- 手動手順しか無いアクティビティはフォルダだけ用意される（コマンドは実行しない）。
+
+個別に細かく回したいとき（手順を絞る・ドライラン等）は、下の `run_activity.py` を直接使う。
+
 ### 2. コマンド手順を wrapper で実行する（＝純粋なエビデンスを作る）
 
 手順のコマンドは自分で打たず、wrapper に実行させる。手順は `matrix/criteria.yaml` から
@@ -254,6 +276,8 @@ uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --list 
 uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --only WSTG-INFO-02      # ID を絞る
 uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --only WSTG-INFO-02:4    # 手順を絞る
 uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --dry-run  # 実行内容の確認だけ
+uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --skip-done # 前回成功したコマンドは飛ばす（再開）
+uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --stop-on-error # 非0終了でそこで打ち切り
 ```
 
 各コマンドは `bash` で1つずつ実行され、その出力が `cmd/<WSTG-ID>-s<n>-c<k>.txt` に残る
