@@ -21,7 +21,7 @@ WSTG の Test Objectives:
 
 1. `whatweb --log-json=evidence/<活動フォルダ>/artifacts/whatweb.json https://target/` と ブラウザ拡張 Wappalyzer でフレームワーク/CMS を推定
 2. 応答ヘッダと Cookie を保存して基盤を推定: `curl -sD evidence/<活動フォルダ>/artifacts/headers.txt -o /dev/null https://target/ && grep -iE '^(set-cookie|x-powered-by|server|x-aspnet-version|x-generator):' evidence/<活動フォルダ>/artifacts/headers.txt`。Cookie 名（`JSESSIONID`=Java / `ASP.NET_SessionId`=.NET / `laravel_session`=Laravel / `ci_session`=CodeIgniter）・`X-Powered-By`・URL パスから基盤を特定
-3. 取得したフロント JS を `retire --path <JSフォルダ> --outputformat json --outputpath evidence/<活動フォルダ>/artifacts/retire.json`（Retire.js）で走査し、jQuery 等ライブラリのバージョンと既知脆弱性を確認
+3. 対象ページが読み込むフロント JS をブラウザ（開発者ツール）や Burp で保存して artifacts/js/ に置き、`retire --path evidence/<活動フォルダ>/artifacts/js/ --outputformat json --outputpath evidence/<活動フォルダ>/artifacts/retire.json --exitwith 0`（Retire.js）で走査して jQuery 等ライブラリのバージョンと既知脆弱性を確認する。retire は脆弱性を見つけると既定で exit 13 を返し一括実行が止まるため `--exitwith 0` で抑え、結果は retire.json で判断する。artifacts/js/ が空のまま走ると成功扱いになり再開時にスキップされるので、JS を置いた後に `uv run scripts/run_activity.py <このフォルダ> --only WSTG-INFO-08:3` で取り直す
 4. 手順1・2 で特定した CMS/フレームワークごとに CPE 名を引く（retire.js が CVE まで出したフロント JS は不要）: `curl -s --get --data-urlencode "keywordSearch=wordpress 6.4.2" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o evidence/<活動フォルダ>/artifacts/nvd-cpe-cms.json` → `jq -r '.totalResults, (.products[].cpe.cpeName)' evidence/<活動フォルダ>/artifacts/nvd-cpe-cms.json`
    > ⚠️ **負荷注意（手順4）**: NVD API はキー無しで 30 秒 5 リクエストまで（超過は 403）。CMS ごとに繰り返すなら間隔を空ける。
 5. その cpeName で CVE を一覧し、finding にバージョン根拠（どこで判ったか）を添える: `curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0?virtualMatchString=cpe:2.3:a:wordpress:wordpress:6.4.2&resultsPerPage=100' -o evidence/<活動フォルダ>/artifacts/nvd-cve-cms.json` → `jq -r '.vulnerabilities[].cve | [.id, (.metrics.cvssMetricV31[0].cvssData.baseScore // "-" | tostring), .descriptions[0].value[0:100]] | @tsv' evidence/<活動フォルダ>/artifacts/nvd-cve-cms.json`
@@ -39,6 +39,8 @@ WSTG の Test Objectives:
 - whatweb
 - Wappalyzer
 - curl
+- ブラウザ開発者ツール
+- Burp Suite
 - Retire.js
 - jq
 

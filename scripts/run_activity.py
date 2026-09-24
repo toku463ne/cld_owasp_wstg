@@ -110,6 +110,10 @@ def run_command(run: dict, step: dict, activity_dir: Path, timeout: int | None) 
     out_rel = run["output"]
     out_path = activity_dir / out_rel
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    # 入力置き場として `OUTDIR/<name>/`（末尾スラッシュ＝ディレクトリ）を渡す手順
+    # （retire --path OUTDIR/js/ 等）は、置き場が無いと失敗するので先に作っておく。
+    for name in re.findall(r"artifacts/([A-Za-z0-9._-]+)/(?=[\s\"']|$)", run["cmd"]):
+        (activity_dir / "artifacts" / name).mkdir(parents=True, exist_ok=True)
     started = _dt.datetime.now().astimezone()
     t0 = time.monotonic()
 

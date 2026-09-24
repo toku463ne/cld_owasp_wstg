@@ -506,6 +506,23 @@ assert s2 == {"ran":1,"failed":1,"skipped":1,"aborted":True}, s2        # s1 は
 s3 = execute_steps(ry, d, todo, timeout=None, skip_done=True, stop_on_error=False)
 assert s3["skipped"]==1 and s3["aborted"] is False and (d/"cmd/rt-s3.txt").exists(), s3  # keep-going
 RT
+# 実行されるコマンドに日本語のプレースホルダ（<JSフォルダ> 等）が残っていない
+# （bash はリダイレクトと解釈して失敗する）。入力置き場 OUTDIR/<name>/ は実行前に作られる
+"${PY[@]}" - "${RTD}" <<'PH' || ng "コマンドにプレースホルダが残っている、または入力置き場が作られない"
+import re, sys; sys.path.insert(0, "scripts")
+from pathlib import Path
+from new_activity import COVERAGE_YAML, CRITERIA_YAML, load_yaml, iter_steps
+from run_activity import run_command
+cov, cr = load_yaml(COVERAGE_YAML), load_yaml(CRITERIA_YAML)
+bad = [(s["wid"], s["idx"], m) for a in cov["activities"]
+       for s in iter_steps(a, cr, "t.test", "X") if s["kind"] == "cmd"
+       for r in s["runs"] for m in re.findall(r"<[^<>]*[^\x00-\x7f][^<>]*>", r["cmd"])]
+assert not bad, bad
+d = Path(sys.argv[1])
+st = {"wid": "T", "idx": 9, "desc": "t", "runs": []}
+e = run_command({"cmd": f"test -d {d}/artifacts/jsin/", "output": "cmd/ph.txt", "role": "primary"}, st, d, None)
+assert e["exit_code"] == 0 and (d / "artifacts/jsin").is_dir(), e
+PH
 ok "run_target: 一括作成（既存スキップ・--reuse-latest）・成功分の再開スキップ・エラーで停止"
 
 echo "[5/8] export_checklist.py（集約規則）"
