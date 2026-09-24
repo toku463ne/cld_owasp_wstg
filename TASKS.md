@@ -154,7 +154,7 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 
 公開バケット等のストレージ露出と、宙に浮いた DNS レコードによる乗っ取り可能性を確認する。
 
-- 影響度: 中 / 前提: `recon-osint`
+- 影響度: 中 / 前提: `recon-osint`, `metafiles-crawl`
 - カード: [WSTG-CONF-11](playbooks/WSTG-CONF-11.md), [WSTG-CONF-10](playbooks/WSTG-CONF-10.md)
 
 - [ ] `uv run scripts/new_activity.py cloud-and-takeover` でフォルダ一式を作る（複数サイトは `--target <site>`）

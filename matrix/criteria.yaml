@@ -126,7 +126,7 @@ WSTG-INFO-08:
   fail: "既知脆弱性のあるバージョンのフレームワーク・ライブラリを使用している（Cookie 名・パス・ヘッダ・JS から特定）。"
   note: "フロント側のライブラリ（jQuery 等）は Retire.js で確認できる。Retire.js は実行時に github から脆弱性DB（jsrepository.json）を取りに行くため、プロキシ必須／外向き通信が絞られた環境では更新に失敗することがある（amass の libpostal と同じ構図）。`--path` は既にダウンロード済みのローカル JS を走査するので、DB さえ取得できれば対象への通信は不要。更新できないときは事前に DB を取得しておくか、下の NVD API での照合に回す。CMS・フレームワーク側の CVE 照合はブラウザ不要で、NVD の cpes/2.0（製品名+バージョン → cpeName）→ cves/2.0（cpeName → CVE 一覧）を curl で引く（API キー無しは 30 秒 5 リクエストまで。0 件の読み替えは WSTG-INFO-02 の note と同じ）。"
   steps:
-    - "`whatweb --log-json=OUTDIR/whatweb.json https://target/` と ブラウザ拡張 Wappalyzer でフレームワーク/CMS を推定"
+    - "フレームワーク/CMS は WSTG-INFO-02 手順2 で取得済みの whatweb.json から読む（whatweb を再実行しない）: `jq -r '.[].plugins // {} | keys[]' OUTDIR/whatweb.json | sort -u` ＋ ブラウザ拡張 Wappalyzer で突き合わせる。単独実行で whatweb.json が無いときは先に WSTG-INFO-02 を回す"
     - "応答ヘッダと Cookie を保存して基盤を推定: `curl -sD OUTDIR/headers.txt -o /dev/null https://target/ && grep -iE '^(set-cookie|x-powered-by|server|x-aspnet-version|x-generator):' OUTDIR/headers.txt`。Cookie 名（`JSESSIONID`=Java / `ASP.NET_SessionId`=.NET / `laravel_session`=Laravel / `ci_session`=CodeIgniter）・`X-Powered-By`・URL パスから基盤を特定"
     - "対象ページが読み込むフロント JS をブラウザ（開発者ツール）や Burp で保存して artifacts/js/ に置き、`retire --path OUTDIR/js/ --outputformat json --outputpath OUTDIR/retire.json --exitwith 0`（Retire.js）で走査して jQuery 等ライブラリのバージョンと既知脆弱性を確認する。retire は脆弱性を見つけると既定で exit 13 を返し一括実行が止まるため `--exitwith 0` で抑え、結果は retire.json で判断する。artifacts/js/ が空のまま走ると成功扱いになり再開時にスキップされるので、JS を置いた後に `uv run scripts/run_activity.py <このフォルダ> --only WSTG-INFO-08:3` で取り直す"
     - "手順1・2 で特定した CMS/フレームワークごとに CPE 名を引く（retire.js が CVE まで出したフロント JS は不要）: `curl -s --get --data-urlencode \"keywordSearch=wordpress 6.4.2\" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o OUTDIR/nvd-cpe-cms.json` → `jq -r '.totalResults, (.products[].cpe.cpeName)' OUTDIR/nvd-cpe-cms.json`"
@@ -226,7 +226,7 @@ WSTG-CONF-07:
   fail: "HSTS ヘッダがない、max-age が極端に短い、または HTTP でしか提供していない画面がある。"
   note: "HSTS は HTTPS 応答でのみ有効。HTTP 側に付けても意味がないことを説明する。"
   steps:
-    - "`curl -sI https://target/` で `Strict-Transport-Security` の有無・値を確認"
+    - "`curl -sD OUTDIR/root-headers.txt -o /dev/null https://target/` で応答ヘッダを保存し（この後の手順・WSTG-CLNT-09 でも使い回す）、`grep -i '^strict-transport-security:' OUTDIR/root-headers.txt` で HSTS の有無・値を確認"
     - "`max-age`（半年=15768000 以上が目安）・`includeSubDomains`・`preload` の各ディレクティブを確認"
     - "`curl -sI http://target/` で HTTP アクセス時の挙動（HTTPS へ 301 されるか）を確認"
     - "HTTP 応答に HSTS を付けても無効な点を踏まえ、HTTPS 応答での設定を評価"
@@ -272,7 +272,7 @@ WSTG-CONF-11:
   fail: "一覧取得や任意ファイル取得が匿名でできる、または書き込みができる。"
   note: "書き込み可否の確認は影響が大きい。実施前に許可範囲を確認し、無害なファイル名で検証する。"
   steps:
-    - "アプリが参照するストレージ URL を HTML/JS から抽出: `curl -s https://target/ -o OUTDIR/index.html; grep -oiE 'src=\"[^\"]+\\.js[^\"]*' OUTDIR/index.html | sed -E 's/^src=\"//I' | while read -r j; do case \"$j\" in http*) curl -s \"$j\";; /*) curl -s \"https://target$j\";; *) curl -s \"https://target/$j\";; esac; done > OUTDIR/app-js.txt; grep -rhoiE 'https?://[A-Za-z0-9._-]+\\.(s3[A-Za-z0-9.-]*\\.amazonaws\\.com|s3\\.amazonaws\\.com|blob\\.core\\.windows\\.net|storage\\.googleapis\\.com)[A-Za-z0-9._~:/?#@!$&*+,;=%-]*' OUTDIR/index.html OUTDIR/app-js.txt | sort -u | tee OUTDIR/storage-urls.txt`。動的生成 URL は取りこぼすので、SPA では Burp/ZAP のサイトマップで補う"
+    - "アプリが参照するストレージ URL を、metafiles-crawl（WSTG-INFO-05 手順1/2）が取得済みの index.html・app-js.txt から抽出する（同じ全 JS クロールを繰り返さない）: `grep -rhoiE 'https?://[A-Za-z0-9._-]+\\.(s3[A-Za-z0-9.-]*\\.amazonaws\\.com|s3\\.amazonaws\\.com|blob\\.core\\.windows\\.net|storage\\.googleapis\\.com)[A-Za-z0-9._~:/?#@!$&*+,;=%-]*' \"$(ls -1d OUTDIR/../../metafiles-crawl-target-*/artifacts | tail -1)\"/index.html \"$(ls -1d OUTDIR/../../metafiles-crawl-target-*/artifacts | tail -1)\"/app-js.txt > OUTDIR/storage-urls.txt; rc=$?; [ $rc -le 1 ] || exit $rc; sort -u -o OUTDIR/storage-urls.txt OUTDIR/storage-urls.txt`。「No such file」で止まったら先に metafiles-crawl を回す（uv run scripts/run_target.py --target target --only metafiles-crawl）。動的生成 URL は取りこぼすので、SPA では Burp/ZAP のサイトマップで補う"
     - "抽出した各ストレージのホストルートに匿名アクセスできるか確認: `while read -r u; do b=$(echo \"$u\" | sed -E 's#(https?://[^/]+).*#\\1/#'); echo \"===== $b =====\"; curl -s -m 10 -o /dev/null -w 'code %{http_code}\\n' \"$b\"; curl -s -m 10 \"$b\" | head -c 300; echo; done < OUTDIR/storage-urls.txt | tee OUTDIR/storage-anon.txt`。`ListBucketResult`/ディレクトリ一覧が返る、または 200 で中身が見えるものは匿名読取可"
     - "S3 ホスト名からバケット名を割り出し、匿名で一覧できるか確認: `grep -oiE '[a-z0-9.-]+\\.s3[a-z0-9.-]*\\.amazonaws\\.com' OUTDIR/storage-urls.txt | sed -E 's#\\.s3.*##' | sort -u | while read -r b; do echo \"===== $b =====\"; aws s3 ls --no-sign-request \"s3://$b\" 2>&1 | head -20; done | tee OUTDIR/s3-list.txt`。書き込み可否（`aws s3 cp` 相当）は破壊的になり得るので、許可範囲を確認してから手動で試す"
     - "公開が業務上意図されたものか切り分け、意図しない公開のみ finding にする"
@@ -1058,7 +1058,7 @@ WSTG-CLNT-09:
   fail: "任意サイトから iframe 埋め込みでき、操作を誘導できる（PoC の HTML で確認）。"
   note: "対象は「状態を変える操作がある画面」。静的ページのみなら影響は限定的。"
   steps:
-    - "`curl -sI https://target/` で `X-Frame-Options` / CSP `frame-ancestors` の有無を確認"
+    - "WSTG-CONF-07 手順1 で保存した応答ヘッダから確認する（再取得しない）: `grep -iE '^(x-frame-options|content-security-policy):' OUTDIR/root-headers.txt`。CSP は `frame-ancestors` ディレクティブの有無を見る。単独実行で root-headers.txt が無いときは先に WSTG-CONF-07 を回す"
     - "対象ページを `<iframe src=...>` で自作 HTML に埋め込み、実際に表示されるか（枠に出るか）確認"
     - "重要操作（送金・設定変更）画面がフレーム内で操作可能なら Clickjacking 可"
     - "防御ヘッダが無い/緩い重要画面を finding に。PoC の iframe HTML を artifacts に"

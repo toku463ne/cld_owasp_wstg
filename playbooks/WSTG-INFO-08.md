@@ -19,7 +19,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `whatweb --log-json=evidence/<活動フォルダ>/artifacts/whatweb.json https://target/` と ブラウザ拡張 Wappalyzer でフレームワーク/CMS を推定
+1. フレームワーク/CMS は WSTG-INFO-02 手順2 で取得済みの whatweb.json から読む（whatweb を再実行しない）: `jq -r '.[].plugins // {} | keys[]' evidence/<活動フォルダ>/artifacts/whatweb.json | sort -u` ＋ ブラウザ拡張 Wappalyzer で突き合わせる。単独実行で whatweb.json が無いときは先に WSTG-INFO-02 を回す
 2. 応答ヘッダと Cookie を保存して基盤を推定: `curl -sD evidence/<活動フォルダ>/artifacts/headers.txt -o /dev/null https://target/ && grep -iE '^(set-cookie|x-powered-by|server|x-aspnet-version|x-generator):' evidence/<活動フォルダ>/artifacts/headers.txt`。Cookie 名（`JSESSIONID`=Java / `ASP.NET_SessionId`=.NET / `laravel_session`=Laravel / `ci_session`=CodeIgniter）・`X-Powered-By`・URL パスから基盤を特定
 3. 対象ページが読み込むフロント JS をブラウザ（開発者ツール）や Burp で保存して artifacts/js/ に置き、`retire --path evidence/<活動フォルダ>/artifacts/js/ --outputformat json --outputpath evidence/<活動フォルダ>/artifacts/retire.json --exitwith 0`（Retire.js）で走査して jQuery 等ライブラリのバージョンと既知脆弱性を確認する。retire は脆弱性を見つけると既定で exit 13 を返し一括実行が止まるため `--exitwith 0` で抑え、結果は retire.json で判断する。artifacts/js/ が空のまま走ると成功扱いになり再開時にスキップされるので、JS を置いた後に `uv run scripts/run_activity.py <このフォルダ> --only WSTG-INFO-08:3` で取り直す
 4. 手順1・2 で特定した CMS/フレームワークごとに CPE 名を引く（retire.js が CVE まで出したフロント JS は不要）: `curl -s --get --data-urlencode "keywordSearch=wordpress 6.4.2" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o evidence/<活動フォルダ>/artifacts/nvd-cpe-cms.json` → `jq -r '.totalResults, (.products[].cpe.cpeName)' evidence/<活動フォルダ>/artifacts/nvd-cpe-cms.json`
@@ -37,12 +37,12 @@ WSTG の Test Objectives:
 ## 使用ツール
 
 - whatweb
+- jq
 - Wappalyzer
 - curl
 - ブラウザ開発者ツール
 - Burp Suite
 - Retire.js
-- jq
 
 ## 判定基準（pass / fail の見分け）
 

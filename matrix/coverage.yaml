@@ -208,7 +208,7 @@ activities:
     title: クラウドストレージ・サブドメイン乗っ取りの確認
     phase: 2
     order: 8
-    depends_on: [recon-osint]
+    depends_on: [recon-osint, metafiles-crawl]
     impact: medium
     summary: 公開バケット等のストレージ露出と、宙に浮いた DNS レコードによる乗っ取り可能性を確認する。
     tools: [dig, curl, grep, "aws cli"]

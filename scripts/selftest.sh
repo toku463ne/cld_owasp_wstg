@@ -536,11 +536,23 @@ nikto = [a["id"] for a in acts
          for s in split_delegated(select_steps(iter_steps(a, cr, "t.test", "X"), None), own)[0]
          for r in s["runs"] if r["cmd"].startswith("nikto")]
 assert nikto == ["server-config-review"], nikto
-# 全ポート走査（nmap -p-）は enum-apps の1回だけ。他は結果を grep で使い回す
-full = [a["id"] for a in acts
-        for s in iter_steps(a, cr, "t.test", "X") for r in s["runs"]
-        if r["cmd"].startswith("nmap") and " -p- " in r["cmd"]]
+# 一括で実際に走る main コマンド（secondary の委譲後）を activity ごとに集める
+def batch_mains():
+    for a in acts:
+        for s in split_delegated(select_steps(iter_steps(a, cr, "t.test", "X"), None), own)[0]:
+            for r in s["runs"]:
+                if r["role"] == "main":
+                    yield a["id"], r["cmd"]
+mains = list(batch_mains())
+# 重い/冗長なコマンドは一括で1回だけ:
+# 全ポート走査（nmap -p-）は enum-apps、whatweb は fingerprint-stack、
+# 全JSクロール（app-js.txt を作る curl ループ）は metafiles-crawl でだけ走る
+full = [aid for aid, c in mains if c.startswith("nmap") and " -p- " in c]
 assert full == ["enum-apps"], full
+ww = [aid for aid, c in mains if c.startswith("whatweb")]
+assert ww == ["fingerprint-stack"], ww
+jscrawl = [aid for aid, c in mains if "app-js.txt" in c and "curl" in c]
+assert jscrawl == ["metafiles-crawl"], jscrawl
 DUP
 ok "run_target: 一括作成（既存スキップ・--reuse-latest）・成功分の再開スキップ・エラーで停止・secondary の重複実行なし"
 
