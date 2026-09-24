@@ -19,7 +19,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `nmap -sV -p- -oN evidence/<活動フォルダ>/artifacts/nmap-allports.txt target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録
+1. `nmap -sV -p- --open -oN evidence/<活動フォルダ>/artifacts/nmap-allports.txt target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録（この結果は WSTG-CONF-01・WSTG-CONF-05 でも使い回す。全ポート走査はこの1回だけ）
    > ⚠️ **負荷注意（手順1）**: `nmap -p-` は全 65535 ポートへ接続を試みる重いスキャン。IDS/IPS や機器の接続数上限を刺激しうる。時間帯に注意し、詰まるなら `--max-rate` で抑える。内部網でも想定外の機器（産業機器・古い装置）が落ちることがある。
 2. 同一 IP の他ホストを列挙する。まず証明書透明性ログから既知の名前を拾う（手順は WSTG-INFO-02 の crt.sh 参照）。次にバーチャルホスト総当りで応答するホスト名を洗う: `ffuf -w vhost-wordlist:FUZZ ${WSTG_PAUSE:+-p "$WSTG_PAUSE" -t 1} ${https_proxy:+-x "$https_proxy"} -u https://target/ -H "Host: FUZZ.target" -ac -o evidence/<活動フォルダ>/artifacts/ffuf-vhost.json -of json`。`-ac`（自動キャリブレーション）で既定応答を除外し、残ったホスト名を手順3の材料にする。非力な対象では `export WSTG_PAUSE=2` で待ち＋スレッド1に落とす。ffuf は環境変数のプロキシを見ないので、プロキシ経由なら `-x` を明示する
    > ⚠️ **負荷注意（手順2）**: バーチャルホスト総当り（`ffuf -H "Host: FUZZ"`）はワードリストの大きさに比例して大量のリクエストを送る。リストを対象に合わせて絞る。

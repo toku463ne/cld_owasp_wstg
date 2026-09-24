@@ -536,6 +536,11 @@ nikto = [a["id"] for a in acts
          for s in split_delegated(select_steps(iter_steps(a, cr, "t.test", "X"), None), own)[0]
          for r in s["runs"] if r["cmd"].startswith("nikto")]
 assert nikto == ["server-config-review"], nikto
+# 全ポート走査（nmap -p-）は enum-apps の1回だけ。他は結果を grep で使い回す
+full = [a["id"] for a in acts
+        for s in iter_steps(a, cr, "t.test", "X") for r in s["runs"]
+        if r["cmd"].startswith("nmap") and " -p- " in r["cmd"]]
+assert full == ["enum-apps"], full
 DUP
 ok "run_target: 一括作成（既存スキップ・--reuse-latest）・成功分の再開スキップ・エラーで停止・secondary の重複実行なし"
 

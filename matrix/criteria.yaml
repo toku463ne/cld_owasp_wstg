@@ -79,7 +79,7 @@ WSTG-INFO-04:
   fail: "想定外のアプリ（旧環境・検証環境・別部署のツール・管理コンソール）が同じホストで公開されている。"
   note: "発見物が検査スコープ外なら、攻撃はせず「存在の報告」に留める。"
   steps:
-    - "`nmap -sV -p- -oN OUTDIR/nmap-allports.txt target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録"
+    - "`nmap -sV -p- --open -oN OUTDIR/nmap-allports.txt target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録（この結果は WSTG-CONF-01・WSTG-CONF-05 でも使い回す。全ポート走査はこの1回だけ）"
     - "同一 IP の他ホストを列挙する。まず証明書透明性ログから既知の名前を拾う（手順は WSTG-INFO-02 の crt.sh 参照）。次にバーチャルホスト総当りで応答するホスト名を洗う: `ffuf -w vhost-wordlist:FUZZ ${WSTG_PAUSE:+-p \"$WSTG_PAUSE\" -t 1} ${https_proxy:+-x \"$https_proxy\"} -u https://target/ -H \"Host: FUZZ.target\" -ac -o OUTDIR/ffuf-vhost.json -of json`。`-ac`（自動キャリブレーション）で既定応答を除外し、残ったホスト名を手順3の材料にする。非力な対象では `export WSTG_PAUSE=2` で待ち＋スレッド1に落とす。ffuf は環境変数のプロキシを見ないので、プロキシ経由なら `-x` を明示する"
     - "見つけたホスト/ポートを OUTDIR/hosts.txt に1行1件で置き（手順1・2 の結果から）、用途判別の材料を一括取得: `while read -r hp; do echo \"===== $hp =====\"; curl -s -k -m 8 -D - -o OUTDIR/_body \"https://$hp/\" | grep -iE '^(HTTP/|server:|x-powered-by:|www-authenticate:)'; grep -oiE '<title>[^<]*' OUTDIR/_body | head -1; done < OUTDIR/hosts.txt | tee OUTDIR/vhosts-fingerprint.txt`。取得したタイトル・`Server`・realm と、`dev`/`stg`/`test`/`old`/`admin`/`jenkins`/`grafana`/`phpmyadmin` などのホスト名から用途（検証環境・管理コンソールの疑い）を判別し、各ホストの用途と根拠を artifacts/vhosts.md に1行ずつ書く"
     - "スコープ外のものは攻撃せず「存在の報告」に留め、artifacts に一覧化"
@@ -154,12 +154,11 @@ WSTG-CONF-01:
   fail: "SSH・RDP・DB・管理コンソール等が無制限に公開されている、またはサポート切れの製品が動いている。"
   note: "クラウドのセキュリティグループ設定と実際のスキャン結果を突き合わせる。"
   steps:
-    - "`nmap -sV -p- --open -oN OUTDIR/nmap-allports.txt target` で公開ポート/サービスを洗い出す"
-    - "公開が危険なポート（SSH/RDP/DB/管理系）を手順1のスキャン結果から抽出する（再スキャンせず既存結果を grep するので追加負荷なし）: `grep -E '^(22|23|3389|3306|5432|1433|1521|6379|27017|9200|5601|8080|8443|9000|9090|9990|10000|7001|8161|15672|2375|5900)/(tcp|udp)' OUTDIR/nmap-allports.txt | tee OUTDIR/sensitive-ports.txt`。1行でも出たら、そのポートが本来アクセスできるべき範囲（社内のみ等）を超えて開いていないか手順4の FW/セキュリティグループ設定と突き合わせる。管理コンソールは製品ごとにポートが違うので、ヒットが無くても手順1の全開放ポート一覧に見慣れないサービスが無いか併せて目視する"
+    - "公開ポート/サービスは enum-apps（WSTG-INFO-04 手順1）の全ポート走査の結果から取り出す（重い全ポート走査を2回しない）: `grep -E '^[0-9]+/(tcp|udp) +open' \"$(ls -1 OUTDIR/../../enum-apps-target-*/artifacts/nmap-allports.txt | tail -1)\" > OUTDIR/open-ports.txt || [ $? -eq 1 ]`。「No such file」で止まったら先に enum-apps を回す（uv run scripts/run_target.py --target target --only enum-apps）。enum-apps を使わず単独で見るときだけ、手で nmap -sV -p- --open を実行して OUTDIR/open-ports.txt に置く"
+    - "公開が危険なポート（SSH/RDP/DB/管理系）を手順1のスキャン結果から抽出する（再スキャンせず既存結果を grep するので追加負荷なし）: `grep -E '^(22|23|3389|3306|5432|1433|1521|6379|27017|9200|5601|8080|8443|9000|9090|9990|10000|7001|8161|15672|2375|5900)/(tcp|udp)' OUTDIR/open-ports.txt | tee OUTDIR/sensitive-ports.txt`。1行でも出たら、そのポートが本来アクセスできるべき範囲（社内のみ等）を超えて開いていないか手順4の FW/セキュリティグループ設定と突き合わせる。管理コンソールは製品ごとにポートが違うので、ヒットが無くても手順1の全開放ポート一覧に見慣れないサービスが無いか併せて目視する"
     - "`nikto -h https://target ${WSTG_PAUSE:+-Pause \"$WSTG_PAUSE\"} ${https_proxy:+-useproxy \"$https_proxy\"} -o OUTDIR/nikto.txt` と特定製品の既知脆弱性・既定資格情報を照合。nikto は既定でリクエスト間の待ちが無く、非力な対象は CPU 100%・504 になりやすい。`WSTG_PAUSE`（秒）を設定するとリクエスト間にその秒数だけ空ける（例: `export WSTG_PAUSE=2`。落ちるなら 3〜5 に上げる）。さらに絞るなら `-maxtime 30m` で打ち切り、`-T` で試験カテゴリを限定する。nikto は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `-useproxy` を明示する（`${...:+}` は各変数が設定されているときだけ付く）"
     - "クラウドのセキュリティグループ/FW 設定（ヒアリング）と実スキャン結果を突き合わせ、差分を指摘"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
-    1: "`nmap -p-` は全ポート走査で重い。IDS/IPS や機器を刺激しうるので時間帯に注意（`--max-rate` で調整）。"
     3: "nikto は既知パスへ大量のリクエストを送る非常に騒がしいスキャン。既定はリクエスト間の待ちが無く、非力な対象は CPU 100%・504 になりやすい。`export WSTG_PAUSE=2`（落ちるなら 3〜5）でリクエスト間に待ちを入れる。さらに `-maxtime` で打ち切り、対象は1つずつ。"
 
 WSTG-CONF-02:
@@ -204,12 +203,11 @@ WSTG-CONF-05:
   note: "パスを秘匿しているだけの状態は fail 寄り。列挙で見つかる時点で保護になっていない。"
   steps:
     - "`ffuf -w admin-wordlist ${WSTG_PAUSE:+-p \"$WSTG_PAUSE\" -t 1} ${https_proxy:+-x \"$https_proxy\"} -u https://target/FUZZ -o OUTDIR/ffuf-admin.json -of json`（`/admin /manager /wp-admin /phpmyadmin` 等）で管理画面を探索。非力な対象では `export WSTG_PAUSE=2` で待ちを入れ、スレッドも1にする。ffuf は環境変数のプロキシを見ないので、プロキシ経由なら `-x` を明示する"
-    - "インフラ側の管理ポートも確認: `nmap -Pn -sV -p8080,8443,9990,10000,7001,8161,9000,9090 -oN OUTDIR/nmap-mgmt.txt target`。open のポートの製品・バージョンを控え、管理コンソールなら手順3の認証確認へ"
+    - "インフラ側の管理ポートも確認。enum-apps（WSTG-INFO-04 手順1）の全ポート走査に含まれるので再スキャンせず取り出す: `grep -E '^(8080|8443|9990|10000|7001|8161|9000|9090)/tcp +open' \"$(ls -1 OUTDIR/../../enum-apps-target-*/artifacts/nmap-allports.txt | tail -1)\" > OUTDIR/mgmt-ports.txt || [ $? -eq 1 ]`（空＝該当ポートの公開なし。「No such file」なら先に enum-apps を回す）。open のポートの製品・バージョンを控え、管理コンソールなら手順3の認証確認へ"
     - "見つけた管理画面の認証（既定資格情報・接続元制限・MFA）を確認。既定資格情報は必ず試す"
     - "「パスを秘匿しているだけ」で列挙で出てくる状態は保護不十分として扱う"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
     1: "ffuf の管理画面総当りは大量リクエスト。ログイン系パスはアカウントロック・誤検知アラートも誘発しうる。`export WSTG_PAUSE=2` で待ち＋スレッド1に落とし、ログインを含むパスは慎重に。"
-    2: "`nmap` の管理ポート走査。応答の無い機器へ繰り返すと接続数を圧迫しうる。"
 
 WSTG-CONF-06:
   purpose: "サーバが受け付ける HTTP メソッドを列挙し、危険なメソッドや迂回の余地がないかを確認する。"

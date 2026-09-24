@@ -194,7 +194,7 @@ activities:
     title: サーバ／プラットフォーム構成レビュー
     phase: 2
     order: 10
-    depends_on: [fingerprint-stack]
+    depends_on: [fingerprint-stack, enum-apps]
     impact: low
     summary: 構成ファイル・配置・権限・不要機能を（可能なら読み取り権限を得て）レビューする。ホスト側の情報提供が前提。
     tools: [手動レビュー, "ls -l / icacls", nikto, "CIS Benchmark チェックリスト"]

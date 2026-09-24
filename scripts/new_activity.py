@@ -617,7 +617,8 @@ def output_paths(cmd: str, act_dir: str) -> list:
     toks = [tok.rstrip(";&|)").strip("'\"") for tok in cmd.split()]
     paths = []
     for i, tok in enumerate(toks):
-        if not tok.startswith(prefix):
+        # OUTDIR/../../<別アクティビティ>/… は他フォルダの入力（読むだけ）なので確認対象にしない
+        if not tok.startswith(prefix) or "/../" in tok:
             continue
         if not tok.endswith("/"):
             paths.append(tok)

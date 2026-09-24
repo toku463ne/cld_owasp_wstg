@@ -182,7 +182,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 
 構成ファイル・配置・権限・不要機能を（可能なら読み取り権限を得て）レビューする。ホスト側の情報提供が前提。
 
-- 影響度: 低 / 前提: `fingerprint-stack`
+- 影響度: 低 / 前提: `fingerprint-stack`, `enum-apps`
 - カード: [WSTG-CONF-01](playbooks/WSTG-CONF-01.md), [WSTG-CONF-02](playbooks/WSTG-CONF-02.md), [WSTG-CONF-09](playbooks/WSTG-CONF-09.md)
 
 - [ ] `uv run scripts/new_activity.py server-config-review` でフォルダ一式を作る（複数サイトは `--target <site>`）
@@ -197,7 +197,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 認証済みでアプリ全体を歩き、入力点と構造を地図にする。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y curl ffuf nmap traceroute`
+- apt: `sudo apt install -y curl ffuf traceroute`
 - Kali 同梱 / Burp 内（導入不要）: Burp Suite, OWASP ZAP
 
 ### 11. `burp-crawl-authn` — 認証済みクロールとエントリポイント洗い出し
