@@ -23,6 +23,11 @@ coverage.yaml で target_kind: domain のアクティビティ（recon-osint な
 ドメイン）は一括対象から外す。回すときは --only で個別に指定する:
     uv run scripts/run_target.py --target example.com --only recon-osint
 手動手順しか無いアクティビティはフォルダだけ作られる（コマンドは実行しない）。
+
+同じコマンドを何度も走らせない: ある WSTG-ID を secondary で扱うアクティビティでは、その ID を
+primary で扱うアクティビティが同じ一括処理に入っていれば、その ID のコマンド手順を実行しない
+（primary 側で1回だけ実行する。例: WSTG-CONF-01 の nikto は server-config-review でだけ走る）。
+secondary 側の判定は primary 側のエビデンスを参照する。
 """
 
 from __future__ import annotations
@@ -37,6 +42,27 @@ from new_activity import (  # noqa: E402
     create_activity, resolve_activity, iter_steps, refresh_record, find_latest_dir,
 )
 from run_activity import select_steps, execute_steps  # noqa: E402
+
+
+def primary_owners(activities: list) -> dict:
+    """WSTG-ID → その ID を primary で扱うアクティビティ ID の一覧（一括対象の中だけ）。"""
+    owners: dict = {}
+    for a in activities:
+        for cov in a.get("covers", []):
+            if cov.get("role", "primary") == "primary":
+                owners.setdefault(cov["id"], []).append(a["id"])
+    return owners
+
+
+def split_delegated(steps: list, owners: dict) -> tuple:
+    """secondary の手順のうち、primary 側で実行されるものを外す。(実行する手順, 外した WSTG→担当) を返す。"""
+    keep, delegated = [], {}
+    for s in steps:
+        if s["role"] == "secondary" and owners.get(s["wid"]):
+            delegated[s["wid"]] = owners[s["wid"]]
+        else:
+            keep.append(s)
+    return keep, delegated
 
 
 def main() -> int:
@@ -100,6 +126,7 @@ def main() -> int:
                 print(f"  {'':26s} → {'既存を使う: ' + found.name if found else '新規作成'}")
         return 0
 
+    owners = primary_owners(activities)
     created = existed = 0
     total = {"ran": 0, "failed": 0, "skipped": 0}
     for a in activities:
@@ -125,7 +152,9 @@ def main() -> int:
         # 実行するコマンド手順を組み立てる（run.yaml から activity を引き直す）
         activity, tests2, criteria2, target, act_dir = resolve_activity(target_dir)
         steps = iter_steps(activity, criteria2, target, act_dir)
-        todo = select_steps(steps, None)
+        todo, delegated = split_delegated(select_steps(steps, None), owners)
+        for wid, acts in delegated.items():
+            print(f"  （{wid} は secondary。コマンドは primary の {', '.join(acts)} で実行するので、ここでは実行しない）")
         if not todo:
             print(f"  （コマンド手順なし: {aid} は手動手順のみ。フォルダだけ用意しました）")
             refresh_record(target_dir)

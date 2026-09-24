@@ -266,6 +266,10 @@ uv run scripts/run_target.py --target wwwtest.example.com --reuse-latest
 uv run scripts/run_target.py --target wwwtest.example.com --reuse-latest
 ```
 
+同じ WSTG-ID を複数のアクティビティが扱う場合（例: WSTG-CONF-01 は fingerprint-stack・tls-scan が
+secondary、server-config-review が primary）、一括ではその ID のコマンドを **primary のアクティビティで1回だけ**
+実行する（nikto のような重いスキャンを何度も走らせない）。secondary 側の判定は primary 側のエビデンスを見る。
+
 翌日以降に続きをやるときも 3. と同じコマンドでよい。`--reuse-latest` を付けないと
 今日の日付で新しいフォルダが作られ、取得済みのエビデンスも取り直しになる（下記）。
 

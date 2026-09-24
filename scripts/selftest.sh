@@ -523,7 +523,21 @@ st = {"wid": "T", "idx": 9, "desc": "t", "runs": []}
 e = run_command({"cmd": f"test -d {d}/artifacts/jsin/", "output": "cmd/ph.txt", "role": "primary"}, st, d, None)
 assert e["exit_code"] == 0 and (d / "artifacts/jsin").is_dir(), e
 PH
-ok "run_target: 一括作成（既存スキップ・--reuse-latest）・成功分の再開スキップ・エラーで停止"
+# 一括では secondary の手順を primary 側に任せ、同じ重いコマンド（nikto 等）を1回しか走らせない
+"${PY[@]}" - <<'DUP' || ng "run_target が同じ WSTG-ID のコマンドを複数アクティビティで重複実行する"
+import sys; sys.path.insert(0, "scripts")
+from new_activity import COVERAGE_YAML, CRITERIA_YAML, load_yaml, iter_steps
+from run_activity import select_steps
+from run_target import primary_owners, split_delegated
+cov, cr = load_yaml(COVERAGE_YAML), load_yaml(CRITERIA_YAML)
+acts = [a for a in cov["activities"] if a.get("target_kind") != "domain"]
+own = primary_owners(acts)
+nikto = [a["id"] for a in acts
+         for s in split_delegated(select_steps(iter_steps(a, cr, "t.test", "X"), None), own)[0]
+         for r in s["runs"] if r["cmd"].startswith("nikto")]
+assert nikto == ["server-config-review"], nikto
+DUP
+ok "run_target: 一括作成（既存スキップ・--reuse-latest）・成功分の再開スキップ・エラーで停止・secondary の重複実行なし"
 
 echo "[5/8] export_checklist.py（集約規則）"
 "${PY[@]}" - <<PYEOF
