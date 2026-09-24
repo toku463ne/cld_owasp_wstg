@@ -49,6 +49,7 @@ activities:
     order: 1
     depends_on: []
     impact: low
+    target_kind: domain   # target は FQDN ではなくドメイン。run_target.py の一括対象から外す（--only で個別に）
     summary: 検索エンジン・証明書透明性ログ・whois から、対象の公開露出面とサブドメインを洗い出す。
     tools: [theHarvester, "crt.sh", whois, "Google/Bing dorking", subfinder]
     outputs: [artifacts/subdomains.txt, artifacts/dorking-hits.md, cmd/whois.txt]

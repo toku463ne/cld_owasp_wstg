@@ -472,9 +472,11 @@ ok "cmd/ 保存 + commands: 追記（正常系・異常系）"
 # run_target.py: 一括作成（既存はスキップ）と、実行の再開/停止ロジック
 "${PY[@]}" scripts/run_target.py --target rt.test --root "${TMP}/rt" --no-run >/dev/null \
   || ng "run_target --no-run が失敗した"
-NACT=$("${PY[@]}" -c "import yaml;print(len(yaml.safe_load(open('matrix/coverage.yaml'))['activities']))")
+# target_kind: domain（recon-osint 等）は一括対象外
+NACT=$("${PY[@]}" -c "import yaml;print(sum(a.get('target_kind')!='domain' for a in yaml.safe_load(open('matrix/coverage.yaml'))['activities']))")
 NDIR=$(ls -d "${TMP}/rt"/*/ 2>/dev/null | wc -l)
-[ "${NDIR}" = "${NACT}" ] || ng "run_target が全アクティビティ分のフォルダを作らない（${NDIR}/${NACT}）"
+[ "${NDIR}" = "${NACT}" ] || ng "run_target が一括対象のアクティビティ分のフォルダを作らない（${NDIR}/${NACT}）"
+ls -d "${TMP}/rt"/recon-osint-* >/dev/null 2>&1 && ng "run_target が target_kind: domain の recon-osint を一括で作った"
 # 2回目は作り直さない（作成 0）
 "${PY[@]}" scripts/run_target.py --target rt.test --root "${TMP}/rt" --no-run 2>&1 \
   | grep -q "作成 0 / 既存 ${NACT}" || ng "run_target 再実行で既存フォルダを作り直している"
@@ -484,7 +486,11 @@ NDIR=$(ls -d "${TMP}/rt"/*/ 2>/dev/null | wc -l)
   || ng "run_target --reuse-latest が日付違いの既存フォルダを使わない"
 ls -d "${TMP}/rt"/*-29991231 >/dev/null 2>&1 && ng "run_target --reuse-latest が新しい日付のフォルダを作った"
 # execute_steps の skip_done / stop_on_error（ネットワークを使わない echo で検証）
-RTD=$(ls -d "${TMP}/rt"/recon-osint-* | head -1)
+# --only なら domain のものも個別に作れる
+"${PY[@]}" scripts/run_target.py --target rt.test --root "${TMP}/rt2" --no-run --only recon-osint >/dev/null \
+  || ng "run_target --only recon-osint が失敗した"
+RTD=$(ls -d "${TMP}/rt2"/recon-osint-* 2>/dev/null | head -1)
+[ -n "${RTD}" ] || ng "run_target --only recon-osint でフォルダが作られない"
 "${PY[@]}" - "${RTD}" <<'RT' || ng "execute_steps の再開/停止が期待通りでない"
 import sys; sys.path.insert(0, "scripts")
 from pathlib import Path

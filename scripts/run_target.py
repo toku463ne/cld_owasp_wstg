@@ -19,6 +19,9 @@
         → エラー箇所を直して同じコマンドを再実行すれば、成功済みは飛ばして続きから進む。
 
 対象は1サイト固定（--target）。複数サイトを混ぜたいときはサイトごとに叩く。
+coverage.yaml で target_kind: domain のアクティビティ（recon-osint など。target が FQDN ではなく
+ドメイン）は一括対象から外す。回すときは --only で個別に指定する:
+    uv run scripts/run_target.py --target example.com --only recon-osint
 手動手順しか無いアクティビティはフォルダだけ作られる（コマンドは実行しない）。
 """
 
@@ -75,6 +78,14 @@ def main() -> int:
             print(f"  指定できるのは: {', '.join(a['id'] for a in activities)}", file=sys.stderr)
             return 2
         activities = [by_id[x] for x in want]   # --only の並び順を尊重
+    else:
+        # target が FQDN 前提ではないもの（ドメイン単位の OSINT 等）は一括では回さない
+        domain_acts = [a["id"] for a in activities if a.get("target_kind") == "domain"]
+        activities = [a for a in activities if a.get("target_kind") != "domain"]
+        if domain_acts:
+            print(f"[run_target] target がドメイン単位のため一括対象から外します: {', '.join(domain_acts)}")
+            print(f"  回すときは個別に: uv run scripts/run_target.py --target <ドメイン> "
+                  f"--only {','.join(domain_acts)}")
 
     if args.list:
         print(f"対象: {args.target}  日付: {date}  出力先: {root}")

@@ -253,7 +253,8 @@ uv run scripts/new_activity.py recon-osint --target example.com
 uv run scripts/run_target.py --target wwwtest.example.com          # 作成→実行を全部
 uv run scripts/run_target.py --target wwwtest.example.com --list   # 実施予定を出すだけ
 uv run scripts/run_target.py --target wwwtest.example.com --no-run # フォルダ作成だけ
-uv run scripts/run_target.py --target wwwtest.example.com --only recon-osint,metafiles-crawl
+uv run scripts/run_target.py --target wwwtest.example.com --only metafiles-crawl
+uv run scripts/run_target.py --target example.com --only recon-osint   # ドメイン単位のものは個別に
 uv run scripts/run_target.py --target wwwtest.example.com --reuse-latest  # 日付違いの既存フォルダを使う
 ```
 
@@ -267,6 +268,8 @@ uv run scripts/run_target.py --target wwwtest.example.com --reuse-latest  # 日�
   → エラーは `cmd/*.txt` の末尾と `matrix/criteria.yaml` の該当手順を直し、同じコマンドを
   もう一度叩けば、成功済みを飛ばして途中から再開する。
 - 手動手順しか無いアクティビティはフォルダだけ用意される（コマンドは実行しない）。
+- `coverage.yaml` で `target_kind: domain` のアクティビティ（`recon-osint`。target が FQDN ではなく
+  ドメイン）は**一括対象から外れる**。`--only recon-osint` とドメインを `--target` に渡して個別に回す。
 
 個別に細かく回したいとき（手順を絞る・ドライラン等）は、下の `run_activity.py` を直接使う。
 
