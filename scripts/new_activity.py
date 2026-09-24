@@ -54,7 +54,7 @@ ARTIFACT_TEMPLATES = REPO_ROOT / "templates" / "artifacts"
 CLI_BINARIES = {
     "whois", "theharvester", "amass", "subfinder", "nmap", "curl", "wget",
     "ffuf", "gobuster",
-    "sqlmap", "testssl.sh", "sslyze", "nikto", "whatweb", "httpx", "dig", "nslookup", "traceroute",
+    "sqlmap", "testssl", "testssl.sh", "sslyze", "nikto", "whatweb", "httpx", "dig", "nslookup", "traceroute",
     "ncat", "nc", "hydra", "dotdotpwn", "wfuzz", "retire", "git-dumper", "aws",
     "padbuster", "grep", "jq",
 }

@@ -138,7 +138,7 @@ sudo curl -sI https://github.com | head -1
   | `theHarvester` | `-p`＋`/etc/theHarvester/proxies.yaml` | × |
   | `subfinder` | `-proxy "$https_proxy"` | × |
   | `nikto` | `-useproxy "$https_proxy"` | × |
-  | `testssl.sh` | `--proxy=auto`（env を使う）または `--proxy host:port` | ×（auto 指定時のみ） |
+  | `testssl`（Kali の apt 版。git 版は `testssl.sh`） | `--proxy=auto`（env を使う）または `--proxy host:port` | ×（auto 指定時のみ） |
   | `sslyze` | `--https_tunnel="$https_proxy"` | × |
   | `ffuf` | `-x "$https_proxy"` | × |
   | `sqlmap` | `--proxy="$https_proxy"` | × |
@@ -347,7 +347,7 @@ uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --stop-
   `--only` でその手順だけ回す。
 - 単発の CLI を回して `cmd/` に残すだけなら、従来どおりロガーも使える:
   ```bash
-  uv run scripts/run_cmd.py evidence/tls-scan-20260908 -- testssl.sh --quiet target.example
+  uv run scripts/run_cmd.py evidence/tls-scan-20260908 -- testssl --quiet target.example
   ```
 
 ### 2b. Web で判定を書き、所見を作る

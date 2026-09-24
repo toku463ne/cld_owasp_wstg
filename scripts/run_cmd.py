@@ -4,7 +4,7 @@
     uv run scripts/run_cmd.py <activity_dir> -- <command...>
 
 例:
-    uv run scripts/run_cmd.py evidence/tls-scan-20260908 -- testssl.sh --quiet example.test
+    uv run scripts/run_cmd.py evidence/tls-scan-20260908 -- testssl --quiet example.test
     uv run scripts/run_cmd.py evidence/http-methods-20260908 --slug options -- curl -sSI -X OPTIONS https://example.test/
 
 やること:
