@@ -106,6 +106,13 @@ ejs_has "${EJS}" "while read -r h; do echo" || ng "for/while ループがコマ�
 ejs_has "${EJS}" "wc -l ${TDIR}/artifacts/cname-check.txt" || ng "ループの tee 出力先に確認コマンドが付いていない"
 ejs_has "${EJS}" "grep -iaE" || ng "OUTDIR に書く grep 後処理コマンドが拾われていない"
 ejs_has "${EJS}" "tee ${TDIR}/artifacts/takeover-candidates.md" || ng "grep の tee 出力先が置換されていない"
+# `-o a.txt; curl ...` の区切り `;` をパスに含めないこと（`wc -l a.txt;;` は構文エラー）
+"${PY[@]}" scripts/new_activity.py metafiles-crawl --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null
+MDIR="${TMP}/ev/metafiles-crawl-ex.test-20260101"
+ejs_has "${MDIR}/evidence.js" "wc -l ${MDIR}/artifacts/robots.txt; head -5 ${MDIR}/artifacts/robots.txt" \
+  || ng "コマンド末尾の ; が出力パスに混ざり確認コマンドが壊れる（robots.txt）"
+ejs_has "${MDIR}/evidence.js" "head -c 400 ${MDIR}/artifacts/sitemap.xml" \
+  || ng "コマンド末尾の ; が出力パスに混ざり確認コマンドが壊れる（sitemap.xml）"
 # 手動手順は observe を書く .txt ひな型が作られること（dork は手動）
 [ -f "${TDIR}/artifacts/manual-WSTG-INFO-01-s5.txt" ] || ng "手動手順の .txt ひな型が作られない"
 # 手順の枠（desc）は簡単な説明で、生コマンドを含まないこと（コマンドは runs に分離）

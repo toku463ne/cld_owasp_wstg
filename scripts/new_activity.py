@@ -612,7 +612,9 @@ def output_paths(cmd: str, act_dir: str) -> list:
     ドメイン名などを拾わないよう、探す範囲は mv/cp 以降に限る）。
     """
     prefix = f"{act_dir}/artifacts/"
-    toks = [tok.strip("'\"") for tok in cmd.split()]
+    # `-o a.txt; curl ...` のように区切り記号が語に付いたままになるので落とす
+    # （残すと確認コマンドが `wc -l a.txt;; head ...` になり構文エラー）
+    toks = [tok.rstrip(";&|)").strip("'\"") for tok in cmd.split()]
     paths = []
     for i, tok in enumerate(toks):
         if not tok.startswith(prefix):
