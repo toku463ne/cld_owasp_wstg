@@ -249,14 +249,42 @@ uv run scripts/new_activity.py recon-osint --target example.com
 `coverage.yaml` の順にフォルダ一式の作成（`new_activity`）とコマンド実行（`run_activity`）を
 まとめて行う。**既定は「再開」と「エラーで停止」**なので、そのまま何度でも叩ける。
 
+**典型的な流れ**（対象ドメイン `example.com`、検査対象サイト `wwwtest.example.com` の例）:
+
 ```bash
-uv run scripts/run_target.py --target wwwtest.example.com          # 作成→実行を全部
-uv run scripts/run_target.py --target wwwtest.example.com --list   # 実施予定を出すだけ
-uv run scripts/run_target.py --target wwwtest.example.com --no-run # フォルダ作成だけ
-uv run scripts/run_target.py --target wwwtest.example.com --only metafiles-crawl
-uv run scripts/run_target.py --target example.com --only recon-osint   # ドメイン単位のものは個別に
-uv run scripts/run_target.py --target wwwtest.example.com --reuse-latest  # 日付違いの既存フォルダを使う
+# 1. ドメイン単位の OSINT だけ先に個別で回す（target はドメイン）
+uv run scripts/run_target.py --target example.com --only recon-osint
+
+# 2. 何が作られ・どのフォルダを使うかを確認する（実行はしない）
+uv run scripts/run_target.py --target wwwtest.example.com --list --reuse-latest
+
+# 3. FQDN を固定して残りを一括実行（recon-osint は自動で外れる）
+uv run scripts/run_target.py --target wwwtest.example.com --reuse-latest
+
+# 4. 非0終了で止まったら、cmd/*.txt の末尾と matrix/criteria.yaml の該当手順を直して
+#    同じコマンドをもう一度叩く（成功済みは飛ばして止まった所から再開する）
+uv run scripts/run_target.py --target wwwtest.example.com --reuse-latest
 ```
+
+翌日以降に続きをやるときも 3. と同じコマンドでよい。`--reuse-latest` を付けないと
+今日の日付で新しいフォルダが作られ、取得済みのエビデンスも取り直しになる（下記）。
+
+**オプション**:
+
+| オプション | 用途 |
+|---|---|
+| `--target <FQDN>` | 対象サイト（必須・1つ固定）。フォルダ名とコマンドの target 置換に使う |
+| `--list` | 実施予定（アクティビティと WSTG-ID）を出すだけ。`--reuse-latest` と併用で使うフォルダも出る |
+| `--no-run` | フォルダ作成だけ行い、コマンドは実行しない |
+| `--only <id,id,...>` | アクティビティを絞る（指定順に実行）。`target_kind: domain` のものもこれなら回せる |
+| `--reuse-latest` | 日付違いの既存フォルダがあれば最新日付のものを使う。無いものだけ新規作成 |
+| `--date <yyyymmdd>` | 新規作成するフォルダの日付（既定: 今日） |
+| `--rerun-all` | 前回成功したコマンドも再実行する（既定は成功分をスキップ） |
+| `--keep-going` | 非0終了が出ても止めず最後まで回す（既定はそこで打ち切り） |
+| `--timeout <秒>` | 1コマンドあたりの上限。超えたら中断して記録 |
+| `--tester` / `--root` | 実施者名（既定 TOKU）/ 出力先ルート（既定 `evidence/`） |
+
+**挙動の要点**:
 
 - **作成済みは作り直さない**（既存フォルダはそのまま）。
 - フォルダ名は日付入り（`<activity>-<target>-<yyyymmdd>`）なので、**別の日に叩くと新しいフォルダが
@@ -264,12 +292,16 @@ uv run scripts/run_target.py --target wwwtest.example.com --reuse-latest  # 日�
   `--reuse-latest`（アクティビティごとに最新日付の既存フォルダを使い、無いものだけ今日の日付で作る）。
   全部が同じ日付なら `--date <yyyymmdd>` でもよい。どれを使うかは `--list --reuse-latest` で確認できる。
 - **前回 `exit_code` 0 で終わったコマンドはスキップ**して続きから進む（`--rerun-all` で全再実行）。
-- **非0終了が出たらそこで打ち切る**（`--keep-going` で最後まで継続）。
-  → エラーは `cmd/*.txt` の末尾と `matrix/criteria.yaml` の該当手順を直し、同じコマンドを
-  もう一度叩けば、成功済みを飛ばして途中から再開する。
+  判定は各フォルダの `cmd/*.txt` 末尾の `exit_code` を見る。失敗したコマンドと、手順の追加などで
+  まだ出力が無いコマンドだけが走る。
+- **非0終了が出たらそこで打ち切る**（`--keep-going` で最後まで継続。その場合、非0終了の
+  `cmd/*.txt` を pass の根拠にしないこと）。
 - 手動手順しか無いアクティビティはフォルダだけ用意される（コマンドは実行しない）。
 - `coverage.yaml` で `target_kind: domain` のアクティビティ（`recon-osint`。target が FQDN ではなく
   ドメイン）は**一括対象から外れる**。`--only recon-osint` とドメインを `--target` に渡して個別に回す。
+  ドメイン単位のアクティビティを増やすときは、`coverage.yaml` の定義に `target_kind: domain` を足す。
+- 実行後の判定（`run.yaml` の `covers` に verdict / finding）は、一括でも個別でも同じく手で行う
+  （Web の record.html からも書ける）。
 
 個別に細かく回したいとき（手順を絞る・ドライラン等）は、下の `run_activity.py` を直接使う。
 
