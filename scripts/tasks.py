@@ -55,6 +55,8 @@ APT_PKG = {
     "subjack": "subjack",
     "aws": "awscli", "awscli": "awscli", "grep/ripgrep": "ripgrep",
     "jq": "jq", "searchsploit": "exploitdb", "traceroute": "traceroute",
+    # ffuf の既定ワードリスト（/usr/share/seclists/...）。パス中の語から拾って案内する
+    "seclists": "seclists",
 }
 # nmap / ncat / nikto は 2025 年の nmap ライセンス変更で main → non-free に移った。
 # Kali 既定の sources.list（main contrib non-free non-free-firmware）ならそのまま入るが、

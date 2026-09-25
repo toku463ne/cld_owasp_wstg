@@ -62,7 +62,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 外から見えるサービス・設定・残骸を洗い出す。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y awscli bind9-dnsutils curl dirsearch ffuf gobuster httpx-toolkit jq ncat nikto nmap ripgrep sslyze testssl.sh wget whatweb`
+- apt: `sudo apt install -y awscli bind9-dnsutils curl dirsearch ffuf gobuster httpx-toolkit jq ncat nikto nmap ripgrep seclists sslyze testssl.sh wget whatweb`
 - 個別: `sudo apt install -y npm && sudo npm install -g retire`
 - Kali 同梱 / Burp 内（導入不要）: Burp Repeater, Burp Suite
 
@@ -197,7 +197,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 認証済みでアプリ全体を歩き、入力点と構造を地図にする。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y curl ffuf traceroute`
+- apt: `sudo apt install -y curl ffuf seclists traceroute`
 - Kali 同梱 / Burp 内（導入不要）: Burp Suite, OWASP ZAP
 
 ### 11. `burp-crawl-authn` — 認証済みクロールとエントリポイント洗い出し

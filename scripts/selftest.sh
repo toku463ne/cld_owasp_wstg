@@ -543,7 +543,7 @@ assert c4["ran"]==3 and c4["skipped"]==1, c4                      # in.txt→out
 RT
 # 実行されるコマンドに日本語のプレースホルダ（<JSフォルダ> 等）が残っていない
 # （bash はリダイレクトと解釈して失敗する）。入力置き場 OUTDIR/<name>/ は実行前に作られる
-"${PY[@]}" - "${RTD}" <<'PH' || ng "コマンドにプレースホルダが残っている、または入力置き場が作られない"
+"${PY[@]}" - "${RTD}" <<'PH' || ng "コマンドにプレースホルダ（日本語の <…> やワードリストの仮名）が残っている、または入力置き場が作られない"
 import re, sys; sys.path.insert(0, "scripts")
 from pathlib import Path
 from new_activity import COVERAGE_YAML, CRITERIA_YAML, load_yaml, iter_steps
@@ -553,6 +553,13 @@ bad = [(s["wid"], s["idx"], m) for a in cov["activities"]
        for s in iter_steps(a, cr, "t.test", "X") if s["kind"] == "cmd"
        for r in s["runs"] for m in re.findall(r"<[^<>]*[^\x00-\x7f][^<>]*>", r["cmd"])]
 assert not bad, bad
+# ワードリストを取るツール（ffuf 等）の -w が `wordlist` のような仮名のままだと、リポジトリ直下の
+# 存在しないファイルを探して ffuf がヘルプを吐いて止まる。絶対パスか ${環境変数:-既定} にする
+wl = [(s["wid"], s["idx"], m) for a in cov["activities"]
+      for s in iter_steps(a, cr, "t.test", "X") if s["kind"] == "cmd"
+      for r in s["runs"] if re.match(r"(ffuf|gobuster|wfuzz|dirsearch|hydra)\b", r["cmd"])
+      for m in re.findall(r"\s-[wPL]\s+([^\s\"'$/][^\s]*)", r["cmd"])]
+assert not wl, wl
 d = Path(sys.argv[1])
 st = {"wid": "T", "idx": 9, "desc": "t", "runs": []}
 e = run_command({"cmd": f"test -d {d}/artifacts/jsin/", "output": "cmd/ph.txt", "role": "primary"}, st, d, None)

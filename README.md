@@ -174,7 +174,10 @@ uv run scripts/run_activity.py evidence/<活動フォルダ> --only WSTG-CONF-01
 
 - 504 が出始めたら、まず今のスキャンを止めて `WSTG_PAUSE` を上げてから `--only` でその手順だけ回し直す。
 - それでも厳しい対象は、ワードリストを小さくする・`-T`（nikto）で試験カテゴリを絞る・実施時間帯を
-  ずらす、を併用する。落ちたこと自体（可用性の弱さ）も観察として `notes.md` / finding に残す。
+  ずらす、を併用する。ffuf のワードリストは既定で SecLists（`sudo apt install seclists`）を使い、
+  環境変数で差し替えられる: `WSTG_WORDLIST_VHOST`（WSTG-INFO-04 のバーチャルホスト。既定
+  `Discovery/DNS/subdomains-top1million-5000.txt`）/ `WSTG_WORDLIST_WEB`（WSTG-CONF-04・CONF-05 のパス。
+  既定 `Discovery/Web-Content/common.txt`。例 `export WSTG_WORDLIST_WEB=/usr/share/dirb/wordlists/small.txt`）。落ちたこと自体（可用性の弱さ）も観察として `notes.md` / finding に残す。
 
 ## Burp のブラウザが reCAPTCHA / ボット検知で弾かれるとき
 
