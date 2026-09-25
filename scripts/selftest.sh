@@ -521,6 +521,25 @@ assert s6["pending"]==1 and s6["failed"]==0 and s6["aborted"] is False and len(s
 assert not (d/"cmd/rt-s7-c2.txt").exists() and (d/"cmd/rt-s8.txt").exists(), "入力待ちの後の扱いが違う"
 s7 = execute_steps(ry, d, pend, timeout=None, skip_done=True, stop_on_error=True)
 assert s7["pending"]==1 and s7["skipped"]==1, s7   # 入力待ちは成功扱いでスキップしない
+# 入力待ちは同じファイルを使う後続の手順にも連鎖し（実行しない）、入力を置けば続きが走る。
+# 参照する artifacts/ のファイルが前回の出力より新しければ成功済みでも再実行する（make と同じ）
+import os, time
+A = f"{d}/artifacts"
+chain = [st(11, f"test -s {A}/in.txt || exit 75; cat {A}/in.txt", "cmd/ch-s11.txt"),
+         st(12, f"grep x {A}/in.txt > {A}/out.txt || [ $? -eq 1 ]", "cmd/ch-s12.txt"),
+         st(13, f"cat {A}/out.txt", "cmd/ch-s13.txt"),
+         st(14, "echo indep", "cmd/ch-s14.txt")]
+c1 = execute_steps(ry, d, chain, timeout=None, skip_done=True, stop_on_error=True)
+assert c1["pending"]==3 and c1["ran"]==2 and c1["failed"]==0 and not c1["aborted"], c1
+assert "exit_code: 75" in (d/"cmd/ch-s12.txt").read_text() and not (d/"artifacts/out.txt").exists()
+(d/"artifacts/in.txt").write_text("x\n")
+c2 = execute_steps(ry, d, chain, timeout=None, skip_done=True, stop_on_error=True)
+assert c2["pending"]==0 and c2["ran"]==3 and c2["skipped"]==1 and c2["failed"]==0, c2
+c3 = execute_steps(ry, d, chain, timeout=None, skip_done=True, stop_on_error=True)
+assert c3["ran"]==0 and c3["skipped"]==4, c3
+t = time.time() + 60; os.utime(d/"artifacts/in.txt", (t, t))     # 入力を差し替えた
+c4 = execute_steps(ry, d, chain, timeout=None, skip_done=True, stop_on_error=True)
+assert c4["ran"]==3 and c4["skipped"]==1, c4                      # in.txt→out.txt を使う3つが再実行
 RT
 # 実行されるコマンドに日本語のプレースホルダ（<JSフォルダ> 等）が残っていない
 # （bash はリダイレクトと解釈して失敗する）。入力置き場 OUTDIR/<name>/ は実行前に作られる

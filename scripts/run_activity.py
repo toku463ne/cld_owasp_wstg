@@ -98,10 +98,46 @@ def cmd_recorded(activity_dir: Path, output_rel: str) -> str | None:
     return None
 
 
+def own_artifacts(activity_dir: Path, cmd: str) -> set:
+    """コマンドが参照する、この活動フォルダの artifacts/ 直下のパス（ファイル/ディレクトリ）。
+
+    他の活動フォルダ（`OUTDIR/../../<活動>-*/artifacts/...`）は含めない。
+    """
+    pat = re.escape(activity_dir.name) + r"/artifacts/([A-Za-z0-9_-][A-Za-z0-9._-]*)"
+    return {activity_dir / "artifacts" / name for name in re.findall(pat, cmd)}
+
+
 def is_done(activity_dir: Path, run: dict) -> bool:
-    """前回このコマンドが（今と同じコマンドのまま）exit_code 0 で終わっているか。"""
-    return (cmd_exit_code(activity_dir, run["output"]) == 0
-            and cmd_recorded(activity_dir, run["output"]) == run["cmd"])
+    """前回このコマンドが（今と同じコマンドのまま）exit_code 0 で終わっていて、まだ新しいか。
+
+    参照する artifacts/ のファイルが前回の出力より新しい（人が入力を置いた・前の手順を
+    再実行した）ときは古い結果なので done とみなさない（make と同じ考え方）。
+    """
+    out = activity_dir / run["output"]
+    if not (cmd_exit_code(activity_dir, run["output"]) == 0
+            and cmd_recorded(activity_dir, run["output"]) == run["cmd"]):
+        return False
+    done_at = out.stat().st_mtime
+    return all(not p.exists() or p.stat().st_mtime <= done_at
+               for p in own_artifacts(activity_dir, run["cmd"]))
+
+
+def write_pending(run: dict, step: dict, activity_dir: Path, waits_on: set) -> None:
+    """入力待ちの手順に依存するコマンドを、実行せずに入力待ち（exit 75）として記録する。
+
+    前回の（入力が無いまま走った）出力を残すと、成功扱いや古い結果の表示につながるので上書きする。
+    """
+    out_path = activity_dir / run["output"]
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    names = ", ".join(sorted(p.name for p in waits_on))
+    out_path.write_text("\n".join([
+        f"# {step['wid']} 手順{step['idx']} / {run['role']}",
+        f"$ {run['cmd']}",
+        "# " + "-" * 68,
+        f"[run_activity] 入力待ち: {names} がまだ無いため実行していない（前の手順の入力を置いてから再実行する）",
+        "# " + "-" * 68,
+        f"# exit_code: {PENDING_EXIT}  duration_sec: 0.0",
+    ]) + "\n", encoding="utf-8")
 
 
 def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
@@ -113,10 +149,12 @@ def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
                   手順を直してコマンドが変わったものは成功済みでも再実行する。
     stop_on_error … 非0終了が出たら、その時点で残りを実行せず打ち切る（aborted=True）。
     PENDING_EXIT（入力待ち）は非0終了に数えず止めない。その手順の残りのコマンドだけ飛ばし、
-    どの出力が待っているかを waiting に積む。
+    どの出力が待っているかを waiting に積む。入力待ちのコマンドが参照するファイルを
+    後続のコマンドが参照していれば、それも実行せず入力待ちにする（連鎖する）。
     """
     ran = failed = skipped = pending = 0
     waiting: list = []
+    missing: set = set()   # 入力待ちで揃っていない artifacts/ のパス
     aborted = False
 
     def result() -> dict:
@@ -126,17 +164,31 @@ def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
     for s in todo:
         print(f"\n===== {s['wid']} 手順{s['idx']}：{s['desc'][:60]} =====")
         for r in s["runs"]:
+            refs = own_artifacts(activity_dir, r["cmd"])
+            waits_on = refs & missing
+            if waits_on:
+                write_pending(r, s, activity_dir, waits_on)
+                missing |= refs
+                pending += 1
+                waiting.append(f"{s['wid']} 手順{s['idx']}（{activity_dir / r['output']}）")
+                print(f"[run_activity] 入力待ち: {s['wid']} 手順{s['idx']} は前の入力待ちの手順と同じ"
+                      f"ファイル（{', '.join(sorted(p.name for p in waits_on))}）を使うため飛ばします")
+                break
             if skip_done and is_done(activity_dir, r):
                 skipped += 1
                 print(f"[run_activity] スキップ（前回成功）: {r['output']}")
                 continue
             if skip_done and cmd_exit_code(activity_dir, r["output"]) == 0:
-                print(f"[run_activity] 手順のコマンドが前回と変わったため再実行: {r['output']}")
+                why = ("手順のコマンドが前回と変わった"
+                       if cmd_recorded(activity_dir, r["output"]) != r["cmd"]
+                       else "参照する artifacts/ のファイルが前回より新しい")
+                print(f"[run_activity] {why}ため再実行: {r['output']}")
             entry = run_command(r, s, activity_dir, timeout)
             append_command(run_yaml, entry)
             ran += 1
             code = entry["exit_code"]
             if code == PENDING_EXIT:
+                missing |= refs
                 pending += 1
                 waiting.append(f"{s['wid']} 手順{s['idx']}（{activity_dir / entry['output']}）")
                 print(f"[run_activity] 入力待ち: {s['wid']} 手順{s['idx']} は人が artifacts/ に置く入力が"
