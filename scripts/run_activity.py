@@ -69,12 +69,42 @@ def cmd_exit_code(activity_dir: Path, output_rel: str) -> int | None:
     return None
 
 
+def cmd_recorded(activity_dir: Path, output_rel: str) -> str | None:
+    """既存のコマンド出力ファイルのヘッダから、前回実行したコマンド文字列を読む（無ければ None）。
+
+    run_command が書く `$ <cmd>` 行から区切り線（`# ----`）までを取り出す。
+    criteria.yaml の手順を直すと同じ出力パス（s<n>-c<k>）に別コマンドが割り当たるので、
+    `--skip-done` は「exit_code 0」だけでなく「コマンドが今と同じ」ことも確かめる。
+    """
+    path = activity_dir / output_rel
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    for i, line in enumerate(lines):
+        if line.startswith("$ "):
+            body = [line[2:]]
+            for rest in lines[i + 1:]:
+                if rest.startswith("# " + "-" * 68):
+                    break
+                body.append(rest)
+            return "\n".join(body)
+    return None
+
+
+def is_done(activity_dir: Path, run: dict) -> bool:
+    """前回このコマンドが（今と同じコマンドのまま）exit_code 0 で終わっているか。"""
+    return (cmd_exit_code(activity_dir, run["output"]) == 0
+            and cmd_recorded(activity_dir, run["output"]) == run["cmd"])
+
+
 def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
                   timeout: int | None, skip_done: bool,
                   stop_on_error: bool) -> dict:
     """コマンド手順を順に実行する。集計 dict（ran/failed/skipped/aborted）を返す。
 
     skip_done   … 前回 exit_code 0 で終わっているコマンドは再実行しない（再開用）。
+                  手順を直してコマンドが変わったものは成功済みでも再実行する。
     stop_on_error … 非0終了が出たら、その時点で残りを実行せず打ち切る（aborted=True）。
     """
     ran = failed = skipped = 0
@@ -82,10 +112,12 @@ def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
     for s in todo:
         print(f"\n===== {s['wid']} 手順{s['idx']}：{s['desc'][:60]} =====")
         for r in s["runs"]:
-            if skip_done and cmd_exit_code(activity_dir, r["output"]) == 0:
+            if skip_done and is_done(activity_dir, r):
                 skipped += 1
                 print(f"[run_activity] スキップ（前回成功）: {r['output']}")
                 continue
+            if skip_done and cmd_exit_code(activity_dir, r["output"]) == 0:
+                print(f"[run_activity] 手順のコマンドが前回と変わったため再実行: {r['output']}")
             entry = run_command(r, s, activity_dir, timeout)
             append_command(run_yaml, entry)
             ran += 1
@@ -170,7 +202,7 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="実行せず、走らせるコマンドだけ表示")
     ap.add_argument("--timeout", type=int, help="1手順あたりの秒。超えたら中断して記録")
     ap.add_argument("--skip-done", action="store_true",
-                    help="前回 exit_code 0 で終わったコマンドは再実行しない（再開）")
+                    help="前回 exit_code 0 で終わったコマンドは再実行しない（再開。コマンドが変わったものは再実行）")
     ap.add_argument("--stop-on-error", action="store_true",
                     help="非0終了が出たらその時点で打ち切る（戻り値も非0）")
     args = ap.parse_args()

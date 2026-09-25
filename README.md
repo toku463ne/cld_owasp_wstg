@@ -320,7 +320,7 @@ uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --list 
 uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --only WSTG-INFO-02      # ID を絞る
 uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --only WSTG-INFO-02:4    # 手順を絞る
 uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --dry-run  # 実行内容の確認だけ
-uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --skip-done # 前回成功したコマンドは飛ばす（再開）
+uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --skip-done # 前回成功したコマンドは飛ばす（再開。コマンドが変わったものは再実行）
 uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --stop-on-error # 非0終了でそこで打ち切り
 ```
 

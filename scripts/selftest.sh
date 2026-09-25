@@ -505,6 +505,12 @@ s2 = execute_steps(ry, d, todo, timeout=None, skip_done=True, stop_on_error=True
 assert s2 == {"ran":1,"failed":1,"skipped":1,"aborted":True}, s2        # s1 は成功済みでスキップ
 s3 = execute_steps(ry, d, todo, timeout=None, skip_done=True, stop_on_error=False)
 assert s3["skipped"]==1 and s3["aborted"] is False and (d/"cmd/rt-s3.txt").exists(), s3  # keep-going
+# 手順を直して同じ出力パスのコマンドが変わったら、前回成功でも再実行する（古いエビデンスで飛ばさない）
+todo[0] = st(1,"echo changed","cmd/rt-s1.txt")
+s4 = execute_steps(ry, d, todo[:1], timeout=None, skip_done=True, stop_on_error=True)
+assert s4 == {"ran":1,"failed":0,"skipped":0,"aborted":False}, s4
+s5 = execute_steps(ry, d, todo[:1], timeout=None, skip_done=True, stop_on_error=True)
+assert s5["skipped"]==1 and s5["ran"]==0, s5
 RT
 # 実行されるコマンドに日本語のプレースホルダ（<JSフォルダ> 等）が残っていない
 # （bash はリダイレクトと解釈して失敗する）。入力置き場 OUTDIR/<name>/ は実行前に作られる
