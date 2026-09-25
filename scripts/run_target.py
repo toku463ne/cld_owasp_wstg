@@ -42,29 +42,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from new_activity import (  # noqa: E402
     COVERAGE_YAML, WSTG_TESTS, CRITERIA_YAML, load_yaml,
     create_activity, resolve_activity, iter_steps, refresh_record, find_latest_dir,
+    primary_owners, split_delegated,
 )
 from run_activity import select_steps, execute_steps  # noqa: E402
 
-
-def primary_owners(activities: list) -> dict:
-    """WSTG-ID → その ID を primary で扱うアクティビティ ID の一覧（一括対象の中だけ）。"""
-    owners: dict = {}
-    for a in activities:
-        for cov in a.get("covers", []):
-            if cov.get("role", "primary") == "primary":
-                owners.setdefault(cov["id"], []).append(a["id"])
-    return owners
-
-
-def split_delegated(steps: list, owners: dict) -> tuple:
-    """secondary の手順のうち、primary 側で実行されるものを外す。(実行する手順, 外した WSTG→担当) を返す。"""
-    keep, delegated = [], {}
-    for s in steps:
-        if s["role"] == "secondary" and owners.get(s["wid"]):
-            delegated[s["wid"]] = owners[s["wid"]]
-        else:
-            keep.append(s)
-    return keep, delegated
+# primary_owners / split_delegated は new_activity に移動（run_activity 単体実行でも同じ委譲を
+# 使えるようにするため）。ここでは import して従来どおりの名前で使う。
 
 
 def main() -> int:

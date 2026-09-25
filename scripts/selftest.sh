@@ -638,6 +638,16 @@ ww = [aid for aid, c in mains if c.startswith("whatweb")]
 assert ww == ["fingerprint-stack"], ww
 jscrawl = [aid for aid, c in mains if "app-js.txt" in c and "curl" in c]
 assert jscrawl == ["metafiles-crawl"], jscrawl
+# 単体 run_activity でも同じ委譲をする（owners は coverage.yaml 全体）。secondary で
+# primary が別にある WSTG-ID のコマンドは、フォルダ単体で回しても走らせない（ffuf 二重実行を防ぐ）。
+gown = primary_owners(cov["activities"])
+def solo_mains(aid):
+    a = next(x for x in cov["activities"] if x["id"] == aid)
+    kept, _ = split_delegated(select_steps(iter_steps(a, cr, "t.test", "X"), None), gown)
+    return [r["cmd"] for s in kept for r in s["runs"] if r["role"] == "main"]
+mf = solo_mains("metafiles-crawl")
+assert not any("ffuf -w" in c for c in mf), "単体 run_activity が secondary（CONF-05）の ffuf を実行する"
+assert any("app-js.txt" in c for c in mf), "委譲で metafiles-crawl の primary 手順まで落ちている"
 DUP
 ok "run_target: 一括作成（既存スキップ・--reuse-latest）・成功分の再開スキップ・エラーで停止・secondary の重複実行なし"
 

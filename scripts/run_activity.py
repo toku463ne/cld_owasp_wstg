@@ -33,7 +33,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from new_activity import (  # noqa: E402
     iter_steps, resolve_activity, refresh_record, write_manual_stubs,
-    print_missing_run_yaml,
+    print_missing_run_yaml, primary_owners, split_delegated,
+    COVERAGE_YAML, load_yaml,
 )
 from run_cmd import append_command  # noqa: E402
 
@@ -297,8 +298,19 @@ def main() -> int:
         return 0
 
     todo = select_steps(steps, args.only)
+    # secondary（入力・補強）のコマンド手順は、その WSTG を primary で扱うアクティビティが
+    # 別にある限り、そちらで1回だけ実行する（run_target と同じ委譲）。単体実行でも ffuf 等を
+    # 二重に走らせないため、ここでも委譲する。委譲範囲は coverage.yaml 全体（＝どこかに primary が
+    # あれば任せる）。--only で明示指定したときは、その手順を狙って実行したい意図を優先し委譲しない。
+    if not args.only:
+        owners = primary_owners(load_yaml(COVERAGE_YAML)["activities"])
+        todo, delegated = split_delegated(todo, owners)
+        for wid, acts in delegated.items():
+            print(f"  （{wid} は secondary。コマンドは primary の {', '.join(acts)} で"
+                  "実行するので、ここでは実行しない）")
     if not todo:
-        print("実行するコマンド手順がありません（--only の指定か、手動手順のみ）。")
+        print("実行するコマンド手順がありません（--only の指定か、手動手順のみ、"
+              "または secondary で primary 側に委譲）。")
         print("  手順一覧は --list、手動手順は artifacts/manual-*.txt に観察を書いてください。")
         return 1
 

@@ -733,6 +733,37 @@ def iter_steps(activity: dict, criteria: dict, target, act_dir: str) -> list:
     return out
 
 
+def primary_owners(activities: list) -> dict:
+    """WSTG-ID → その ID を primary で扱うアクティビティ ID の一覧。
+
+    secondary のコマンド手順を「誰に任せるか」を引くための表。渡す activities の範囲が
+    委譲の効く範囲になる（一括処理なら対象一式、単体実行なら coverage.yaml 全体）。
+    """
+    owners: dict = {}
+    for a in activities:
+        for cov in a.get("covers", []):
+            if cov.get("role", "primary") == "primary":
+                owners.setdefault(cov["id"], []).append(a["id"])
+    return owners
+
+
+def split_delegated(steps: list, owners: dict) -> tuple:
+    """secondary（入力・補強）のコマンド手順のうち、primary 側で実行されるものを外す。
+
+    同じ WSTG-ID を primary で扱うアクティビティが owners にあれば、その ID の手順は
+    そちらで1回だけ実行する（ffuf・nikto 等の重い収集を二重に走らせない）。
+    戻り値は (実行する手順, 外した WSTG-ID→担当アクティビティ)。secondary 側の判定は
+    primary 側のエビデンスを参照する。
+    """
+    keep, delegated = [], {}
+    for s in steps:
+        if s["role"] == "secondary" and owners.get(s["wid"]):
+            delegated[s["wid"]] = owners[s["wid"]]
+        else:
+            keep.append(s)
+    return keep, delegated
+
+
 def manual_stub_text(activity: dict, step: dict) -> str:
     """手動手順の観察を書き込むための素の .txt ひな型（これ自体がエビデンス）。"""
     return "\n".join([
