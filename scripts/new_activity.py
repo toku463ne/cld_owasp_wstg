@@ -57,6 +57,8 @@ CLI_BINARIES = {
     "sqlmap", "testssl", "testssl.sh", "sslyze", "nikto", "whatweb", "httpx", "dig", "nslookup", "traceroute",
     "ncat", "nc", "hydra", "dotdotpwn", "wfuzz", "retire", "git-dumper", "aws",
     "padbuster", "grep", "jq",
+    # `test -s OUTDIR/<入力> || exit 75; ...` … 人が置く入力が無ければ「入力待ち」で飛ばす手順
+    "test",
 }
 
 

@@ -37,6 +37,12 @@ from new_activity import (  # noqa: E402
 )
 from run_cmd import append_command  # noqa: E402
 
+# 「入力待ち」を表す終了コード（sysexits の EX_TEMPFAIL）。人が artifacts/ に置く入力
+# （ログイン応答のヘッダ・保存した JS など）が無いとき、手順のコマンドが
+# `test -s OUTDIR/<入力> || exit 75` で返す。失敗ではないので一括処理は止めず、
+# 成功でもないので次回の --skip-done でも再実行される（置いた後に回せば続きが走る）。
+PENDING_EXIT = 75
+
 
 def select_steps(steps: list, only: str | None) -> list:
     """--only で手順を絞る（未指定なら「コマンド手順」を全部）。"""
@@ -101,14 +107,22 @@ def is_done(activity_dir: Path, run: dict) -> bool:
 def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
                   timeout: int | None, skip_done: bool,
                   stop_on_error: bool) -> dict:
-    """コマンド手順を順に実行する。集計 dict（ran/failed/skipped/aborted）を返す。
+    """コマンド手順を順に実行する。集計 dict（ran/failed/skipped/pending/aborted/waiting）を返す。
 
     skip_done   … 前回 exit_code 0 で終わっているコマンドは再実行しない（再開用）。
                   手順を直してコマンドが変わったものは成功済みでも再実行する。
     stop_on_error … 非0終了が出たら、その時点で残りを実行せず打ち切る（aborted=True）。
+    PENDING_EXIT（入力待ち）は非0終了に数えず止めない。その手順の残りのコマンドだけ飛ばし、
+    どの出力が待っているかを waiting に積む。
     """
-    ran = failed = skipped = 0
+    ran = failed = skipped = pending = 0
+    waiting: list = []
     aborted = False
+
+    def result() -> dict:
+        return {"ran": ran, "failed": failed, "skipped": skipped, "pending": pending,
+                "aborted": aborted, "waiting": waiting}
+
     for s in todo:
         print(f"\n===== {s['wid']} 手順{s['idx']}：{s['desc'][:60]} =====")
         for r in s["runs"]:
@@ -122,6 +136,12 @@ def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
             append_command(run_yaml, entry)
             ran += 1
             code = entry["exit_code"]
+            if code == PENDING_EXIT:
+                pending += 1
+                waiting.append(f"{s['wid']} 手順{s['idx']}（{activity_dir / entry['output']}）")
+                print(f"[run_activity] 入力待ち: {s['wid']} 手順{s['idx']} は人が artifacts/ に置く入力が"
+                      f"まだ無いため飛ばします（手順の説明どおりに置いて再実行すると走ります）")
+                break
             if code:
                 failed += 1
             print(f"[run_activity] 保存: {activity_dir / entry['output']}  (exit={code}, {entry['duration_sec']}s)")
@@ -129,8 +149,8 @@ def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
                 aborted = True
                 print(f"[run_activity] 非0終了（exit={code}）のため打ち切ります: {s['wid']} 手順{s['idx']}",
                       file=sys.stderr)
-                return {"ran": ran, "failed": failed, "skipped": skipped, "aborted": True}
-    return {"ran": ran, "failed": failed, "skipped": skipped, "aborted": aborted}
+                return result()
+    return result()
 
 
 def run_command(run: dict, step: dict, activity_dir: Path, timeout: int | None) -> dict:
@@ -183,6 +203,8 @@ def run_command(run: dict, step: dict, activity_dir: Path, timeout: int | None) 
             exit_code = 130
     duration = round(time.monotonic() - t0, 1)
     with out_path.open("a", encoding="utf-8") as fh:
+        if exit_code == PENDING_EXIT:
+            fh.write("[run_activity] 入力待ち: 手順の説明どおりに artifacts/ へ入力を置いてから再実行する\n")
         fh.write(f"# {'-' * 68}\n# exit_code: {exit_code}  duration_sec: {duration}\n")
 
     return {
@@ -241,6 +263,7 @@ def main() -> int:
 
     refresh_record(activity_dir)
     skipped_note = f"、スキップ {summary['skipped']}" if summary["skipped"] else ""
+    skipped_note += f"、入力待ち {summary['pending']}" if summary["pending"] else ""
     print(f"\n[run_activity] {summary['ran']} コマンドを実行"
           f"（うち非0終了 {summary['failed']}{skipped_note}）。evidence.js を更新しました。")
     print(f"  表示: {activity_dir / 'record.html'} をブラウザで開く")

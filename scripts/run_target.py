@@ -17,6 +17,8 @@
      既定は再開モード（--skip-done）: 前回 exit_code 0 で終わったコマンドは飛ばす（手順を直してコマンドが変わったものは再実行）。
      既定は停止モード（--stop-on-error）: 非0終了が出たらそこで打ち切る。
         → エラー箇所を直して同じコマンドを再実行すれば、成功済みは飛ばして続きから進む。
+     人が artifacts/ に置く入力（ログイン応答のヘッダ等）が無い手順は「入力待ち」（exit 75）として
+     止めずに飛ばし、最後に一覧を出す。置いてから同じコマンドを再実行すればその手順だけ走る。
 
 対象は1サイト固定（--target）。複数サイトを混ぜたいときはサイトごとに叩く。
 coverage.yaml で target_kind: domain のアクティビティ（recon-osint など。target が FQDN ではなく
@@ -128,7 +130,8 @@ def main() -> int:
 
     owners = primary_owners(activities)
     created = existed = 0
-    total = {"ran": 0, "failed": 0, "skipped": 0}
+    total = {"ran": 0, "failed": 0, "skipped": 0, "pending": 0}
+    waiting: list = []
     for a in activities:
         aid = a["id"]
         reused = find_latest_dir(root, a, args.target) if args.reuse_latest else None
@@ -166,6 +169,7 @@ def main() -> int:
         refresh_record(target_dir)
         for k in total:
             total[k] += summary[k]
+        waiting += summary["waiting"]
 
         if summary["aborted"]:
             print("\n" + "=" * 70)
@@ -175,7 +179,8 @@ def main() -> int:
             print(f"    uv run scripts/run_target.py --target {args.target} --date {date}"
                   f"{' --reuse-latest' if args.reuse_latest else ''}")
             print(f"  作成 {created} / 既存 {existed}、"
-                  f"実行 {total['ran']}・スキップ {total['skipped']}・非0終了 {total['failed']}")
+                  f"実行 {total['ran']}・スキップ {total['skipped']}・非0終了 {total['failed']}"
+                  f"・入力待ち {total['pending']}")
             return 3
 
     print("\n" + "=" * 70)
@@ -184,7 +189,14 @@ def main() -> int:
         print(f"  実行するには: uv run scripts/run_target.py --target {args.target} --date {date}")
         return 0
     print(f"[run_target] 完了。作成 {created} / 既存 {existed}、"
-          f"実行 {total['ran']}・スキップ {total['skipped']}・非0終了 {total['failed']}。")
+          f"実行 {total['ran']}・スキップ {total['skipped']}・非0終了 {total['failed']}"
+          f"・入力待ち {total['pending']}。")
+    if waiting:
+        print("  入力待ち（人が artifacts/ に入力を置く手順。各手順の説明どおりに置いてから、同じコマンドを再実行）:")
+        for w in waiting:
+            print(f"    - {w}")
+        print(f"    uv run scripts/run_target.py --target {args.target} --date {date}"
+              f"{' --reuse-latest' if args.reuse_latest else ''}")
     if total["failed"]:
         print("  ※ --keep-going 指定で非0終了があります。cmd/*.txt を見て pass の根拠にしないこと。")
     print("  判定: 各 run.yaml の covers に verdict / finding を記入（Web の record.html でも可）。")

@@ -498,19 +498,29 @@ from run_activity import execute_steps
 d = Path(sys.argv[1]); ry = d / "run.yaml"
 def st(i, cmd, out): return {"wid":"T","idx":i,"desc":"t","runs":[{"cmd":cmd,"output":out,"role":"primary"}]}
 todo = [st(1,"echo ok","cmd/rt-s1.txt"), st(2,"exit 5","cmd/rt-s2.txt"), st(3,"echo z","cmd/rt-s3.txt")]
+def sm(r): return {k: r[k] for k in ("ran","failed","skipped","aborted")}
 s = execute_steps(ry, d, todo, timeout=None, skip_done=True, stop_on_error=True)
-assert s == {"ran":2,"failed":1,"skipped":0,"aborted":True}, s          # s2 で停止、s3 は走らない
+assert sm(s) == {"ran":2,"failed":1,"skipped":0,"aborted":True}, s          # s2 で停止、s3 は走らない
 assert not (d/"cmd/rt-s3.txt").exists(), "stop_on_error なのに後続が走った"
 s2 = execute_steps(ry, d, todo, timeout=None, skip_done=True, stop_on_error=True)
-assert s2 == {"ran":1,"failed":1,"skipped":1,"aborted":True}, s2        # s1 は成功済みでスキップ
+assert sm(s2) == {"ran":1,"failed":1,"skipped":1,"aborted":True}, s2        # s1 は成功済みでスキップ
 s3 = execute_steps(ry, d, todo, timeout=None, skip_done=True, stop_on_error=False)
 assert s3["skipped"]==1 and s3["aborted"] is False and (d/"cmd/rt-s3.txt").exists(), s3  # keep-going
 # 手順を直して同じ出力パスのコマンドが変わったら、前回成功でも再実行する（古いエビデンスで飛ばさない）
 todo[0] = st(1,"echo changed","cmd/rt-s1.txt")
 s4 = execute_steps(ry, d, todo[:1], timeout=None, skip_done=True, stop_on_error=True)
-assert s4 == {"ran":1,"failed":0,"skipped":0,"aborted":False}, s4
+assert sm(s4) == {"ran":1,"failed":0,"skipped":0,"aborted":False}, s4
 s5 = execute_steps(ry, d, todo[:1], timeout=None, skip_done=True, stop_on_error=True)
 assert s5["skipped"]==1 and s5["ran"]==0, s5
+# 入力待ち（exit 75）は非0終了に数えず止めない。その手順の残りは飛ばし、次回も再実行される
+pend = [{"wid":"T","idx":7,"desc":"t","runs":[{"cmd":"test -s nope || exit 75","output":"cmd/rt-s7-c1.txt","role":"main"},
+                                              {"cmd":"echo after","output":"cmd/rt-s7-c2.txt","role":"main"}]},
+        st(8,"echo next","cmd/rt-s8.txt")]
+s6 = execute_steps(ry, d, pend, timeout=None, skip_done=True, stop_on_error=True)
+assert s6["pending"]==1 and s6["failed"]==0 and s6["aborted"] is False and len(s6["waiting"])==1, s6
+assert not (d/"cmd/rt-s7-c2.txt").exists() and (d/"cmd/rt-s8.txt").exists(), "入力待ちの後の扱いが違う"
+s7 = execute_steps(ry, d, pend, timeout=None, skip_done=True, stop_on_error=True)
+assert s7["pending"]==1 and s7["skipped"]==1, s7   # 入力待ちは成功扱いでスキップしない
 RT
 # 実行されるコマンドに日本語のプレースホルダ（<JSフォルダ> 等）が残っていない
 # （bash はリダイレクトと解釈して失敗する）。入力置き場 OUTDIR/<name>/ は実行前に作られる
