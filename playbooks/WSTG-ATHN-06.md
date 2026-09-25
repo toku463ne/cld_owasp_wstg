@@ -20,7 +20,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. 認証済みの機微画面 URL を evidence/<活動フォルダ>/artifacts/auth-urls.txt に1行1件で置き、ログイン後の Cookie を evidence/<活動フォルダ>/artifacts/cookies.txt に用意（ブラウザからエクスポート、または curl -c で保存）した上で、キャッシュ抑止ヘッダを一括確認: `while read -r u; do echo "== $u =="; curl -sI -b evidence/<活動フォルダ>/artifacts/cookies.txt "$u" | grep -iE '^(cache-control|pragma|expires):'; done < evidence/<活動フォルダ>/artifacts/auth-urls.txt | tee evidence/<活動フォルダ>/artifacts/cache-headers.txt`。`no-store`（理想）/`no-cache`/`private` が無い・`max-age>0`＝ディスクにキャッシュされ得る
+1. 認証済みの機微画面 URL を evidence/<活動フォルダ>/artifacts/auth-urls.txt に1行1件で置き、ログイン後の Cookie を evidence/<活動フォルダ>/artifacts/cookies.txt に用意（ブラウザからエクスポート、または curl -c で保存）した上で、キャッシュ抑止ヘッダを一括確認（2つが揃うまで一括実行では「入力待ち」で飛ばす）: `test -s evidence/<活動フォルダ>/artifacts/auth-urls.txt -a -s evidence/<活動フォルダ>/artifacts/cookies.txt || exit 75; while read -r u; do echo "== $u =="; curl -sI -b evidence/<活動フォルダ>/artifacts/cookies.txt "$u" | grep -iE '^(cache-control|pragma|expires):'; done < evidence/<活動フォルダ>/artifacts/auth-urls.txt | tee evidence/<活動フォルダ>/artifacts/cache-headers.txt`。`no-store`（理想）/`no-cache`/`private` が無い・`max-age>0`＝ディスクにキャッシュされ得る
 2. ログアウト後にブラウザの「戻る」で認証済み画面が再表示されないか確認
 3. 機微画面をディスクキャッシュから復元できないか確認する: 認証済みで機微画面を開いた後、DevTools→Network で当該レスポンスを再読込し `(from disk cache)` と出るか、または about:cache（Firefox）/ ブラウザのキャッシュ保存先に当該 URL のエントリが残るか。残る＝ログアウトや別ユーザでもディスクから中身を復元され得る（共用端末で漏えい）
 4. 機微画面でキャッシュ抑止がない場合、共用端末での漏えいリスクとして finding に

@@ -570,6 +570,34 @@ bad = sorted({(s["wid"], s["idx"]) for a in cov["activities"]
               if re.search(r"(^|&&|;|\{)\s*grep\s[^|>;&]*$", r["cmd"].strip())})
 assert not bad, bad
 GREP
+# 人が artifacts/ に置く入力（それより前のコマンドが書かないファイル）を読むコマンドは、
+# `test -s OUTDIR/<入力> || exit 75` で「入力待ち」を返すこと（無いまま走ると一括が止まるか、
+# 空の入力で成功扱いになって入力を置いた後もスキップされる）。入力待ちのコマンドが参照する
+# ファイルを読む後続は run_activity が連鎖で入力待ちにするので、ガードは要らない
+"${PY[@]}" - <<'INPUT' || ng "人が置く入力を読むコマンドに入力待ちガード（|| exit 75）が無い"
+import re, sys; sys.path.insert(0, "scripts")
+from new_activity import COVERAGE_YAML, CRITERIA_YAML, load_yaml, iter_steps
+cov, cr = load_yaml(COVERAGE_YAML), load_yaml(CRITERIA_YAML)
+W = (r"(?:>>?|\btee(?:\s+-a)?|-o|-sD|-D|-oN|-oA|-oX|-oG|-c|-w|-O|--output|--outputpath|--logfile"
+     r"|--json_out|--log-json=|--dump-header)\s*['\"]?X/artifacts/([A-Za-z0-9_-][A-Za-z0-9._-]*)")
+bad = []
+for a in cov["activities"]:
+    known = set()
+    for s in iter_steps(a, cr, "t.test", "X"):
+        if s["kind"] != "cmd":
+            continue
+        for r in s["runs"]:
+            c = r["cmd"]
+            refs = set(re.findall(r"X/artifacts/([A-Za-z0-9_-][A-Za-z0-9._-]*)", c))
+            outs = set(re.findall(W, c))
+            for names in re.findall(r"\b(?:mv|cp)\s+([^;&|]*?)\s+X/artifacts/(?:\s|$)", c):
+                outs |= {n for n in names.split() if not n.startswith("-")}  # `mv a b OUTDIR/` の形
+            known |= outs
+            if refs - outs - known and "exit 75" not in c:
+                bad.append((a["id"], s["wid"], s["idx"], sorted(refs - known)))
+            known |= refs
+assert not bad, bad
+INPUT
 # 一括では secondary の手順を primary 側に任せ、同じ重いコマンド（nikto 等）を1回しか走らせない
 "${PY[@]}" - <<'DUP' || ng "run_target が同じ WSTG-ID のコマンドを複数アクティビティで重複実行する"
 import sys; sys.path.insert(0, "scripts")

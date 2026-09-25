@@ -81,7 +81,7 @@ WSTG-INFO-04:
   steps:
     - "`nmap -sV -p- --open -oN OUTDIR/nmap-allports.txt target` で全ポートのサービスを洗い、Web 以外の管理系ポートも記録（この結果は WSTG-CONF-01・WSTG-CONF-05 でも使い回す。全ポート走査はこの1回だけ）"
     - "同一 IP の他ホストを列挙する。まず証明書透明性ログから既知の名前を拾う（手順は WSTG-INFO-02 の crt.sh 参照）。次にバーチャルホスト総当りで応答するホスト名を洗う: `ffuf -w vhost-wordlist:FUZZ ${WSTG_PAUSE:+-p \"$WSTG_PAUSE\" -t 1} ${https_proxy:+-x \"$https_proxy\"} -u https://target/ -H \"Host: FUZZ.target\" -ac -o OUTDIR/ffuf-vhost.json -of json`。`-ac`（自動キャリブレーション）で既定応答を除外し、残ったホスト名を手順3の材料にする。非力な対象では `export WSTG_PAUSE=2` で待ち＋スレッド1に落とす。ffuf は環境変数のプロキシを見ないので、プロキシ経由なら `-x` を明示する"
-    - "見つけたホスト/ポートを OUTDIR/hosts.txt に1行1件で置き（手順1・2 の結果から）、用途判別の材料を一括取得: `while read -r hp; do echo \"===== $hp =====\"; curl -s -k -m 8 -D - -o OUTDIR/_body \"https://$hp/\" | grep -iE '^(HTTP/|server:|x-powered-by:|www-authenticate:)'; grep -oiE '<title>[^<]*' OUTDIR/_body | head -1; done < OUTDIR/hosts.txt | tee OUTDIR/vhosts-fingerprint.txt`。取得したタイトル・`Server`・realm と、`dev`/`stg`/`test`/`old`/`admin`/`jenkins`/`grafana`/`phpmyadmin` などのホスト名から用途（検証環境・管理コンソールの疑い）を判別し、各ホストの用途と根拠を artifacts/vhosts.md に1行ずつ書く"
+    - "見つけたホスト/ポートを OUTDIR/hosts.txt に1行1件で置き（手順1・2 の結果から）、用途判別の材料を一括取得（hosts.txt を置くまで一括実行では「入力待ち」で飛ばす）: `test -s OUTDIR/hosts.txt || exit 75; while read -r hp; do echo \"===== $hp =====\"; curl -s -k -m 8 -D - -o OUTDIR/_body \"https://$hp/\" | grep -iE '^(HTTP/|server:|x-powered-by:|www-authenticate:)'; grep -oiE '<title>[^<]*' OUTDIR/_body | head -1; done < OUTDIR/hosts.txt | tee OUTDIR/vhosts-fingerprint.txt`。取得したタイトル・`Server`・realm と、`dev`/`stg`/`test`/`old`/`admin`/`jenkins`/`grafana`/`phpmyadmin` などのホスト名から用途（検証環境・管理コンソールの疑い）を判別し、各ホストの用途と根拠を artifacts/vhosts.md に1行ずつ書く"
     - "スコープ外のものは攻撃せず「存在の報告」に留め、artifacts に一覧化"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
     1: "`nmap -p-` は全 65535 ポートへ接続を試みる重いスキャン。IDS/IPS や機器の接続数上限を刺激しうる。時間帯に注意し、詰まるなら `--max-rate` で抑える。内部網でも想定外の機器（産業機器・古い装置）が落ちることがある。"
@@ -143,7 +143,7 @@ WSTG-INFO-10:
   steps:
     - "応答ヘッダを保存して中間装置の印を探す: `curl -sD OUTDIR/resp-headers.txt -o /dev/null https://target/ && { grep -iE '^(via|x-cache|x-served-by|server|set-cookie|x-forwarded-for|cf-ray|x-varnish|x-amz-cf-id):' OUTDIR/resp-headers.txt || [ $? -eq 1 ]; }`。ヒットしたヘッダ（`Via`/`X-Cache`=キャッシュ・LB、`cf-ray`=Cloudflare 等）から中間装置を推定"
     - "経路上のホップを観測: `traceroute -w2 -q1 target | tee OUTDIR/traceroute.txt`（TTL・応答差から CDN/リバースプロキシの位置を推定）。WAF の有無は後続 INPV 系での不正入力への 403/406 で炙り出す"
-    - "recon で得たホストを OUTDIR/hosts.txt に1行1件で置き（subfinder.txt 等から）、本来内部向けの装置が外から開いていないか一括確認: `while read -r h; do for pp in :9200 :5601 :15672 :8081 :2375 /phpmyadmin/ /adminer/; do echo \"$h$pp -> $(curl -s -k -m 8 -o /dev/null -w '%{http_code}' \"https://$h$pp\")\"; done; done < OUTDIR/hosts.txt | tee OUTDIR/internal-exposure.txt`。200/401 が返る＝外部露出（:9200 Elasticsearch・:5601 Kibana・:15672 RabbitMQ・:8081・:2375 Docker・phpmyadmin/adminer=DB管理）。意図しない露出のみ finding に"
+    - "recon で得たホストを OUTDIR/hosts.txt に1行1件で置き（subfinder.txt 等から）、本来内部向けの装置が外から開いていないか一括確認（hosts.txt を置くまで一括実行では「入力待ち」で飛ばす）: `test -s OUTDIR/hosts.txt || exit 75; while read -r h; do for pp in :9200 :5601 :15672 :8081 :2375 /phpmyadmin/ /adminer/; do echo \"$h$pp -> $(curl -s -k -m 8 -o /dev/null -w '%{http_code}' \"https://$h$pp\")\"; done; done < OUTDIR/hosts.txt | tee OUTDIR/internal-exposure.txt`。200/401 が返る＝外部露出（:9200 Elasticsearch・:5601 Kibana・:15672 RabbitMQ・:8081・:2375 Docker・phpmyadmin/adminer=DB管理）。意図しない露出のみ finding に"
     - "推定した構成図を描き、ヒアリング結果と突き合わせて確定（推測のまま報告しない）"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
     3: "多数のホスト×ポートへ順次接続する。ホスト数が多いと接続数と時間がかさみ、内部の装置に想定外の負荷がかかりうる。まず件数を絞って挙動を見る。"
@@ -259,7 +259,7 @@ WSTG-CONF-10:
   fail: "解放済みのホスティング先を指す CNAME/A があり、第三者が同名リソースを取得して掌握できる。"
   note: "実際の乗っ取りは行わない。到達性とエラー応答（NoSuchBucket 等）で判断し、証拠として記録する。"
   steps:
-    - "サブドメインの各 CNAME をまとめて引く。手順4で作った OUTDIR/subfinder.txt を入力に `while read -r h; do echo \"$h -> $(dig +short CNAME $h | head -1)\"; done < OUTDIR/subfinder.txt | tee OUTDIR/cname-check.txt` を実行する（`->` の右が埋まっている行＝CNAME を持つサブドメインが乗っ取り確認の対象。空欄は A/AAAA 直指定なので対象外。crt.sh で拾った分も subfinder.txt に足してから回す）"
+    - "サブドメインの各 CNAME をまとめて引く。recon-osint（WSTG-INFO-01 手順4）で作った subfinder.txt を OUTDIR/subfinder.txt にコピーして入力に（置くまで一括実行では「入力待ち」で飛ばす） `test -s OUTDIR/subfinder.txt || exit 75; while read -r h; do echo \"$h -> $(dig +short CNAME $h | head -1)\"; done < OUTDIR/subfinder.txt | tee OUTDIR/cname-check.txt` を実行する（`->` の右が埋まっている行＝CNAME を持つサブドメインが乗っ取り確認の対象。空欄は A/AAAA 直指定なので対象外。crt.sh で拾った分も subfinder.txt に足してから回す）"
     - "cname-check.txt を乗っ取り可能サービスの CNAME フィンガープリントで絞り込む: `grep -iaE \"s3[.-]|\\.s3\\.amazonaws|\\.github\\.io|heroku(dns|app)|\\.azurewebsites\\.net|\\.cloudfront\\.net|\\.fastly\\.net|pantheonsite|\\.ghost\\.io\" OUTDIR/cname-check.txt | tee OUTDIR/takeover-candidates.md`。ヒットした行（`サブドメイン -> CNAME`）が要確認。出力が空なら該当なし＝この時点で pass 相当（対象サービス: S3 / GitHub Pages / Heroku / Azure / CloudFront / Fastly / Pantheon / Ghost 等。漏れが心配なら OUTDIR/cname-check.txt 全体も目視する）"
     - "要確認リストの各サブドメインの応答をまとめて取得する: `while read -r line; do h=${line%% *}; echo \"===== $h =====\"; curl -s -m 10 https://$h/ | head -c 800; echo; done < OUTDIR/takeover-candidates.md | tee OUTDIR/takeover-responses.txt`。各応答に、サービス既定の「リソースが存在しない」エラーが出ているか見る。乗っ取り可能な典型応答: S3=`NoSuchBucket`、GitHub Pages=`There isn\u2019t a GitHub Pages site here`、Heroku=`No such app`、Azure=`404 Web Site not found`、Fastly=`Fastly error: unknown domain`。このエラーが出る＝第三者が同名リソースを登録して掌握できる状態（fail）。正常なコンテンツが返る＝実在リソース（この観点は pass）"
     - "乗っ取り可能と判断しても、実際の取得（バケット作成・リポジトリ/アプリ登録等）は行わない。CNAME・エラー応答本体・ステータスを証跡（artifacts/）に残し、finding には該当サブドメイン名と「どのサービスの未登録リソースを指すか」を要約で書く（生の CNAME 先ホスト名は evidence 参照に留める）"
@@ -399,7 +399,7 @@ WSTG-ATHN-06:
   fail: "認証後の画面がキャッシュされ、ログアウト後に戻るボタンや履歴から内容を再表示できる。"
   note: "実機で「ログアウト→戻る」を試すのが最も伝わる証拠になる。"
   steps:
-    - "認証済みの機微画面 URL を OUTDIR/auth-urls.txt に1行1件で置き、ログイン後の Cookie を OUTDIR/cookies.txt に用意（ブラウザからエクスポート、または curl -c で保存）した上で、キャッシュ抑止ヘッダを一括確認: `while read -r u; do echo \"== $u ==\"; curl -sI -b OUTDIR/cookies.txt \"$u\" | grep -iE '^(cache-control|pragma|expires):'; done < OUTDIR/auth-urls.txt | tee OUTDIR/cache-headers.txt`。`no-store`（理想）/`no-cache`/`private` が無い・`max-age>0`＝ディスクにキャッシュされ得る"
+    - "認証済みの機微画面 URL を OUTDIR/auth-urls.txt に1行1件で置き、ログイン後の Cookie を OUTDIR/cookies.txt に用意（ブラウザからエクスポート、または curl -c で保存）した上で、キャッシュ抑止ヘッダを一括確認（2つが揃うまで一括実行では「入力待ち」で飛ばす）: `test -s OUTDIR/auth-urls.txt -a -s OUTDIR/cookies.txt || exit 75; while read -r u; do echo \"== $u ==\"; curl -sI -b OUTDIR/cookies.txt \"$u\" | grep -iE '^(cache-control|pragma|expires):'; done < OUTDIR/auth-urls.txt | tee OUTDIR/cache-headers.txt`。`no-store`（理想）/`no-cache`/`private` が無い・`max-age>0`＝ディスクにキャッシュされ得る"
     - "ログアウト後にブラウザの「戻る」で認証済み画面が再表示されないか確認"
     - "機微画面をディスクキャッシュから復元できないか確認する: 認証済みで機微画面を開いた後、DevTools→Network で当該レスポンスを再読込し `(from disk cache)` と出るか、または about:cache（Firefox）/ ブラウザのキャッシュ保存先に当該 URL のエントリが残るか。残る＝ログアウトや別ユーザでもディスクから中身を復元され得る（共用端末で漏えい）"
     - "機微画面でキャッシュ抑止がない場合、共用端末での漏えいリスクとして finding に"
