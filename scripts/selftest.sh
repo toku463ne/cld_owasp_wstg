@@ -560,14 +560,17 @@ assert e["exit_code"] == 0 and (d / "artifacts/jsin").is_dir(), e
 PH
 # 末尾が裸の grep（パイプ・リダイレクトなし）のコマンドは「一致なし」を exit 1 で返し一括を止める。
 # ヘッダ無し等は判定材料であって失敗ではないので `|| [ $? -eq 1 ]` で吸収する（exit 2 は止める）
-"${PY[@]}" - <<'GREP' || ng "末尾が grep のコマンドに「一致なし」の吸収（|| [ \$? -eq 1 ]）が無い"
+# 同様に `grep -q A && echo 危険` で終わるコマンドは「該当なし」（＝良い結果）で exit 1 になるので
+# `if grep -q A; then echo 危険; fi` の形にする
+"${PY[@]}" - <<'GREP' || ng "末尾が grep / && echo のコマンドに「一致なし」の吸収（|| [ \$? -eq 1 ] か if）が無い"
 import re, sys; sys.path.insert(0, "scripts")
 from new_activity import COVERAGE_YAML, CRITERIA_YAML, load_yaml, iter_steps
 cov, cr = load_yaml(COVERAGE_YAML), load_yaml(CRITERIA_YAML)
 bad = sorted({(s["wid"], s["idx"]) for a in cov["activities"]
               for s in iter_steps(a, cr, "t.test", "X") if s["kind"] == "cmd"
               for r in s["runs"]
-              if re.search(r"(^|&&|;|\{)\s*grep\s[^|>;&]*$", r["cmd"].strip())})
+              if re.search(r"(^|&&|;|\{)\s*grep\s[^|>;&]*$", r["cmd"].strip())
+              or re.search(r"&&\s*(echo|printf)\b[^;|&]*$", r["cmd"].strip())})
 assert not bad, bad
 GREP
 # 人が artifacts/ に置く入力（それより前のコマンドが書かないファイル）を読むコマンドは、
