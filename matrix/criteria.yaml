@@ -127,7 +127,7 @@ WSTG-INFO-08:
   note: "フロント側のライブラリ（jQuery 等）は Retire.js で確認できる。Retire.js は実行時に github から脆弱性DB（jsrepository.json）を取りに行くため、プロキシ必須／外向き通信が絞られた環境では更新に失敗することがある（amass の libpostal と同じ構図）。`--path` は既にダウンロード済みのローカル JS を走査するので、DB さえ取得できれば対象への通信は不要。更新できないときは事前に DB を取得しておくか、下の NVD API での照合に回す。CMS・フレームワーク側の CVE 照合はブラウザ不要で、NVD の cpes/2.0（製品名+バージョン → cpeName）→ cves/2.0（cpeName → CVE 一覧）を curl で引く（API キー無しは 30 秒 5 リクエストまで。0 件の読み替えは WSTG-INFO-02 の note と同じ）。"
   steps:
     - "フレームワーク/CMS は WSTG-INFO-02 手順2 で取得済みの whatweb.json から読む（whatweb を再実行しない）: `jq -r '.[].plugins // {} | keys[]' OUTDIR/whatweb.json | sort -u` ＋ ブラウザ拡張 Wappalyzer で突き合わせる。単独実行で whatweb.json が無いときは先に WSTG-INFO-02 を回す"
-    - "応答ヘッダと Cookie を保存して基盤を推定: `curl -sD OUTDIR/headers.txt -o /dev/null https://target/ && grep -iE '^(set-cookie|x-powered-by|server|x-aspnet-version|x-generator):' OUTDIR/headers.txt`。Cookie 名（`JSESSIONID`=Java / `ASP.NET_SessionId`=.NET / `laravel_session`=Laravel / `ci_session`=CodeIgniter）・`X-Powered-By`・URL パスから基盤を特定"
+    - "応答ヘッダと Cookie を保存して基盤を推定: `curl -sD OUTDIR/headers.txt -o /dev/null https://target/ && { grep -iE '^(set-cookie|x-powered-by|server|x-aspnet-version|x-generator):' OUTDIR/headers.txt || [ $? -eq 1 ]; }`。Cookie 名（`JSESSIONID`=Java / `ASP.NET_SessionId`=.NET / `laravel_session`=Laravel / `ci_session`=CodeIgniter）・`X-Powered-By`・URL パスから基盤を特定"
     - "対象ページが読み込むフロント JS をブラウザ（開発者ツール）や Burp で保存して artifacts/js/ に置き、`retire --path OUTDIR/js/ --outputformat json --outputpath OUTDIR/retire.json --exitwith 0`（Retire.js）で走査して jQuery 等ライブラリのバージョンと既知脆弱性を確認する。retire は脆弱性を見つけると既定で exit 13 を返し一括実行が止まるため `--exitwith 0` で抑え、結果は retire.json で判断する。artifacts/js/ が空のまま走ると成功扱いになり再開時にスキップされるので、JS を置いた後に `uv run scripts/run_activity.py <このフォルダ> --only WSTG-INFO-08:3` で取り直す"
     - "手順1・2 で特定した CMS/フレームワークごとに CPE 名を引く（retire.js が CVE まで出したフロント JS は不要）: `curl -s --get --data-urlencode \"keywordSearch=wordpress 6.4.2\" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o OUTDIR/nvd-cpe-cms.json` → `jq -r '.totalResults, (.products[].cpe.cpeName)' OUTDIR/nvd-cpe-cms.json`"
     - "その cpeName で CVE を一覧し、finding にバージョン根拠（どこで判ったか）を添える: `curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0?virtualMatchString=cpe:2.3:a:wordpress:wordpress:6.4.2&resultsPerPage=100' -o OUTDIR/nvd-cve-cms.json` → `jq -r '.vulnerabilities[].cve | [.id, (.metrics.cvssMetricV31[0].cvssData.baseScore // \"-\" | tostring), .descriptions[0].value[0:100]] | @tsv' OUTDIR/nvd-cve-cms.json`"
@@ -141,7 +141,7 @@ WSTG-INFO-10:
   fail: "本来内部にあるべき構成要素（管理系 API・キャッシュ・DB 管理画面）が外部から直接見えている。"
   note: "構成推定はヒアリングと突き合わせる。推測のまま報告しない。"
   steps:
-    - "応答ヘッダを保存して中間装置の印を探す: `curl -sD OUTDIR/resp-headers.txt -o /dev/null https://target/ && grep -iE '^(via|x-cache|x-served-by|server|set-cookie|x-forwarded-for|cf-ray|x-varnish|x-amz-cf-id):' OUTDIR/resp-headers.txt`。ヒットしたヘッダ（`Via`/`X-Cache`=キャッシュ・LB、`cf-ray`=Cloudflare 等）から中間装置を推定"
+    - "応答ヘッダを保存して中間装置の印を探す: `curl -sD OUTDIR/resp-headers.txt -o /dev/null https://target/ && { grep -iE '^(via|x-cache|x-served-by|server|set-cookie|x-forwarded-for|cf-ray|x-varnish|x-amz-cf-id):' OUTDIR/resp-headers.txt || [ $? -eq 1 ]; }`。ヒットしたヘッダ（`Via`/`X-Cache`=キャッシュ・LB、`cf-ray`=Cloudflare 等）から中間装置を推定"
     - "経路上のホップを観測: `traceroute -w2 -q1 target | tee OUTDIR/traceroute.txt`（TTL・応答差から CDN/リバースプロキシの位置を推定）。WAF の有無は後続 INPV 系での不正入力への 403/406 で炙り出す"
     - "recon で得たホストを OUTDIR/hosts.txt に1行1件で置き（subfinder.txt 等から）、本来内部向けの装置が外から開いていないか一括確認: `while read -r h; do for pp in :9200 :5601 :15672 :8081 :2375 /phpmyadmin/ /adminer/; do echo \"$h$pp -> $(curl -s -k -m 8 -o /dev/null -w '%{http_code}' \"https://$h$pp\")\"; done; done < OUTDIR/hosts.txt | tee OUTDIR/internal-exposure.txt`。200/401 が返る＝外部露出（:9200 Elasticsearch・:5601 Kibana・:15672 RabbitMQ・:8081・:2375 Docker・phpmyadmin/adminer=DB管理）。意図しない露出のみ finding に"
     - "推定した構成図を描き、ヒアリング結果と突き合わせて確定（推測のまま報告しない）"
@@ -226,7 +226,7 @@ WSTG-CONF-07:
   fail: "HSTS ヘッダがない、max-age が極端に短い、または HTTP でしか提供していない画面がある。"
   note: "HSTS は HTTPS 応答でのみ有効。HTTP 側に付けても意味がないことを説明する。"
   steps:
-    - "`curl -sD OUTDIR/root-headers.txt -o /dev/null https://target/` で応答ヘッダを保存し（この後の手順・WSTG-CLNT-09 でも使い回す）、`grep -i '^strict-transport-security:' OUTDIR/root-headers.txt` で HSTS の有無・値を確認"
+    - "`curl -sD OUTDIR/root-headers.txt -o /dev/null https://target/` で応答ヘッダを保存し（この後の手順・WSTG-CLNT-09 でも使い回す）、`grep -i '^strict-transport-security:' OUTDIR/root-headers.txt || [ $? -eq 1 ]` で HSTS の有無・値を確認（何も出なければ HSTS なし＝fail 候補。grep の「一致なし」は失敗扱いにしない）"
     - "`max-age`（半年=15768000 以上が目安）・`includeSubDomains`・`preload` の各ディレクティブを確認"
     - "`curl -sI http://target/` で HTTP アクセス時の挙動（HTTPS へ 301 されるか）を確認"
     - "HTTP 応答に HSTS を付けても無効な点を踏まえ、HTTPS 応答での設定を評価"
@@ -517,7 +517,7 @@ WSTG-SESS-02:
   fail: "Secure か HttpOnly が欠けている、SameSite=None なのに用途上不要、Domain が広すぎる。"
   note: "認証済みで発行される Cookie を対象にする。トラッキング用 Cookie と混同しない。"
   steps:
-    - "ログイン応答のヘッダを OUTDIR/login-headers.txt に保存（curl -i -c OUTDIR/cookies.txt でログインを実行してヘッダを残すか、Burp/DevTools の応答からコピー）した上で、発行 Cookie の属性を抽出: `grep -iE '^set-cookie:' OUTDIR/login-headers.txt`。出てきた Set-Cookie 行を1つずつ下の属性で確認する"
+    - "ログイン応答のヘッダを OUTDIR/login-headers.txt に保存（curl -i -c OUTDIR/cookies.txt でログインを実行してヘッダを残すか、Burp/DevTools の応答からコピー）した上で、発行 Cookie の属性を抽出: `grep -iE '^set-cookie:' OUTDIR/login-headers.txt || [ $? -eq 1 ]`。出てきた Set-Cookie 行を1つずつ下の属性で確認する"
     - "手順1で保存した Set-Cookie の属性欠落を自動抽出する: `grep -iE '^set-cookie:' OUTDIR/login-headers.txt | while read -r c; do for a in Secure HttpOnly SameSite; do echo \"$c\" | grep -qi \"$a\" || echo \"[要確認] $a なし: $(echo \"$c\" | cut -c1-70)\"; done; done | tee OUTDIR/cookie-attrs.txt`。出力が空＝全 Cookie に3属性あり。行が出たセッション/認証系 Cookie は `Secure`（HTTPS 限定）・`HttpOnly`（JS 遮断）・`SameSite`（Lax/Strict）のいずれかが欠けている（CSRF/その他の非機微 Cookie は SameSite 無しでも許容の場合があるので finding では Cookie 名で区別する）"
     - "`Domain`/`Path` が過度に広くないか、`__Host-`/`__Secure-` prefix の適否を確認"
     - "セッション Cookie と CSRF/その他 Cookie で属性が適切に分かれているか確認"
@@ -774,7 +774,7 @@ WSTG-INPV-17:
   fail: "偽装した Host がリセットリンクや絶対 URL に反映される、キャッシュポイズニングにつながる。"
   note: "X-Forwarded-Host など類似ヘッダも試す。"
   steps:
-    - "`Host:` を任意値に書き換えて応答への反映を確認: `curl -s -D - -o OUTDIR/host-body.html -H 'Host: evil.example' https://target/ | tee OUTDIR/host-headers.txt; echo '--- 反映チェック ---'; grep -in 'evil.example' OUTDIR/host-headers.txt OUTDIR/host-body.html`。`Location`/絶対 URL/本文に `evil.example` が現れたら Host 依存のリンク生成があり、手順2（リセットリンク等）へ進む"
+    - "`Host:` を任意値に書き換えて応答への反映を確認: `curl -s -D - -o OUTDIR/host-body.html -H 'Host: evil.example' https://target/ | tee OUTDIR/host-headers.txt; echo '--- 反映チェック ---'; grep -in 'evil.example' OUTDIR/host-headers.txt OUTDIR/host-body.html || [ $? -eq 1 ]`。`Location`/絶対 URL/本文に `evil.example` が現れたら Host 依存のリンク生成があり、手順2（リセットリンク等）へ進む"
     - "パスワードリセットのリンク生成に Host が使われ、リセット URL を攻撃者ドメインに向けられないか試す"
     - "`X-Forwarded-Host` 等でキャッシュポイズニング・認可迂回ができないか確認"
     - "Host 依存のリンク生成・ルーティングがある場合は影響を finding に"
@@ -1058,7 +1058,7 @@ WSTG-CLNT-09:
   fail: "任意サイトから iframe 埋め込みでき、操作を誘導できる（PoC の HTML で確認）。"
   note: "対象は「状態を変える操作がある画面」。静的ページのみなら影響は限定的。"
   steps:
-    - "WSTG-CONF-07 手順1 で保存した応答ヘッダから確認する（再取得しない）: `grep -iE '^(x-frame-options|content-security-policy):' OUTDIR/root-headers.txt`。CSP は `frame-ancestors` ディレクティブの有無を見る。単独実行で root-headers.txt が無いときは先に WSTG-CONF-07 を回す"
+    - "WSTG-CONF-07 手順1 で保存した応答ヘッダから確認する（再取得しない）: `grep -iE '^(x-frame-options|content-security-policy):' OUTDIR/root-headers.txt || [ $? -eq 1 ]`（何も出なければ防御ヘッダなし）。CSP は `frame-ancestors` ディレクティブの有無を見る。単独実行で root-headers.txt が無いときは先に WSTG-CONF-07 を回す"
     - "対象ページを `<iframe src=...>` で自作 HTML に埋め込み、実際に表示されるか（枠に出るか）確認"
     - "重要操作（送金・設定変更）画面がフレーム内で操作可能なら Clickjacking 可"
     - "防御ヘッダが無い/緩い重要画面を finding に。PoC の iframe HTML を artifacts に"

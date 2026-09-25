@@ -529,6 +529,18 @@ st = {"wid": "T", "idx": 9, "desc": "t", "runs": []}
 e = run_command({"cmd": f"test -d {d}/artifacts/jsin/", "output": "cmd/ph.txt", "role": "primary"}, st, d, None)
 assert e["exit_code"] == 0 and (d / "artifacts/jsin").is_dir(), e
 PH
+# 末尾が裸の grep（パイプ・リダイレクトなし）のコマンドは「一致なし」を exit 1 で返し一括を止める。
+# ヘッダ無し等は判定材料であって失敗ではないので `|| [ $? -eq 1 ]` で吸収する（exit 2 は止める）
+"${PY[@]}" - <<'GREP' || ng "末尾が grep のコマンドに「一致なし」の吸収（|| [ \$? -eq 1 ]）が無い"
+import re, sys; sys.path.insert(0, "scripts")
+from new_activity import COVERAGE_YAML, CRITERIA_YAML, load_yaml, iter_steps
+cov, cr = load_yaml(COVERAGE_YAML), load_yaml(CRITERIA_YAML)
+bad = sorted({(s["wid"], s["idx"]) for a in cov["activities"]
+              for s in iter_steps(a, cr, "t.test", "X") if s["kind"] == "cmd"
+              for r in s["runs"]
+              if re.search(r"(^|&&|;|\{)\s*grep\s[^|>;&]*$", r["cmd"].strip())})
+assert not bad, bad
+GREP
 # 一括では secondary の手順を primary 側に任せ、同じ重いコマンド（nikto 等）を1回しか走らせない
 "${PY[@]}" - <<'DUP' || ng "run_target が同じ WSTG-ID のコマンドを複数アクティビティで重複実行する"
 import sys; sys.path.insert(0, "scripts")

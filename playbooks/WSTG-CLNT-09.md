@@ -20,7 +20,7 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. WSTG-CONF-07 手順1 で保存した応答ヘッダから確認する（再取得しない）: `grep -iE '^(x-frame-options|content-security-policy):' evidence/<活動フォルダ>/artifacts/root-headers.txt`。CSP は `frame-ancestors` ディレクティブの有無を見る。単独実行で root-headers.txt が無いときは先に WSTG-CONF-07 を回す
+1. WSTG-CONF-07 手順1 で保存した応答ヘッダから確認する（再取得しない）: `grep -iE '^(x-frame-options|content-security-policy):' evidence/<活動フォルダ>/artifacts/root-headers.txt || [ $? -eq 1 ]`（何も出なければ防御ヘッダなし）。CSP は `frame-ancestors` ディレクティブの有無を見る。単独実行で root-headers.txt が無いときは先に WSTG-CONF-07 を回す
 2. 対象ページを `<iframe src=...>` で自作 HTML に埋め込み、実際に表示されるか（枠に出るか）確認
 3. 重要操作（送金・設定変更）画面がフレーム内で操作可能なら Clickjacking 可
 4. 防御ヘッダが無い/緩い重要画面を finding に。PoC の iframe HTML を artifacts に
