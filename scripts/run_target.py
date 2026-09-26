@@ -49,7 +49,7 @@ from new_activity import (  # noqa: E402
 from run_activity import (  # noqa: E402
     select_steps, execute_steps, manual_run_steps, manual_not_done,
 )
-from new_activity import manual_run_hint  # noqa: E402
+from new_activity import manual_run_hint, load_overrides  # noqa: E402
 
 # primary_owners / split_delegated は new_activity に移動（run_activity 単体実行でも同じ委譲を
 # 使えるようにするため）。ここでは import して従来どおりの名前で使う。
@@ -144,7 +144,7 @@ def main() -> int:
 
         # 実行するコマンド手順を組み立てる（run.yaml から activity を引き直す）
         activity, tests2, criteria2, target, act_dir = resolve_activity(target_dir)
-        steps = iter_steps(activity, criteria2, target, act_dir)
+        steps = iter_steps(activity, criteria2, target, act_dir, load_overrides(target_dir))
         todo, delegated = split_delegated(select_steps(steps, None), owners)
         manual, _ = split_delegated(manual_run_steps(steps), owners)
         manual_left += [(act_dir, s) for s in manual_not_done(target_dir, manual)]

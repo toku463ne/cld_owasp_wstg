@@ -15,6 +15,7 @@
     /api/finding/save, /attach    所見の作成・更新・エビデンス添付（evidence/_findings/）
     /<フォルダ>/api/save           run.yaml の verdict / finding（判定理由）をテキスト部分置換
     /<フォルダ>/api/save_output    cmd/・artifacts/ 直下の .txt に貼る（別環境で取った結果）
+    /<フォルダ>/api/edit_cmd       手順のコマンドを編集（run.yaml の cmd_overrides。空で既定に戻す）
     /<フォルダ>/api/upload_shot    ブラウザから貼った画像を artifacts/shot-*.png に保存
     /<フォルダ>/api/delete_shot    artifacts/shot-*.png を削除
     /<フォルダ>/api/capture        サーバ機のデスクトップを撮影（--behind-proxy では無効）
@@ -59,7 +60,9 @@ import cvss31  # noqa: E402
 import findings as fnd  # noqa: E402
 import web_pages  # noqa: E402
 from export_checklist import build_rows, collect_runs, to_csv  # noqa: E402
-from new_activity import refresh_record, update_cover, VALID_VERDICTS  # noqa: E402
+from new_activity import (  # noqa: E402
+    refresh_record, update_cover, VALID_VERDICTS, set_cmd_override, OVERRIDE_KEY_RE,
+)
 from save_shot import make_name  # noqa: E402
 
 
@@ -245,7 +248,7 @@ class RecordHandler(SimpleHTTPRequestHandler):
             return
         handlers = {"/api/capture": self._capture, "/api/delete_shot": self._delete_shot,
                     "/api/save": self._save, "/api/save_output": self._save_output,
-                    "/api/upload_shot": self._upload_shot}
+                    "/api/edit_cmd": self._edit_cmd, "/api/upload_shot": self._upload_shot}
         for suffix, fn in handlers.items():
             if route.endswith(suffix):
                 fn(act, data)
@@ -308,6 +311,24 @@ class RecordHandler(SimpleHTTPRequestHandler):
         self._json(200, {"ok": True, "id": fid})
 
     # --- アクティビティ単位 ---
+    def _edit_cmd(self, act: Path, data: dict) -> None:
+        """手順のコマンドを編集する（run.yaml の cmd_overrides に保存）。空なら既定（criteria）に戻す。
+
+        cmd/<WSTG-ID>-s<n>-c<k>.txt に対応する main コマンドだけ編集できる。保存後は cmd 行が
+        変わるので、次の run_target（--skip-done でも）で「コマンドが変わった」として再実行される。
+        """
+        key = str(data.get("key", ""))
+        cmd = data.get("cmd", "")
+        if not OVERRIDE_KEY_RE.match(key):
+            self._json(200, {"ok": False, "error": f"手順キーが不正です: {key}"})
+            return
+        if not isinstance(cmd, str) or len(cmd) > 100_000 or "\n" in cmd:
+            self._json(200, {"ok": False, "error": "コマンドが不正です（1行・10万字以内）"})
+            return
+        set_cmd_override(act, key, cmd.strip())
+        refresh_record(act)
+        self._json(200, {"ok": True})
+
     def _save_output(self, act: Path, data: dict) -> None:
         """コマンド出力/手動観察のファイル（cmd/・artifacts/ 直下の .txt）に本文を書き込む。
 

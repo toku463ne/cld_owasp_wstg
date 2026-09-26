@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import json
 import re
 from pathlib import Path
 
@@ -411,6 +412,34 @@ RECORD_HTML = r"""<!DOCTYPE html>
       });
   }
 
+  function editCmd(key, curCmd, pre, btn) {
+    // 手順のコマンドを編集して run.yaml の cmd_overrides に保存する。
+    // 保存後は cmd 行が変わるので、次の run_target（--skip-done でも）で再実行される。
+    btn.disabled = true;
+    var wrap = el("div", "edit");
+    wrap.appendChild(el("div", "cap", "コマンドを編集（保存で run.yaml に記録。次の run_target で再実行される。"
+      + "空で保存すると既定＝criteria のコマンドに戻る）"));
+    var ta = document.createElement("textarea");
+    ta.className = "out-edit"; ta.value = curCmd; ta.rows = 3;
+    wrap.appendChild(ta);
+    var save = el("button", "save-btn", "保存");
+    var cancel = el("button", "del-btn", "キャンセル");
+    wrap.appendChild(save); wrap.appendChild(document.createTextNode(" ")); wrap.appendChild(cancel);
+    btn.parentNode.insertBefore(wrap, btn.nextSibling);
+    btn.style.display = "none";
+    ta.focus();
+    cancel.addEventListener("click", function () { wrap.remove(); btn.style.display = ""; btn.disabled = false; });
+    save.addEventListener("click", function () {
+      save.disabled = true; save.textContent = "保存中…";
+      post("api/edit_cmd", { key: key, cmd: ta.value.replace(/\s+$/, "") })
+        .then(function (res) {
+          if (res.ok) { location.reload(); }
+          else { fail("保存できませんでした:\n" + (res.error || "")); save.disabled = false; save.textContent = "保存"; }
+        })
+        .catch(function () { fail(NET_ERR); save.disabled = false; save.textContent = "保存"; });
+    });
+  }
+
   function renderItem(it) {
     var box = el("div", "item");
     var h = el("h2");
@@ -455,7 +484,16 @@ RECORD_HTML = r"""<!DOCTYPE html>
       (st.runs || []).forEach(function (r) {
         if (r.role === "check") s.appendChild(el("div", "cap", "取得できたかの確認（サイズ・行数・先頭）"));
         else if (r.role === "manual") s.appendChild(el("div", "cap", "手動での観察"));
-        if (r.cmd) s.appendChild(el("pre", "cmd", "$ " + r.cmd));
+        if (r.cmd) {
+          var pre = el("pre", "cmd", "$ " + r.cmd);
+          s.appendChild(pre);
+          if (served && r.role === "main" && !st.manual_run) {   // 手順のコマンドをその場で編集
+            var ck = r.output_path.replace(/^cmd\//, "").replace(/\.txt$/, "");
+            var ce = el("button", "edit-out-btn", "✎ コマンドを編集");
+            ce.addEventListener("click", function () { editCmd(ck, r.cmd, pre, ce); });
+            s.appendChild(ce);
+          }
+        }
         if (r.has_output) {
           var fr = document.createElement("iframe");
           fr.className = "out"; fr.src = r.output_path; fr.loading = "lazy";
@@ -741,7 +779,18 @@ def step_desc(text: str) -> str:
     return out.strip()
 
 
-def iter_steps(activity: dict, criteria: dict, target, act_dir: str) -> list:
+# コマンド編集（override）のキー: cmd/<WSTG-ID>-s<n>-c<k>.txt に対応する <WSTG-ID>-s<n>-c<k>
+OVERRIDE_KEY_RE = re.compile(r"^WSTG-[A-Z]+-\d+-s\d+-c\d+$")
+
+
+def load_overrides(activity_dir: Path) -> dict:
+    """run.yaml の cmd_overrides（人が編集したコマンド）を読む。無ければ空。"""
+    ov = (_load_run_yaml(activity_dir).get("cmd_overrides") or {})
+    return {str(k): str(v) for k, v in ov.items() if OVERRIDE_KEY_RE.match(str(k))} if isinstance(ov, dict) else {}
+
+
+def iter_steps(activity: dict, criteria: dict, target, act_dir: str,
+               overrides: dict | None = None) -> list:
     """アクティビティの手順を WSTG-ID 順・手順番号順に平らに並べて返す。
 
     record.html / evidence.js の生成（gen_record.py）と wrapper 実行（run_activity.py）が
@@ -758,6 +807,8 @@ def iter_steps(activity: dict, criteria: dict, target, act_dir: str) -> list:
         for idx, step in enumerate(crit.get("steps", []), 1):
             load_note = load_notes.get(idx) or load_notes.get(str(idx)) or ""
             cmds = [sub_outdir(cmd, act_dir) for cmd in extract_commands([step], target)]
+            if overrides:   # 人が record.html で編集したコマンドで置き換える（確認はこの後に作り直す）
+                cmds = [overrides.get(f"{wid}-s{idx}-c{k}", c) for k, c in enumerate(cmds, 1)]
             checks = []
             for cmd in cmds:
                 for chk in verify_commands(cmd, act_dir):
@@ -1012,7 +1063,7 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
 
     items: list = []
     grouped: dict = {}
-    for step in iter_steps(activity, criteria, target, act_dir):
+    for step in iter_steps(activity, criteria, target, act_dir, load_overrides(activity_dir)):
         grouped.setdefault(step["wid"], []).append(step)
 
     for cov in activity.get("covers", []):
@@ -1153,6 +1204,46 @@ def print_missing_run_yaml(activity_dir: Path, script: str) -> None:
               file=sys.stderr)
 
 
+def set_cmd_override(activity_dir: Path, key: str, cmd: str) -> None:
+    """run.yaml の cmd_overrides に key: cmd を追記/更新する（cmd が空なら削除）。
+
+    不変条件どおりテキストで部分編集する（PyYAML で丸ごと書き戻さない）。値は JSON 風の
+    ダブルクォート（YAML 互換）で1行に収める。
+    """
+    if not OVERRIDE_KEY_RE.match(key):
+        raise ValueError(f"コマンド編集のキーが不正です: {key}")
+    rp = activity_dir / "run.yaml"
+    lines = rp.read_text(encoding="utf-8").splitlines() if rp.exists() else []
+    # cmd_overrides: ブロックの範囲（トップレベルのキー行）を探す
+    head = next((i for i, l in enumerate(lines) if l.rstrip() == "cmd_overrides:"), None)
+    body_start = head + 1 if head is not None else None
+    body_end = body_start
+    if body_start is not None:
+        body_end = body_start
+        while body_end < len(lines) and (not lines[body_end].strip() or lines[body_end].startswith((" ", "\t"))):
+            body_end += 1
+    entry = f'  {key}: {json.dumps(cmd, ensure_ascii=False)}' if cmd else None
+    if head is None:                       # ブロックが無い → 末尾に作る（削除なら何もしない）
+        if entry is None:
+            return
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines += ["cmd_overrides:", entry]
+    else:
+        ki = next((i for i in range(body_start, body_end)
+                   if lines[i].strip().startswith(f"{key}:")), None)
+        if ki is not None:                 # 既存キー → 置換 or 削除
+            if entry is None:
+                del lines[ki]
+                if body_end - body_start == 1:   # 最後の1件を消したらブロック見出しも消す
+                    del lines[head]
+            else:
+                lines[ki] = entry
+        elif entry is not None:            # ブロックはあるが未登録 → 末尾に足す
+            lines.insert(body_end, entry)
+    rp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def resolve_activity(activity_dir: Path):
     """run.yaml を起点に (activity, tests, criteria, target, act_dir) を引く。
 
@@ -1173,6 +1264,11 @@ def resolve_activity(activity_dir: Path):
     return activities[aid], tests, criteria, target, _act_dir_str(activity_dir)
 
 
+def resolve_overrides(activity_dir: Path) -> dict:
+    """resolve_activity と対で使う: そのフォルダのコマンド編集を読む。"""
+    return load_overrides(activity_dir)
+
+
 def refresh_record(activity_dir: Path) -> dict:
     """実行はせず、run.yaml と既存のエビデンスから record.html / evidence.js を最新化する。"""
     activity, tests, criteria, target, act_dir = resolve_activity(activity_dir)
@@ -1187,7 +1283,7 @@ def write_manual_stubs(activity: dict, criteria: dict, target,
                        activity_dir: Path, act_dir: str, force: bool) -> list:
     """手動手順の観察を書くための .txt ひな型を用意する（既存は壊さない）。"""
     made = []
-    for step in iter_steps(activity, criteria, target, act_dir):
+    for step in iter_steps(activity, criteria, target, act_dir, load_overrides(activity_dir)):
         if step["kind"] != "manual":
             continue
         dest = activity_dir / step["manual_output"]

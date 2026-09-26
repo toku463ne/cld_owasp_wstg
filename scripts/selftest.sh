@@ -616,6 +616,32 @@ for c in verify_commands(f"curl -o {d}/artifacts/a.json u | tee {d}/artifacts/b.
     p = subprocess.run(["bash", "-c", c], capture_output=True, text=True)
     assert p.returncode == 0 and "出力なし" in p.stdout, (c, p.returncode, p.stdout, p.stderr)
 VCHK
+# 手順のコマンドを record.html から編集できる（run.yaml の cmd_overrides に保存）。編集すると
+# コマンドが変わるので --skip-done でも再実行され、確認コマンドも編集後のコマンドから作り直される
+"${PY[@]}" - "${TMP}" <<'OVR' || ng "コマンド編集（cmd_overrides）が iter_steps に反映されない／run.yaml の部分編集が壊れる"
+import sys; sys.path.insert(0, "scripts")
+from pathlib import Path
+import new_activity as na
+from run_activity import is_done
+d = Path(sys.argv[1]) / "ovr"; (d / "cmd").mkdir(parents=True, exist_ok=True)
+(d / "run.yaml").write_text("# keep\nactivity_id: fingerprint-stack\ntarget_scope: t.example.com\n", encoding="utf-8")
+a, t, c, tg, ad = na.resolve_activity(d)
+def main1():
+    for s in na.iter_steps(a, c, tg, ad, na.load_overrides(d)):
+        if s["wid"] == "WSTG-INFO-02" and s["idx"] == 1:
+            return [r["cmd"] for r in s["runs"] if r["role"] == "main"][0]
+base = main1()
+na.set_cmd_override(d, "WSTG-INFO-02-s1-c1", "curl -sI https://t.example.com/edited")
+assert main1() == "curl -sI https://t.example.com/edited" and base != main1()
+assert (d / "run.yaml").read_text().startswith("# keep")   # 先頭コメントが残る
+# 実行済み（既定コマンドで exit 0）でも、編集後は再実行対象になる
+r0 = [x for s in na.iter_steps(a, c, tg, ad) if s["wid"] == "WSTG-INFO-02" and s["idx"] == 1 for x in s["runs"] if x["role"] == "main"][0]
+(d / r0["output"]).write_text(f"$ {r0['cmd']}\n# {'-'*68}\n# exit_code: 0  duration_sec: 0.1\n", encoding="utf-8")
+r1 = [x for s in na.iter_steps(a, c, tg, ad, na.load_overrides(d)) if s["wid"] == "WSTG-INFO-02" and s["idx"] == 1 for x in s["runs"] if x["role"] == "main"][0]
+assert is_done(d, r1) is False
+na.set_cmd_override(d, "WSTG-INFO-02-s1-c1", "")   # 空で既定に戻る
+assert main1() == base and "cmd_overrides" not in (d / "run.yaml").read_text()
+OVR
 # ツール未導入（command not found = exit 127）は一括を止めず飛ばし、導入方法を出す
 "${PY[@]}" - "${TMP}" <<'TOOL' || ng "ツール未導入（exit 127）で一括処理が止まる／飛ばした記録が残らない"
 import sys; sys.path.insert(0, "scripts")

@@ -111,6 +111,11 @@ run.yaml ─▶ tasks.py（端末の進捗表示）
   追記、`update_cover`（serve_record の `/api/save` が呼ぶ）は `covers` の該当 id ブロックの
   `verdict`/`finding` 行だけを部分置換する（`finding` は複数行ならブロックスカラー）。
   `gen_record.py` は `run.yaml` を **読むだけ**。判定を書く経路はこの2つ（人手の直接編集 / `/api/save`）だけ。
+  対象ごとに手順のコマンドを変えたい（ログインパスが違う等）ときは、criteria.yaml ではなく
+  `run.yaml` の `cmd_overrides:`（`<WSTG-ID>-s<n>-c<k>: "コマンド"`）で上書きする。`set_cmd_override`
+  （`/api/edit_cmd` が呼ぶ）が該当行だけ部分編集し、`iter_steps(..., overrides)` が反映する（main
+  コマンドのみ。確認コマンドは編集後の main から作り直す。空文字で既定＝criteria に戻る）。上書きで
+  cmd 行が変わるので `--skip-done` でも「コマンドが変わった」で再実行される。
 - **所見ファイルの front matter は `findings.py` の `render_text` が決まった順で書く**（Web 保存時は丸ごと
   書き直すので front matter 内のコメントは残らない。補足は本文へ）。**深刻度はファイルに保存しない**。
   `cvss` ベクトルから `cvss31.py` で毎回計算する（人が High/Medium を選ぶ UI・フィールドを足さない。

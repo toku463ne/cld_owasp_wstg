@@ -34,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from new_activity import (  # noqa: E402
     iter_steps, resolve_activity, refresh_record, write_manual_stubs,
     print_missing_run_yaml, primary_owners, split_delegated, manual_run_hint,
+    load_overrides,
     COVERAGE_YAML, load_yaml,
 )
 from run_cmd import append_command  # noqa: E402
@@ -362,7 +363,7 @@ def main() -> int:
         return 2
 
     activity, tests, criteria, target, act_dir = resolve_activity(activity_dir)
-    steps = iter_steps(activity, criteria, target, act_dir)
+    steps = iter_steps(activity, criteria, target, act_dir, load_overrides(activity_dir))
     write_manual_stubs(activity, criteria, target, activity_dir, act_dir, force=False)
 
     if args.list:
