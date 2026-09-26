@@ -225,6 +225,13 @@ RECORD_HTML = r"""<!DOCTYPE html>
       .then(function (r) { return r.json(); });
   }
   function remember(wid) { try { localStorage.setItem("wstg-tab-" + d.activity_id, wid); } catch (e) {} }
+  // 保存後にリロードして元の手順へ戻る。#<id> を使うと深いリンクの強調枠（.hl）が出るので、
+  // 戻り先は sessionStorage で渡し、ハッシュは外す（深いリンクで来た後でも枠を残さない）
+  function backTo(id) {
+    try { sessionStorage.setItem("wstg-back-" + d.activity_id, id); } catch (e) {}
+    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+    location.reload();
+  }
   function fail(msg) { alert(msg); }
   var NET_ERR = "サーバに接続できません。serve_record.py で開いていますか？";
 
@@ -328,7 +335,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
   function sendPng(wid, step, dataUrl, onFail) {
     post("api/upload_shot", { wid: wid, step: step, data: dataUrl.split(",", 2)[1] })
       .then(function (res) {
-        if (res.ok) { remember(wid); location.hash = wid + (step ? "/s" + step : ""); location.reload(); }
+        if (res.ok) { remember(wid); backTo(wid + (step ? "/s" + step : "")); }
         else { fail("保存できませんでした:\n" + (res.error || "")); onFail(); }
       })
       .catch(function () { fail(NET_ERR); onFail(); });
@@ -704,6 +711,14 @@ RECORD_HTML = r"""<!DOCTYPE html>
     if (!init || !entries.some(function (e) { return e.wid === init; }))
       init = entries.length ? entries[0].wid : null;
     if (init) activate(init);
+  }
+  var back = null;   // 保存後の戻り先（backTo）。強調枠は付けずに位置だけ戻す
+  try { back = sessionStorage.getItem("wstg-back-" + d.activity_id);
+        sessionStorage.removeItem("wstg-back-" + d.activity_id); } catch (e) {}
+  if (back) {
+    var bw = back.split("/")[0], bt = document.getElementById(back);
+    if (entries.some(function (e) { return e.wid === bw; })) activate(bw);
+    if (bt) bt.scrollIntoView();
   }
   }
 
