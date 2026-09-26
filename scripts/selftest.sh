@@ -395,10 +395,10 @@ import json, sys
 d = json.loads(open(sys.argv[1], encoding="utf-8").read().split("window.WSTG_EVIDENCE = ", 1)[1].rstrip(";\n"))
 fdir = sys.argv[2]
 cmds = [r["cmd"] for it in d["items"] for st in it["steps"] for r in st["runs"] if r.get("cmd")]
-need = f"head -c 400 {fdir}/artifacts/nvd-cve.json"
+need = f"wc -l {fdir}/artifacts/nvd-cve.tsv"
 assert sum(1 for c in cmds if need in c) == 1, "確認コマンドが重複している"
-assert any("curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0" in c for c in cmds), "CVE 照合が curl になっていない"
-assert any(c.startswith("jq -r '.totalResults'") for c in cmds), "jq が実行コマンドになっていない"
+assert any('curl -s -m 30 "https://services.nvd.nist.gov/rest/json/cves/2.0?virtualMatchString=$cpe' in c for c in cmds), "CVE 照合が curl（検出した CPE で引く）になっていない"
+assert any("keywordSearch=$kw" in c and "jq -r" in c for c in cmds), "CPE 照合が検出した製品名で引く curl/jq になっていない"
 assert any(f"curl -sD {fdir}/artifacts/headers.txt -o /dev/null https://ex.test/" in c for c in cmds), "ヘッダ取得が curl になっていない"
 DEDUP
 ok "NVD 照合(curl/jq)・受動観測(curl)・確認コマンド重複なし（evidence.js）"
@@ -591,6 +591,17 @@ bad = sorted({(s["wid"], s["idx"]) for a in cov["activities"]
               for r in s["runs"] if re.search(r"(^|[;&|{]\s*)(sudo\s+(-E\s+)?)?nmap\b", r["cmd"])})
 assert not bad, bad
 NMAP
+# NVD 照合（cpes/2.0 の keywordSearch・cves/2.0 の virtualMatchString）を例示の固定値
+# （apache http server 2.4.49 等）で自動実行しない。前の手順で検出した製品・CPE を変数で渡す
+"${PY[@]}" - <<'NVD' || ng "NVD 照合のコマンドが例示の固定値で引いている（検出結果を変数で渡す）"
+import re, sys; sys.path.insert(0, "scripts")
+from new_activity import COVERAGE_YAML, CRITERIA_YAML, load_yaml, iter_steps
+cov, cr = load_yaml(COVERAGE_YAML), load_yaml(CRITERIA_YAML)
+bad = sorted({(s["wid"], s["idx"]) for a in cov["activities"]
+              for s in iter_steps(a, cr, "t.test", "X") if s["kind"] == "cmd"
+              for r in s["runs"] if re.search(r"(keywordSearch|virtualMatchString|cpeName)=[^$]", r["cmd"])})
+assert not bad, bad
+NVD
 # 人が artifacts/ に置く入力（それより前のコマンドが書かないファイル）を読むコマンドは、
 # `test -s OUTDIR/<入力> || exit 75` で「入力待ち」を返すこと（無いまま走ると一括が止まるか、
 # 空の入力で成功扱いになって入力を置いた後もスキップされる）。入力待ちのコマンドが参照する

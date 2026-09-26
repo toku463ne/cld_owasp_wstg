@@ -22,17 +22,15 @@ WSTG の Test Objectives:
 1. フレームワーク/CMS は WSTG-INFO-02 手順2 で取得済みの whatweb.json から読む（whatweb を再実行しない）: `jq -r '.[].plugins // {} | keys[]' evidence/<活動フォルダ>/artifacts/whatweb.json | sort -u` ＋ ブラウザ拡張 Wappalyzer で突き合わせる。単独実行で whatweb.json が無いときは先に WSTG-INFO-02 を回す
 2. 応答ヘッダと Cookie を保存して基盤を推定: `curl -sD evidence/<活動フォルダ>/artifacts/headers.txt -o /dev/null https://target/ && { grep -iE '^(set-cookie|x-powered-by|server|x-aspnet-version|x-generator):' evidence/<活動フォルダ>/artifacts/headers.txt || [ $? -eq 1 ]; }`。Cookie 名（`JSESSIONID`=Java / `ASP.NET_SessionId`=.NET / `laravel_session`=Laravel / `ci_session`=CodeIgniter）・`X-Powered-By`・URL パスから基盤を特定
 3. 対象ページが読み込むフロント JS をブラウザ（開発者ツール）や Burp で保存して artifacts/js/ に置き、`test -n "$(ls -A evidence/<活動フォルダ>/artifacts/js/ 2>/dev/null)" || exit 75; retire --path evidence/<活動フォルダ>/artifacts/js/ --outputformat json --outputpath evidence/<活動フォルダ>/artifacts/retire.json --exitwith 0`（Retire.js）で走査して jQuery 等ライブラリのバージョンと既知脆弱性を確認する。retire は脆弱性を見つけると既定で exit 13 を返し一括実行が止まるため `--exitwith 0` で抑え、結果は retire.json で判断する。artifacts/js/ が空なら「入力待ち」（exit 75）として一括処理を止めずに飛ばす。JS を置いた後に同じ run_target を再実行するか `uv run scripts/run_activity.py <このフォルダ> --only WSTG-INFO-08:3` で走らせる
-4. 手順1・2 で特定した CMS/フレームワークごとに CPE 名を引く（retire.js が CVE まで出したフロント JS は不要）: `curl -s --get --data-urlencode "keywordSearch=wordpress 6.4.2" https://services.nvd.nist.gov/rest/json/cpes/2.0 -o evidence/<活動フォルダ>/artifacts/nvd-cpe-cms.json` → `jq -r '.totalResults, (.products[].cpe.cpeName)' evidence/<活動フォルダ>/artifacts/nvd-cpe-cms.json`
-   > ⚠️ **負荷注意（手順4）**: NVD API はキー無しで 30 秒 5 リクエストまで（超過は 403）。CMS ごとに繰り返すなら間隔を空ける。
-5. その cpeName で CVE を一覧し、finding にバージョン根拠（どこで判ったか）を添える: `curl -s 'https://services.nvd.nist.gov/rest/json/cves/2.0?virtualMatchString=cpe:2.3:a:wordpress:wordpress:6.4.2&resultsPerPage=100' -o evidence/<活動フォルダ>/artifacts/nvd-cve-cms.json` → `jq -r '.vulnerabilities[].cve | [.id, (.metrics.cvssMetricV31[0].cvssData.baseScore // "-" | tostring), .descriptions[0].value[0:100]] | @tsv' evidence/<活動フォルダ>/artifacts/nvd-cve-cms.json`
-   > ⚠️ **負荷注意（手順5）**: NVD API はキー無しで 30 秒 5 リクエストまで。手順4と連続で叩かない。
+4. CMS・フレームワークの CVE 照合は WSTG-INFO-02 手順4・5 が whatweb の検出分（WordPress・PHP 等）もまとめて引いている（products.txt・nvd-cpe.tsv・nvd-cve.tsv）。NVD を二重に叩かず、手順1・2 で特定したものの行をそこから読む
+5. whatweb に出ず手順2（Cookie・パス）や Wappalyzer でだけ特定できたものは、WSTG-INFO-02 の note の要領で手で引く（cpes/2.0 に keywordSearch=製品名 バージョン → 得た cpeName で cves/2.0 に virtualMatchString）。finding にバージョン根拠（どこで判ったか）を添える
+   > ⚠️ **負荷注意（手順5）**: NVD API はキー無しで 30 秒 5 リクエストまで（超過は 403）。手で続けて引くときは間隔を空ける。
 
 ## ⚠️ 負荷・レート制限・想定外への注意
 
 本調査は社内のプライベートネットワークで行う前提だが、想定外（古い機器・共有アカウント・外部 API 依存）は起こりうる。次の手順は**対象や外部サービスに負荷をかける／レート制限・アカウントロック・DoS を誘発しうる**。実施前に時間帯・範囲の合意を確認し、少量から段階的に。
 
-- **手順4**: NVD API はキー無しで 30 秒 5 リクエストまで（超過は 403）。CMS ごとに繰り返すなら間隔を空ける。
-- **手順5**: NVD API はキー無しで 30 秒 5 リクエストまで。手順4と連続で叩かない。
+- **手順5**: NVD API はキー無しで 30 秒 5 リクエストまで（超過は 403）。手で続けて引くときは間隔を空ける。
 
 ## 使用ツール
 

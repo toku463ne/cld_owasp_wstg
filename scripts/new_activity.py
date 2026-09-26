@@ -624,6 +624,9 @@ def output_paths(cmd: str, act_dir: str) -> list:
         # OUTDIR/../../<別アクティビティ>/… は他フォルダの入力（読むだけ）なので確認対象にしない
         if not tok.startswith(prefix) or "/../" in tok:
             continue
+        # `nvd-cpe-$n.json` のようにループ変数を含むパスは静的に決まらない（確認すると必ず失敗する）
+        if "$" in tok:
+            continue
         if not tok.endswith("/"):
             paths.append(tok)
             continue
