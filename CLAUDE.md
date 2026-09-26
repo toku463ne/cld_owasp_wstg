@@ -59,7 +59,8 @@ coverage.yaml ─┬─▶ TASKS.md（実施順・テキスト版）
                └─▶ new_activity.py ─▶ evidence/*/{run.yaml, record.html, cmd/, artifacts/}
                      run_activity.py ─▶ criteria.yaml の手順を bash 実行
                         （--skip-done で前回成功を飛ばし、--stop-on-error で非0終了時に打ち切る。
-                          人の作業で置く入力を読む「手動→コマンド」は一括では走らせず --only で実行）
+                          人の作業で置く入力を読む「手動→コマンド」は一括では走らせず --only で実行。
+                          ツール未導入（command not found=exit 127）は止めず飛ばし、最後に導入方法を出す）
                         ├─▶ cmd/<WSTG-ID>-s<n>-c<k>.txt（コマンドごとの純粋なエビデンス）
                         ├─▶ run.yaml の commands: に追記
                         └─▶ evidence.js（gen_record.py も同じ。所見の要約も載る）

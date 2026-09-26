@@ -120,6 +120,7 @@ def main() -> int:
     created = existed = 0
     total = {"ran": 0, "failed": 0, "skipped": 0, "pending": 0}
     waiting: list = []
+    tool_missing: list = []
     manual_left: list = []   # (act_dir, step) 一括では走らない手動→コマンドで、まだ実行していないもの
     for a in activities:
         aid = a["id"]
@@ -161,6 +162,7 @@ def main() -> int:
         for k in total:
             total[k] += summary[k]
         waiting += summary["waiting"]
+        tool_missing += summary["tool_missing"]
 
         if summary["aborted"]:
             print("\n" + "=" * 70)
@@ -181,13 +183,21 @@ def main() -> int:
         return 0
     print(f"[run_target] 完了。作成 {created} / 既存 {existed}、"
           f"実行 {total['ran']}・スキップ {total['skipped']}・非0終了 {total['failed']}"
-          f"・入力待ち {total['pending']}。")
+          f"・入力待ち {total['pending']}"
+          + (f"・ツール未導入 {len(tool_missing)}" if tool_missing else "") + "。")
     if waiting:
         print("  入力待ち（人が artifacts/ に入力を置く手順。各手順の説明どおりに置いてから、同じコマンドを再実行）:")
         for w in waiting:
             print(f"    - {w}")
         print(f"    uv run scripts/run_target.py --target {args.target} --date {date}"
               f"{' --reuse-latest' if args.reuse_latest else ''}")
+    if tool_missing:
+        seen: dict = {}
+        for wid, idx, tool, hint in tool_missing:
+            seen.setdefault(tool, hint)
+        print("  ツール未導入（飛ばした。導入してから再実行すると走る）:")
+        for tool, hint in sorted(seen.items()):
+            print(f"    - {tool}" + (f"　導入: {hint}" if hint else "　（導入方法を確認）"))
     if manual_left:
         print("  手動→コマンド（一括では走らない。各手順の説明の作業を済ませてから、次のコマンドで実行）:")
         for act_dir, s in manual_left:

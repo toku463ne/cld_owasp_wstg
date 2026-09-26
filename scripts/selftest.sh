@@ -616,6 +616,22 @@ for c in verify_commands(f"curl -o {d}/artifacts/a.json u | tee {d}/artifacts/b.
     p = subprocess.run(["bash", "-c", c], capture_output=True, text=True)
     assert p.returncode == 0 and "出力なし" in p.stdout, (c, p.returncode, p.stdout, p.stderr)
 VCHK
+# ツール未導入（command not found = exit 127）は一括を止めず飛ばし、導入方法を出す
+"${PY[@]}" - "${TMP}" <<'TOOL' || ng "ツール未導入（exit 127）で一括処理が止まる／飛ばした記録が残らない"
+import sys; sys.path.insert(0, "scripts")
+from pathlib import Path
+from run_activity import execute_steps
+d = Path(sys.argv[1]) / "toolmiss"; (d / "cmd").mkdir(parents=True, exist_ok=True)
+(d / "run.yaml").write_text("activity_id: x\ncommands:\n", encoding="utf-8")
+def st(i, cmd, out):
+    return {"wid": "T", "idx": i, "desc": "t", "kind": "cmd",
+            "runs": [{"cmd": cmd, "output": out, "role": "main"}]}
+todo = [st(1, "echo ok", "cmd/s1.txt"), st(2, "sqlmap -u x --batch", "cmd/s2.txt"), st(3, "echo after", "cmd/s3.txt")]
+r = execute_steps(d / "run.yaml", d, todo, timeout=None, skip_done=True, stop_on_error=True)
+assert not r["aborted"] and (d / "cmd/s3.txt").exists(), r          # 止まらず続きが走る
+assert r["tool_missing"] == [("T", 2, "sqlmap", "sudo apt install -y sqlmap")], r["tool_missing"]
+assert "exit_code: 127" in (d / "cmd/s2.txt").read_text()          # 未成功として記録（導入後に再実行される）
+TOOL
 # 前提となるエビデンス（別の WSTG・アクティビティの成果物）を手順から導き、WSTG ページに取得状況と取得元へのリンクを出す
 "${PY[@]}" - "${TMP}" <<'PREQ' || ng "前提となるエビデンスの導出か WSTG ページの表示が想定と違う"
 import sys; sys.path.insert(0, "scripts")

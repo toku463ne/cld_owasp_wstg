@@ -43,6 +43,29 @@ from run_cmd import append_command  # noqa: E402
 # `test -s OUTDIR/<入力> || exit 75` で返す。失敗ではないので一括処理は止めず、
 # 成功でもないので次回の --skip-done でも再実行される（置いた後に回せば続きが走る）。
 PENDING_EXIT = 75
+# bash が「コマンドが見つからない」ときに返す終了コード。ツール未導入はこのコードになる。
+# 入力待ちと同じく一括処理を止めず飛ばし、最後に導入方法を出す（1つの未導入で全体を止めない）。
+TOOL_MISSING_EXIT = 127
+
+
+def missing_tool(activity_dir: Path, output_rel: str):
+    """コマンド出力から「<tool>: command not found」を拾い、(ツール名, 導入案内) を返す（無ければ None）。"""
+    path = activity_dir / output_rel
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    m = re.search(r"([\w.-]+): command not found", text)
+    if not m:
+        return None
+    tool = m.group(1)
+    try:
+        from tasks import classify_tool
+        kind, val = classify_tool(tool)
+        hint = {"apt": f"sudo apt install -y {val}", "other": val}.get(kind, "")
+    except Exception:
+        hint = ""
+    return tool, hint
 
 
 def select_steps(steps: list, only: str | None) -> list:
@@ -173,6 +196,7 @@ def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
     """
     ran = failed = skipped = pending = 0
     waiting: list = []
+    tool_missing: list = []   # (WSTG-ID, 手順, ツール名, 導入案内)
     missing: set = set()   # 入力待ちで揃っていない artifacts/ のパス
     for s in manual_not_done(activity_dir, list(manual)):
         for r in s["runs"]:
@@ -181,7 +205,7 @@ def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
 
     def result() -> dict:
         return {"ran": ran, "failed": failed, "skipped": skipped, "pending": pending,
-                "aborted": aborted, "waiting": waiting}
+                "aborted": aborted, "waiting": waiting, "tool_missing": tool_missing}
 
     for s in todo:
         print(f"\n===== {s['wid']} 手順{s['idx']}：{s['desc'][:60]} =====")
@@ -216,6 +240,13 @@ def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
                 print(f"[run_activity] 入力待ち: {s['wid']} 手順{s['idx']} は人が artifacts/ に置く入力が"
                       f"まだ無いため飛ばします（手順の説明どおりに置いて再実行すると走ります）")
                 break
+            if code == TOOL_MISSING_EXIT:
+                mt = missing_tool(activity_dir, entry["output"])
+                tool, hint = mt if mt else ("(不明)", "")
+                tool_missing.append((s["wid"], s["idx"], tool, hint))
+                print(f"[run_activity] ツール未導入: {s['wid']} 手順{s['idx']} は {tool} が無いため飛ばします"
+                      + (f"（導入: {hint}）" if hint else ""))
+                break
             if code:
                 failed += 1
             print(f"[run_activity] 保存: {activity_dir / entry['output']}  (exit={code}, {entry['duration_sec']}s)")
@@ -225,6 +256,18 @@ def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
                       file=sys.stderr)
                 return result()
     return result()
+
+
+def print_tool_missing(items: list) -> None:
+    """未導入で飛ばしたツールと導入方法を出す（重複はまとめる）。"""
+    if not items:
+        return
+    seen: dict = {}
+    for wid, idx, tool, hint in items:
+        seen.setdefault(tool, [hint, []])[1].append(f"{wid} 手順{idx}")
+    print("  ツール未導入（飛ばした。導入してから再実行すると走る）:")
+    for tool, (hint, where) in sorted(seen.items()):
+        print(f"    - {tool}: {', '.join(where)}" + (f"　導入: {hint}" if hint else "　（導入方法を確認）"))
 
 
 def print_manual_left(left: list, act_dir: str) -> None:
@@ -364,6 +407,7 @@ def main() -> int:
     refresh_record(activity_dir)
     skipped_note = f"、スキップ {summary['skipped']}" if summary["skipped"] else ""
     skipped_note += f"、入力待ち {summary['pending']}" if summary["pending"] else ""
+    skipped_note += f"、ツール未導入 {len(summary['tool_missing'])}" if summary["tool_missing"] else ""
     print(f"\n[run_activity] {summary['ran']} コマンドを実行"
           f"（うち非0終了 {summary['failed']}{skipped_note}）。evidence.js を更新しました。")
     print(f"  表示: {activity_dir / 'record.html'} をブラウザで開く")
@@ -372,6 +416,7 @@ def main() -> int:
     if summary["failed"]:
         print("  ※ 非0終了の手順は出力が空/失敗の可能性。cmd/*.txt を見て pass の根拠にしない。")
     print_manual_left(left, act_dir)
+    print_tool_missing(summary["tool_missing"])
     # 打ち切ったときは戻り値を非0にして、呼び出し側（run_target.py 等）が止まれるようにする
     return 3 if summary["aborted"] else 0
 
