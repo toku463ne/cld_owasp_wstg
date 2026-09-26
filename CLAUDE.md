@@ -25,6 +25,8 @@
   この制限・書き込み API の CSRF 検査（`X-WSTG-Request` ヘッダ＋Origin/Host 一致）・
   `X-Remote-User` を `--behind-proxy` のときだけ信用する挙動を緩める変更はしない。
   共有モードの権限は `--owners` に名前がある利用者だけが owner（書き込み可）、それ以外は閲覧専用。
+  nginx を通らない直接アクセス（`X-Remote-User`・`X-Forwarded-For` がどちらも無い＝同じ機械から
+  127.0.0.1 を開いた）は owner（`via_proxy`）。nginx 設定からこの2つのヘッダを外さない。
   閲覧専用の制限は **サーバ側（`do_POST` の `can_edit` 検査・編集フォームの 403）で止める**のが本体で、
   画面から編集ボタンを隠すのは補助。`--owners` 省略時に全員閲覧専用になる既定を緩めない。
 

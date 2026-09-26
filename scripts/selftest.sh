@@ -384,7 +384,13 @@ try:
     RO = {"X-Remote-User": "bob"}
     info = json.loads(get("/api/info", RO)[1])
     assert info == {"capture": False, "user": "bob", "editable": False}, info
-    assert json.loads(get("/api/info", {})[1])["editable"] is False, "認証ユーザ不明なのに編集可になった"
+    assert json.loads(get("/api/info", {"X-Forwarded-For": "10.0.0.5"})[1])["editable"] is False, \
+        "nginx 経由で認証ユーザ不明なのに編集可になった"
+    # nginx を通らない直接アクセス（同じ機械で 127.0.0.1 を開く）は owner
+    info = json.loads(get("/api/info", {})[1])
+    assert info["editable"] is True and info["user"] not in ("", "unknown"), info
+    r = post("/api/check", {"key": "p0:env", "on": True})
+    assert r["ok"], ("直接アクセスで書き込めない", r)
     for route, obj in [("/api/check", {"key": "p0:agree", "on": True}),
                        ("/api/finding/save", {"title": "閲覧者", "wstg": ["WSTG-INFO-01"], "body": ""}),
                        (f"/{folder}/api/save", {"wid": "WSTG-INFO-01", "verdict": "pass", "finding": "x"}),

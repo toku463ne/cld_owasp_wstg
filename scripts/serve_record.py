@@ -28,7 +28,9 @@ X-Remote-User を編集者名として記録し、サーバ機のデスクトッ
 利用者の権限（--behind-proxy のとき）:
     owner    --owners に名前がある利用者（WSTG を実施する人）。書き込み API・編集フォームを使える
     閲覧専用  それ以外の認証済み利用者（結果を見るだけの人）。書き込み API は 403、編集ボタンは出ない
-    --owners を省くと全員が閲覧専用になる（書ける人を明示しない限り誰も書けない）。
+    --owners を省くと nginx 経由の全員が閲覧専用になる（書ける人を明示しない限り誰も書けない）。
+    nginx を通らない直接アクセス（この機械で http://127.0.0.1:<port>/ を開く）は owner。
+    nginx が必ず付ける X-Remote-User / X-Forwarded-For の有無で見分ける。
     ローカルモード（--behind-proxy なし）は常に owner。
 書き込みは1プロセス内のロックで直列化し、所見は読み込み時の版（rev）と違えば保存を拒否する。
 """
@@ -119,9 +121,16 @@ class RecordHandler(SimpleHTTPRequestHandler):
         except (ValueError, json.JSONDecodeError):
             return None
 
+    def via_proxy(self) -> bool:
+        """nginx 経由か（nginx は X-Remote-User と X-Forwarded-For を必ず付ける）。
+
+        127.0.0.1 でしか待ち受けないので、どちらも無いリクエストはこの機械からの直接アクセス。
+        """
+        return self.behind_proxy and ("X-Remote-User" in self.headers or "X-Forwarded-For" in self.headers)
+
     def user(self) -> str:
         """編集者名。nginx 経由なら X-Remote-User（Basic 認証のユーザ）、直アクセスなら OS のユーザ。"""
-        if self.behind_proxy:
+        if self.via_proxy():
             return clean_user(self.headers.get("X-Remote-User") or "") or "unknown"
         try:
             return getpass.getuser()
@@ -129,8 +138,9 @@ class RecordHandler(SimpleHTTPRequestHandler):
             return "local"
 
     def can_edit(self) -> bool:
-        """書き込めるか。ローカルモードは常に可、共有モードは --owners に名前がある利用者だけ。"""
-        return not self.behind_proxy or self.user() in self.owners
+        """書き込めるか。直接アクセス（ローカルモード・127.0.0.1 から直接）は常に可、
+        nginx 経由は --owners に名前がある利用者だけ。"""
+        return not self.via_proxy() or self.user() in self.owners
 
     def site(self) -> web_pages.Site:
         return web_pages.Site(self.root, self.user() if self.behind_proxy else "", self.capture_enabled(),
@@ -556,7 +566,9 @@ def main() -> int:
         if owners:
             print(f"  編集できる利用者（owner）: {', '.join(sorted(owners))}。ほかの利用者は閲覧専用。")
         else:
-            print("  --owners の指定がないので全員が閲覧専用です。実施者は --owners alice,bob のように指定してください。")
+            print("  --owners の指定がないので nginx 経由の全員が閲覧専用です。"
+                  "実施者は --owners alice,bob のように指定してください。")
+        print(f"  この機械で {base}/ を直接開いた場合は owner（編集可）として扱います。")
     else:
         print("  ローカルモード: この機械のブラウザから使う。チーム共有は --behind-proxy と nginx で。")
     print("  停止は Ctrl+C。")

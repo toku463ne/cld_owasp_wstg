@@ -476,7 +476,9 @@ sudo nginx -t && sudo systemctl reload nginx
   チェック・結果の貼り付けなど全部を編集できる。それ以外の認証ユーザは **閲覧専用**（結果を見るだけの人）で、
   編集ボタン・チェックボックス・画像の貼り付け欄が出ず、書き込み API もサーバ側で 403 になる
   （画面の表示だけでなくサーバで止めるので、誤操作でも書き換わらない）。CSV のダウンロードはできる。
-  `--owners` を省くと全員が閲覧専用。owner の増減は `--owners` を直して再起動
+  `--owners` を省くと nginx 経由の全員が閲覧専用。ただし共用 Kali 上で `http://127.0.0.1:8765/` を
+  nginx を通さず直接開いた場合は owner になる（この機械にログインできる人は編集できる前提）。
+  owner の増減は `--owners` を直して再起動
   （systemd なら `ExecStart` を直して `sudo systemctl daemon-reload && sudo systemctl restart wstg-web`）。
   ローカルモード（`--behind-proxy` なし）は常に編集できる。
 - `--behind-proxy` では、nginx の認証ユーザ（`X-Remote-User`）が所見・チェックの編集者名になる。
