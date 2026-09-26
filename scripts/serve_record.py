@@ -4,8 +4,7 @@
     uv run scripts/serve_record.py                 # evidence/ を配信（http://127.0.0.1:8765/）
     uv run scripts/serve_record.py --open          # ダッシュボードをブラウザで開く
     uv run scripts/serve_record.py evidence/<act>  # そのアクティビティの record.html を開く
-    uv run scripts/serve_record.py --behind-proxy --owners alice,bob
-                                                   # チーム共有（nginx の後ろ。templates/nginx/ 参照）
+    uv run scripts/serve_record.py --behind-proxy  # チーム共有（nginx の後ろ。templates/nginx/ 参照）
 
 ページ（描画は scripts/web_pages.py）:
     /  /tasks  /wstg/  /wstg/<ID>  /findings/  /findings/<F-ID>  /playbooks/<ID>  /export.csv
@@ -23,15 +22,13 @@
 
 常に 127.0.0.1 で待ち受ける。チームで共有するときは同じ機械の nginx から proxy し、
 nginx 側で TLS と認証（Basic 認証等）をかける。--behind-proxy のときは nginx が渡す
-X-Remote-User を編集者名として記録し、サーバ機のデスクトップを撮る capture を無効にする。
+X-Remote-User を画面の利用者名に出し、サーバ機のデスクトップを撮る capture を無効にする。
 
-利用者の権限（--behind-proxy のとき）:
-    owner    --owners に名前がある利用者（WSTG を実施する人）。書き込み API・編集フォームを使える
-    閲覧専用  それ以外の認証済み利用者（結果を見るだけの人）。書き込み API は 403、編集ボタンは出ない
-    --owners を省くと nginx 経由の全員が閲覧専用になる（書ける人を明示しない限り誰も書けない）。
-    nginx を通らない直接アクセス（この機械で http://127.0.0.1:<port>/ を開く）は owner。
-    nginx が必ず付ける X-Remote-User / X-Forwarded-For の有無で見分ける。
-    ローカルモード（--behind-proxy なし）は常に owner。
+利用者の権限（モードによらず同じ）:
+    owner    127.0.0.1 への直接アクセス（この機械のブラウザ、または ssh -L 8765:127.0.0.1:8765 の
+             ポート転送）。書き込み API・編集フォームを使える
+    閲覧専用  nginx 経由のアクセス（誰でも）。書き込み API は 403、編集ボタンは出ない
+    nginx が必ず付ける X-Remote-User / X-Forwarded-For の有無で見分ける（どちらか有れば nginx 経由）。
 書き込みは1プロセス内のロックで直列化し、所見は読み込み時の版（rev）と違えば保存を拒否する。
 """
 
@@ -63,8 +60,9 @@ CHECK_KEY_RE = re.compile(r"^[A-Za-z0-9:._-]{1,160}$")
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 MAX_BODY = 20 * 1024 * 1024
 WRITE_LOCK = threading.RLock()   # 書き込み（と record の再生成）を直列化する
-READONLY_MSG = ("閲覧専用ユーザなので編集できません。編集が必要なら、"
-                "サーバの管理者に serve_record.py の --owners へ追加してもらってください。")
+READONLY_MSG = ("nginx 経由のアクセスは閲覧専用なので編集できません。編集はサーバ機で "
+                "http://127.0.0.1:<port>/ を直接開くか、ssh -L 8765:127.0.0.1:8765 <サーバ> で"
+                "ポート転送して http://127.0.0.1:8765/ から行ってください。")
 
 sys.path.insert(0, str(SCRIPTS))
 import cvss31  # noqa: E402
@@ -80,7 +78,6 @@ from save_shot import make_name  # noqa: E402
 class RecordHandler(SimpleHTTPRequestHandler):
     root: Path = Path(".")        # build_server が差し替える（配信ルート＝evidence 相当）
     behind_proxy: bool = False    # nginx 経由（X-Remote-User を信用・capture 無効）
-    owners: frozenset = frozenset()   # --behind-proxy で書き込める利用者（それ以外は閲覧専用）
 
     # --- 共通 ---
     def _send(self, code: int, body: bytes, ctype: str, extra: dict | None = None) -> None:
@@ -125,12 +122,14 @@ class RecordHandler(SimpleHTTPRequestHandler):
         """nginx 経由か（nginx は X-Remote-User と X-Forwarded-For を必ず付ける）。
 
         127.0.0.1 でしか待ち受けないので、どちらも無いリクエストはこの機械からの直接アクセス。
+        --behind-proxy の有無に関係なく判定する（付け忘れても nginx 経由を owner にしない）。
         """
-        return self.behind_proxy and ("X-Remote-User" in self.headers or "X-Forwarded-For" in self.headers)
+        return "X-Remote-User" in self.headers or "X-Forwarded-For" in self.headers
 
     def user(self) -> str:
-        """編集者名。nginx 経由なら X-Remote-User（Basic 認証のユーザ）、直アクセスなら OS のユーザ。"""
-        if self.via_proxy():
+        """編集者名。nginx 経由なら X-Remote-User（Basic 認証のユーザ）、直アクセスなら OS のユーザ。
+        X-Remote-User を信用するのは --behind-proxy のときだけ。"""
+        if self.behind_proxy and self.via_proxy():
             return clean_user(self.headers.get("X-Remote-User") or "") or "unknown"
         try:
             return getpass.getuser()
@@ -138,9 +137,8 @@ class RecordHandler(SimpleHTTPRequestHandler):
             return "local"
 
     def can_edit(self) -> bool:
-        """書き込めるか。直接アクセス（ローカルモード・127.0.0.1 から直接）は常に可、
-        nginx 経由は --owners に名前がある利用者だけ。"""
-        return not self.via_proxy() or self.user() in self.owners
+        """書き込めるか。127.0.0.1 への直接アクセスは owner（可）、nginx 経由は閲覧専用（不可）。"""
+        return not self.via_proxy()
 
     def site(self) -> web_pages.Site:
         return web_pages.Site(self.root, self.user() if self.behind_proxy else "", self.capture_enabled(),
@@ -488,21 +486,14 @@ class RecordHandler(SimpleHTTPRequestHandler):
 
 
 def clean_user(name: str) -> str:
-    """利用者名を記録・照合用に正規化する（X-Remote-User と --owners の両方に同じ規則を使う）。"""
+    """利用者名（X-Remote-User）を記録用に正規化する。"""
     return re.sub(r"[^\w.@-]", "", name.strip())[:64]
 
 
-def parse_owners(values) -> frozenset:
-    """--owners（カンマ区切り・複数回可）を利用者名の集合にする。"""
-    return frozenset(u for v in values or [] for u in (clean_user(x) for x in v.split(",")) if u)
-
-
-def build_server(root: Path, host: str = "127.0.0.1", port: int = 8765, behind_proxy: bool = False,
-                 owners=frozenset()):
+def build_server(root: Path, host: str = "127.0.0.1", port: int = 8765, behind_proxy: bool = False):
     """root（evidence 相当）を配信する httpd を返す（serve は呼び側）。テスト・本体共用。"""
     RecordHandler.root = root.resolve()
     RecordHandler.behind_proxy = behind_proxy
-    RecordHandler.owners = frozenset(owners)
     handler = partial(RecordHandler, directory=str(root))
     return ThreadingHTTPServer((host, port), handler)
 
@@ -522,17 +513,15 @@ def main() -> int:
     ap.add_argument("--host", default="127.0.0.1",
                     help="待受アドレス。既定 127.0.0.1 のまま使い、共有は nginx 経由にする")
     ap.add_argument("--behind-proxy", action="store_true",
-                    help="nginx の後ろで動かす（X-Remote-User を編集者名に使い、サーバ画面の撮影を無効化）")
-    ap.add_argument("--owners", action="append", metavar="USER[,USER...]",
-                    help="--behind-proxy で編集できる利用者（nginx の認証ユーザ名。カンマ区切り・複数回可）。"
-                         "ほかの利用者は閲覧専用。省くと全員が閲覧専用")
+                    help="nginx の後ろで動かす（X-Remote-User を利用者名の表示に使い、サーバ画面の撮影を無効化）")
+    ap.add_argument("--owners", action="append", help=argparse.SUPPRESS)   # 廃止（警告して無視）
     ap.add_argument("--open", action="store_true", help="ブラウザで開く（活動指定ならその record.html）")
     args = ap.parse_args()
 
-    owners = parse_owners(args.owners)
-    if owners and not args.behind_proxy:
-        print("--owners は --behind-proxy と一緒に使います（ローカルモードは常に編集できます）。", file=sys.stderr)
-        return 2
+    if args.owners:
+        print("--owners は廃止しました（無視します）。権限は 127.0.0.1 への直接アクセス＝owner、"
+              "nginx 経由＝閲覧専用です。起動コマンド・systemd の ExecStart から --owners を外してください。",
+              file=sys.stderr)
 
     if not _is_loopback(args.host):
         print(f"--host {args.host} は使えません。認証なしで evidence が外から見えてしまいます。", file=sys.stderr)
@@ -552,7 +541,7 @@ def main() -> int:
         return 2
 
     try:
-        httpd = build_server(root, args.host, args.port, args.behind_proxy, owners)
+        httpd = build_server(root, args.host, args.port, args.behind_proxy)
     except OSError as exc:
         print(f"ポート {args.port} を開けません: {exc}", file=sys.stderr)
         print("  --port で別のポートを指定してください。", file=sys.stderr)
@@ -562,13 +551,10 @@ def main() -> int:
     print(f"[serve_record] 配信中: {base}/   （ダッシュボード）")
     print(f"  ルート: {root}")
     if args.behind_proxy:
-        print("  共有モード: nginx 経由でアクセスする（編集者名は X-Remote-User。サーバ画面の撮影は無効）。")
-        if owners:
-            print(f"  編集できる利用者（owner）: {', '.join(sorted(owners))}。ほかの利用者は閲覧専用。")
-        else:
-            print("  --owners の指定がないので nginx 経由の全員が閲覧専用です。"
-                  "実施者は --owners alice,bob のように指定してください。")
-        print(f"  この機械で {base}/ を直接開いた場合は owner（編集可）として扱います。")
+        print("  共有モード: nginx 経由でアクセスする（表示名は X-Remote-User。サーバ画面の撮影は無効）。")
+        print("  nginx 経由は全員が閲覧専用です。")
+        print(f"  編集（owner）はこの機械で {base}/ を直接開くか、"
+              f"ssh -L {args.port}:127.0.0.1:{args.port} <この機械> でポート転送して開きます。")
     else:
         print("  ローカルモード: この機械のブラウザから使う。チーム共有は --behind-proxy と nginx で。")
     print("  停止は Ctrl+C。")

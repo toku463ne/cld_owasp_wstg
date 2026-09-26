@@ -371,10 +371,10 @@ try:
 finally:
     httpd.shutdown(); httpd.server_close()
 
-# 共有モード（nginx の後ろ）: 編集者名は X-Remote-User、サーバ画面の撮影は無効、
-# --owners にいない利用者は閲覧専用（書き込み API は 403・編集フォームは 403・編集ボタンを出さない）
-httpd = serve_record.build_server(Path(root), "127.0.0.1", 0, behind_proxy=True,
-                                  owners=serve_record.parse_owners(["alice, carol"]))
+# 共有モード（nginx の後ろ）: 表示名は X-Remote-User、サーバ画面の撮影は無効。
+# 権限は 127.0.0.1 への直接アクセス＝owner、nginx 経由（X-Remote-User / X-Forwarded-For 付き）＝閲覧専用
+# （書き込み API は 403・編集フォームは 403・編集ボタンを出さない）
+httpd = serve_record.build_server(Path(root), "127.0.0.1", 0, behind_proxy=True)
 port = httpd.server_address[1]
 B = f"http://127.0.0.1:{port}"
 threading.Thread(target=httpd.serve_forever, daemon=True).start()
@@ -384,14 +384,12 @@ def status(path, hdr):
     except urllib.error.HTTPError as e:
         return e.code
 try:
-    info = json.loads(get("/api/info", {"X-Remote-User": "alice"})[1])
-    assert info == {"capture": False, "user": "alice", "editable": True}, info
-    RO = {"X-Remote-User": "bob"}
+    RO = {"X-Remote-User": "bob", "X-Forwarded-For": "10.0.0.5"}
     info = json.loads(get("/api/info", RO)[1])
     assert info == {"capture": False, "user": "bob", "editable": False}, info
     assert json.loads(get("/api/info", {"X-Forwarded-For": "10.0.0.5"})[1])["editable"] is False, \
         "nginx 経由で認証ユーザ不明なのに編集可になった"
-    # nginx を通らない直接アクセス（同じ機械で 127.0.0.1 を開く）は owner
+    # nginx を通らない直接アクセス（同じ機械・ssh -L で 127.0.0.1 を開く）は owner
     info = json.loads(get("/api/info", {})[1])
     assert info["editable"] is True and info["user"] not in ("", "unknown"), info
     r = post("/api/check", {"key": "p0:env", "on": True})
@@ -400,25 +398,37 @@ try:
                        ("/api/finding/save", {"title": "閲覧者", "wstg": ["WSTG-INFO-01"], "body": ""}),
                        (f"/{folder}/api/save", {"wid": "WSTG-INFO-01", "verdict": "pass", "finding": "x"}),
                        (f"/{folder}/api/delete_shot", {"path": "artifacts/shot-x.png"})]:
-        r = post(route, obj, RO)
-        assert r.get("status") == 403 and "閲覧専用" in r["error"], (route, r)
+        for h in (RO, {"X-Remote-User": "alice"}, {"X-Forwarded-For": "10.0.0.5"}):
+            r = post(route, obj, h)
+            assert r.get("status") == 403 and "閲覧専用" in r["error"], (route, h, r)
     for route in ("/findings/new", "/findings/F-001/edit", "/findings/attach?wid=WSTG-INFO-01&ev=x"):
-        assert status(route, RO) == 403, f"閲覧専用ユーザに編集フォームを出した: {route}"
-        assert status(route, {"X-Remote-User": "carol"}) == 200, route
+        assert status(route, RO) == 403, f"nginx 経由に編集フォームを出した: {route}"
+        assert status(route, {}) == 200, route
     s, fp = get("/findings/F-001", RO)
-    assert "/findings/F-001/edit" not in fp and "閲覧専用" in fp, "閲覧専用ユーザに編集ボタンを出した"
+    assert "/findings/F-001/edit" not in fp and "閲覧専用" in fp, "nginx 経由に編集ボタンを出した"
     s, t = get("/tasks", RO)
-    assert "data-check=" not in t, "閲覧専用ユーザに押せるチェックを出した"
-    s, t = get("/tasks", {"X-Remote-User": "alice"})
+    assert "data-check=" not in t, "nginx 経由に押せるチェックを出した"
+    s, t = get("/tasks", {})
     assert "data-check=" in t
     s, rh = get(f"/{folder}/record.html", RO)
     assert "canEdit = served && info.editable" in rh, "record.html が編集可否を見ていない"
-    r = post(f"/{folder}/api/capture", {"wid": "WSTG-INFO-01", "step": 1, "delay": 0},
-             {"X-Remote-User": "alice"})
+    r = post(f"/{folder}/api/capture", {"wid": "WSTG-INFO-01", "step": 1, "delay": 0})
     assert r["ok"] is False and "共有モード" in r["error"], r
-    r = post("/api/finding/save", {"title": "共有で作成", "wstg": ["WSTG-INFO-01"], "body": ""},
-             {"X-Remote-User": "alice"})
-    assert r["ok"] and _f.get(Path(root), r["id"])["author"] == "alice", r
+finally:
+    httpd.shutdown(); httpd.server_close()
+
+# ローカルモード（--behind-proxy なし）でも、プロキシのヘッダ付き＝nginx 経由は閲覧専用
+# （--behind-proxy を付け忘れて nginx を前に置いても誰も書けない側に倒す）
+httpd = serve_record.build_server(Path(root), "127.0.0.1", 0)
+port = httpd.server_address[1]
+B = f"http://127.0.0.1:{port}"
+threading.Thread(target=httpd.serve_forever, daemon=True).start()
+try:
+    info = json.loads(get("/api/info", {"X-Remote-User": "bob", "X-Forwarded-For": "10.0.0.5"})[1])
+    assert info["editable"] is False and info["user"] == "", info
+    r = post("/api/check", {"key": "p0:agree", "on": True}, {"X-Forwarded-For": "10.0.0.5"})
+    assert r.get("status") == 403, r
+    assert json.loads(get("/api/info", {})[1])["editable"] is True
 finally:
     httpd.shutdown(); httpd.server_close()
 SRV

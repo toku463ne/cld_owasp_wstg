@@ -24,11 +24,11 @@
   nginx（社内ネットワーク限定・TLS・認証。`templates/nginx/wstg.conf`）経由だけ。
   この制限・書き込み API の CSRF 検査（`X-WSTG-Request` ヘッダ＋Origin/Host 一致）・
   `X-Remote-User` を `--behind-proxy` のときだけ信用する挙動を緩める変更はしない。
-  共有モードの権限は `--owners` に名前がある利用者だけが owner（書き込み可）、それ以外は閲覧専用。
-  nginx を通らない直接アクセス（`X-Remote-User`・`X-Forwarded-For` がどちらも無い＝同じ機械から
-  127.0.0.1 を開いた）は owner（`via_proxy`）。nginx 設定からこの2つのヘッダを外さない。
+  権限は接続経路だけで決まる: **127.0.0.1 への直接アクセス（`X-Remote-User`・`X-Forwarded-For` が
+  どちらも無い＝同じ機械、または `ssh -L` のポート転送）＝owner、nginx 経由＝全員閲覧専用**（`via_proxy`。
+  `--behind-proxy` の有無に関係なく判定する）。nginx 設定からこの2つのヘッダを外さない。
   閲覧専用の制限は **サーバ側（`do_POST` の `can_edit` 検査・編集フォームの 403）で止める**のが本体で、
-  画面から編集ボタンを隠すのは補助。`--owners` 省略時に全員閲覧専用になる既定を緩めない。
+  画面から編集ボタンを隠すのは補助。nginx 経由に書き込みを許す仕組み（利用者名での許可リスト等）を足さない。
 
 ## 2. どのファイルを直すか（最重要）
 

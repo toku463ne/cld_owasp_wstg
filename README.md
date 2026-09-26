@@ -464,24 +464,27 @@ Web の「CSV」（`/export.csv`）からも同じものをダウンロードで
 Web は同じ機械で動かし、nginx から公開する（`serve_record.py` 自体は 127.0.0.1 でしか待ち受けない）。
 
 ```bash
-uv run scripts/serve_record.py --behind-proxy --owners alice,bob   # 常駐は templates/nginx/wstg-web.service
+uv run scripts/serve_record.py --behind-proxy   # 常駐は templates/nginx/wstg-web.service
 sudo apt install -y nginx apache2-utils
-sudo htpasswd -c /etc/nginx/wstg.htpasswd alice    # 2人目以降は -c なし（閲覧だけの人も同じファイルに足す）
+sudo htpasswd -c /etc/nginx/wstg.htpasswd alice    # 2人目以降は -c なし
 sudo cp templates/nginx/wstg.conf /etc/nginx/sites-available/wstg   # 証明書・許可ネットワークを直す
 sudo ln -s /etc/nginx/sites-available/wstg /etc/nginx/sites-enabled/wstg
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-- **権限は2種類**。`--owners` に並べた認証ユーザ（WSTG を実施する人）は **owner** で、判定・所見・
-  チェック・結果の貼り付けなど全部を編集できる。それ以外の認証ユーザは **閲覧専用**（結果を見るだけの人）で、
+- **権限は接続経路で決まる（2種類）**。`127.0.0.1` への直接アクセスは **owner** で、判定・所見・
+  チェック・結果の貼り付けなど全部を編集できる。**nginx 経由は全員が閲覧専用**で、
   編集ボタン・チェックボックス・画像の貼り付け欄が出ず、書き込み API もサーバ側で 403 になる
   （画面の表示だけでなくサーバで止めるので、誤操作でも書き換わらない）。CSV のダウンロードはできる。
-  `--owners` を省くと nginx 経由の全員が閲覧専用。ただし共用 Kali 上で `http://127.0.0.1:8765/` を
-  nginx を通さず直接開いた場合は owner になる（この機械にログインできる人は編集できる前提）。
-  owner の増減は `--owners` を直して再起動
-  （systemd なら `ExecStart` を直して `sudo systemctl daemon-reload && sudo systemctl restart wstg-web`）。
-  ローカルモード（`--behind-proxy` なし）は常に編集できる。
-- `--behind-proxy` では、nginx の認証ユーザ（`X-Remote-User`）が所見・チェックの編集者名になる。
+  WSTG を実施する人（共用 Kali に SSH できる人）は、自分の PC からポート転送して開けば owner になる:
+
+  ```bash
+  ssh -L 8765:127.0.0.1:8765 kali@<共用 Kali>   # つないだまま、手元のブラウザで http://127.0.0.1:8765/
+  ```
+
+  見分け方は nginx が必ず付ける `X-Remote-User` / `X-Forwarded-For` の有無（`--behind-proxy` の有無に関係なく同じ）。
+  編集者名は owner なら OS のユーザ名（共用 Kali のログインユーザ）になる。
+- `--behind-proxy` では、nginx の認証ユーザ（`X-Remote-User`）を画面右上の利用者名に出す。
   サーバ機の画面を撮る機能は無効になり、『📷 スクショを撮る』はブラウザの画面共有で撮る方式になる
   （共有する画面を選ぶ → 待ち時間のうちに対象ウィンドウを前面へ → タブに戻って範囲をドラッグ → 保存）。
   RDP 越しなどでクリップボードに画像が入らなくても使える。HTTPS（nginx）か 127.0.0.1 で開いたときだけ動く。
