@@ -632,7 +632,7 @@ assert not bad, bad
 INPUT
 # 一括では secondary の手順を primary 側に任せ、同じ重いコマンド（nikto 等）を1回しか走らせない
 "${PY[@]}" - <<'DUP' || ng "run_target が同じ WSTG-ID のコマンドを複数アクティビティで重複実行する"
-import sys; sys.path.insert(0, "scripts")
+import re, sys; sys.path.insert(0, "scripts")
 from new_activity import COVERAGE_YAML, CRITERIA_YAML, load_yaml, iter_steps
 from run_activity import select_steps
 from run_target import primary_owners, split_delegated
@@ -656,7 +656,7 @@ mains = list(batch_mains())
 # 全JSクロール（app-js.txt を作る curl ループ）は metafiles-crawl でだけ走る
 full = [aid for aid, c in mains if "tee X/artifacts/ports-http.txt" in c]
 assert full == ["enum-apps"], full
-ww = [aid for aid, c in mains if c.startswith("whatweb")]
+ww = [aid for aid, c in mains if re.search(r"(^|; )whatweb ", c)]
 assert ww == ["fingerprint-stack"], ww
 jscrawl = [aid for aid, c in mains if "app-js.txt" in c and "curl" in c]
 assert jscrawl == ["metafiles-crawl"], jscrawl
