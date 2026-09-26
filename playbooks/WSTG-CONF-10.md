@@ -22,7 +22,7 @@ WSTG の Test Objectives:
 
 1. サブドメインの各 CNAME をまとめて引く。recon-osint（WSTG-INFO-01 手順4）で作った subfinder.txt を evidence/<活動フォルダ>/artifacts/subfinder.txt にコピーして入力に（置くまで一括実行では「入力待ち」で飛ばす） `test -s evidence/<活動フォルダ>/artifacts/subfinder.txt || exit 75; while read -r h; do echo "$h -> $(dig +short CNAME $h | head -1)"; done < evidence/<活動フォルダ>/artifacts/subfinder.txt | tee evidence/<活動フォルダ>/artifacts/cname-check.txt` を実行する（`->` の右が埋まっている行＝CNAME を持つサブドメインが乗っ取り確認の対象。空欄は A/AAAA 直指定なので対象外。crt.sh で拾った分も subfinder.txt に足してから回す）
 2. cname-check.txt を乗っ取り可能サービスの CNAME フィンガープリントで絞り込む: `grep -iaE "s3[.-]|\.s3\.amazonaws|\.github\.io|heroku(dns|app)|\.azurewebsites\.net|\.cloudfront\.net|\.fastly\.net|pantheonsite|\.ghost\.io" evidence/<活動フォルダ>/artifacts/cname-check.txt | tee evidence/<活動フォルダ>/artifacts/takeover-candidates.md`。ヒットした行（`サブドメイン -> CNAME`）が要確認。出力が空なら該当なし＝この時点で pass 相当（対象サービス: S3 / GitHub Pages / Heroku / Azure / CloudFront / Fastly / Pantheon / Ghost 等。漏れが心配なら evidence/<活動フォルダ>/artifacts/cname-check.txt 全体も目視する）
-3. 要確認リストの各サブドメインの応答をまとめて取得する: `while read -r line; do h=${line%% *}; echo "===== $h ====="; curl -s -m 10 https://$h/ | head -c 800; echo; done < evidence/<活動フォルダ>/artifacts/takeover-candidates.md | tee evidence/<活動フォルダ>/artifacts/takeover-responses.txt`。各応答に、サービス既定の「リソースが存在しない」エラーが出ているか見る。乗っ取り可能な典型応答: S3=`NoSuchBucket`、GitHub Pages=`There isn’t a GitHub Pages site here`、Heroku=`No such app`、Azure=`404 Web Site not found`、Fastly=`Fastly error: unknown domain`。このエラーが出る＝第三者が同名リソースを登録して掌握できる状態（fail）。正常なコンテンツが返る＝実在リソース（この観点は pass）
+3. 要確認リストの各サブドメインの応答をまとめて取得する: `while read -r line; do h=${line%% *}; echo "===== $h ====="; curl -s -m 10 https://$h/ | head -c 800; echo; done < evidence/<活動フォルダ>/artifacts/takeover-candidates.md | tee evidence/<活動フォルダ>/artifacts/takeover-responses.txt`。サービス既定の「リソースが存在しない」エラー（note の例）が出れば乗っ取り可能で fail
    > ⚠️ **負荷注意（手順3）**: 確認対象の各サブドメインへ順に HTTP 接続する。件数が多いと外部サービス（乗っ取り確認先）への負荷になる。
 4. 乗っ取り可能と判断しても、実際の取得（バケット作成・リポジトリ/アプリ登録等）は行わない。CNAME・エラー応答本体・ステータスを証跡（artifacts/）に残し、finding には該当サブドメイン名と「どのサービスの未登録リソースを指すか」を要約で書く（生の CNAME 先ホスト名は evidence 参照に留める）
 
@@ -43,7 +43,7 @@ WSTG の Test Objectives:
 
 - **pass**: 全サブドメインの向き先が実在し、解放済みクラウドリソースを指す CNAME がない。
 - **fail**: 解放済みのホスティング先を指す CNAME/A があり、第三者が同名リソースを取得して掌握できる。
-- 補足: 実際の乗っ取りは行わない。到達性とエラー応答（NoSuchBucket 等）で判断し、証拠として記録する。
+- 補足: 実際の乗っ取りは行わない。到達性とエラー応答（NoSuchBucket 等）で判断し、証拠として記録する。乗っ取り可能な典型応答: S3=`NoSuchBucket`、GitHub Pages=`There isn’t a GitHub Pages site here`、Heroku=`No such app`、Azure=`404 Web Site not found`、Fastly=`Fastly error: unknown domain`。正常なコンテンツが返る＝実在リソース（この観点は pass）。
 
 ## 記録すべき成果物（run.yaml へ）
 

@@ -684,10 +684,12 @@ def step_desc(text: str) -> str:
     def repl(m):
         return "" if _is_cmd_span(m.group(1)) else m.group(0)
     out = re.sub(r"`([^`]+)`", repl, text)
+    out = re.sub(r"(?<=[A-Za-z0-9])（\s*）", " ", out)  # 「testssl（）か」→「testssl か」
     out = re.sub(r"（\s*）", "", out)          # 空になった括弧を落とす
     out = re.sub(r"\s*[とや]\s*(?=[)）])", "", out)   # 「A と 」の宙に浮いた接続助詞
     out = re.sub(r"[ \t]+", " ", out)
     out = re.sub(r"\s*[:：]\s*[とや]\s*", "： ", out)  # 「: と 」のような残骸を詰める
+    out = re.sub(r"\s*[:：]\s*(?=[。、]|$)", "", out)   # 「推定: 。」のようにコマンドが抜けた後の宙に浮いたコロン
     out = re.sub(r"^[はでをにがと、。：:\s]+", "", out)  # 宙に浮いた先頭の助詞・記号
     out = re.sub(r"[\s、。：:のとや]+$", "", out)      # 末尾の宙に浮いた助詞・記号
     return out.strip()

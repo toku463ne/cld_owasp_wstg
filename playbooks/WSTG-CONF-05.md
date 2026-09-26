@@ -21,7 +21,7 @@ WSTG の Test Objectives:
 
 1. `test -s "${WSTG_WORDLIST_WEB:=/usr/share/seclists/Discovery/Web-Content/common.txt}" || { echo "ワードリストが無い: $WSTG_WORDLIST_WEB（sudo apt install -y seclists か export WSTG_WORDLIST_WEB=/path/to/list）" >&2; exit 2; }; ffuf -w "$WSTG_WORDLIST_WEB" ${WSTG_PAUSE:+-p "$WSTG_PAUSE" -t 1} ${https_proxy:+-x "$https_proxy"} -u https://target/FUZZ -o evidence/<活動フォルダ>/artifacts/ffuf-admin.json -of json`（`/admin /manager /wp-admin /phpmyadmin` 等）で管理画面を探索（ワードリストは既定で SecLists の common.txt。管理系パスを含む。`sudo apt install seclists`。差し替えは `export WSTG_WORDLIST_WEB=<パス>`）。非力な対象では `export WSTG_PAUSE=2` で待ちを入れ、スレッドも1にする。ffuf は環境変数のプロキシを見ないので、プロキシ経由なら `-x` を明示する
    > ⚠️ **負荷注意（手順1）**: ffuf の管理画面総当りは大量リクエスト。ログイン系パスはアカウントロック・誤検知アラートも誘発しうる。`export WSTG_PAUSE=2` で待ち＋スレッド1に落とし、ログインを含むパスは慎重に。
-2. インフラ側の管理ポートも確認。enum-apps（WSTG-INFO-04 手順1）のポート確認（curl）と社外 nmap（あれば）に含まれるので再確認せず取り出す: `test -s "$(ls -1 evidence/<活動フォルダ>/artifacts/../../enum-apps-target-*/artifacts/ports-http.txt 2>/dev/null | tail -1)" || { echo "enum-apps の ports-http.txt が無い。先に enum-apps を回す（uv run scripts/run_target.py --target target --only enum-apps）" >&2; exit 2; }; cat "$(ls -1 evidence/<活動フォルダ>/artifacts/../../enum-apps-target-*/artifacts/ports-http.txt | tail -1)" "$(ls -1 evidence/<活動フォルダ>/artifacts/../../enum-apps-target-*/artifacts/nmap-allports.txt 2>/dev/null | tail -1)" 2>/dev/null | grep -E '^(8080|8443|9990|10000|7001|8161|9000|9090)/tcp +open' > evidence/<活動フォルダ>/artifacts/mgmt-ports.txt || [ $? -eq 1 ]`（空＝該当ポートの公開なし）。open のポートの Server ヘッダ（製品・バージョン）を控え、管理コンソールなら手順3の認証確認へ
+2. インフラ側の管理ポートを enum-apps の結果から抽出する: `test -s "$(ls -1 evidence/<活動フォルダ>/artifacts/../../enum-apps-target-*/artifacts/ports-http.txt 2>/dev/null | tail -1)" || { echo "enum-apps の ports-http.txt が無い。先に enum-apps を回す（uv run scripts/run_target.py --target target --only enum-apps）" >&2; exit 2; }; cat "$(ls -1 evidence/<活動フォルダ>/artifacts/../../enum-apps-target-*/artifacts/ports-http.txt | tail -1)" "$(ls -1 evidence/<活動フォルダ>/artifacts/../../enum-apps-target-*/artifacts/nmap-allports.txt 2>/dev/null | tail -1)" 2>/dev/null | grep -E '^(8080|8443|9990|10000|7001|8161|9000|9090)/tcp +open' > evidence/<活動フォルダ>/artifacts/mgmt-ports.txt || [ $? -eq 1 ]`。open があれば Server を控え、管理コンソールなら手順3 の認証確認へ
 3. 見つけた管理画面の認証（既定資格情報・接続元制限・MFA）を確認。既定資格情報は必ず試す
 4. 「パスを秘匿しているだけ」で列挙で出てくる状態は保護不十分として扱う
 
@@ -34,7 +34,6 @@ WSTG の Test Objectives:
 ## 使用ツール
 
 - ffuf
-- curl
 - nmap
 
 ## 判定基準（pass / fail の見分け）

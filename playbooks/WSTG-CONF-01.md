@@ -20,8 +20,8 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. 公開ポート/サービスは enum-apps（WSTG-INFO-04）の結果から取り出す（同じ走査を2回しない）。手順5 の社外 nmap（nmap-allports.txt）が必須で、手順1 の curl のポート確認（ports-http.txt）と合わせる: `test -s "$(ls -1 evidence/<活動フォルダ>/artifacts/../../enum-apps-target-*/artifacts/nmap-allports.txt 2>/dev/null | tail -1)" || exit 75; cat "$(ls -1 evidence/<活動フォルダ>/artifacts/../../enum-apps-target-*/artifacts/nmap-allports.txt | tail -1)" "$(ls -1 evidence/<活動フォルダ>/artifacts/../../enum-apps-target-*/artifacts/ports-http.txt 2>/dev/null | tail -1)" 2>/dev/null | grep -E '^[0-9]+/(tcp|udp) +open' > evidence/<活動フォルダ>/artifacts/open-ports.txt || [ $? -eq 1 ]`。nmap-allports.txt が無い間は「入力待ち」で飛ばす（社外から nmap を回して enum-apps の artifacts/ に置いてから、同じ run_target を再実行するか `uv run scripts/run_activity.py <このフォルダ> --only WSTG-CONF-01:1` で走らせる）
-2. 公開が危険なポート（SSH/RDP/DB/管理系）を手順1のスキャン結果から抽出する（再スキャンせず既存結果を grep するので追加負荷なし）: `grep -E '^(22|23|3389|3306|5432|1433|1521|6379|27017|9200|5601|8080|8443|9000|9090|9990|10000|7001|8161|15672|2375|5900)/(tcp|udp)' evidence/<活動フォルダ>/artifacts/open-ports.txt | tee evidence/<活動フォルダ>/artifacts/sensitive-ports.txt`。1行でも出たら、そのポートが本来アクセスできるべき範囲（社内のみ等）を超えて開いていないか手順4の FW/セキュリティグループ設定と突き合わせる。SSH/RDP/DB（22/3389/3306 等）は社外 nmap の結果から出る（社外から見えている＝インターネットに公開されている）。管理コンソールは製品ごとにポートが違うので、ヒットが無くても手順1の全開放ポート一覧に見慣れないサービスが無いか併せて目視する
+1. enum-apps の社外 nmap と curl のポート確認を合わせて公開ポート一覧を作る: `test -s "$(ls -1 evidence/<活動フォルダ>/artifacts/../../enum-apps-target-*/artifacts/nmap-allports.txt 2>/dev/null | tail -1)" || exit 75; cat "$(ls -1 evidence/<活動フォルダ>/artifacts/../../enum-apps-target-*/artifacts/nmap-allports.txt | tail -1)" "$(ls -1 evidence/<活動フォルダ>/artifacts/../../enum-apps-target-*/artifacts/ports-http.txt 2>/dev/null | tail -1)" 2>/dev/null | grep -E '^[0-9]+/(tcp|udp) +open' > evidence/<活動フォルダ>/artifacts/open-ports.txt || [ $? -eq 1 ]`。nmap-allports.txt を置くまでは入力待ちで飛ばす
+2. 公開が危険なポート（SSH/RDP/DB/管理系）を抽出する: `grep -E '^(22|23|3389|3306|5432|1433|1521|6379|27017|9200|5601|8080|8443|9000|9090|9990|10000|7001|8161|15672|2375|5900)/(tcp|udp)' evidence/<活動フォルダ>/artifacts/open-ports.txt | tee evidence/<活動フォルダ>/artifacts/sensitive-ports.txt`。出たものは手順4 の FW/セキュリティグループ設定と突き合わせる
 3. `nikto -h https://target ${WSTG_PAUSE:+-Pause "$WSTG_PAUSE"} ${https_proxy:+-useproxy "$https_proxy"} -o evidence/<活動フォルダ>/artifacts/nikto.txt` と特定製品の既知脆弱性・既定資格情報を照合。nikto は既定でリクエスト間の待ちが無く、非力な対象は CPU 100%・504 になりやすい。`WSTG_PAUSE`（秒）を設定するとリクエスト間にその秒数だけ空ける（例: `export WSTG_PAUSE=2`。落ちるなら 3〜5 に上げる）。さらに絞るなら `-maxtime 30m` で打ち切り、`-T` で試験カテゴリを限定する。nikto は環境変数のプロキシを見ないので、プロキシ経由で対象に出る環境では `-useproxy` を明示する（`${...:+}` は各変数が設定されているときだけ付く）
    > ⚠️ **負荷注意（手順3）**: nikto は既知パスへ大量のリクエストを送る非常に騒がしいスキャン。既定はリクエスト間の待ちが無く、非力な対象は CPU 100%・504 になりやすい。`export WSTG_PAUSE=2`（落ちるなら 3〜5）でリクエスト間に待ちを入れる。さらに `-maxtime` で打ち切り、対象は1つずつ。
 4. クラウドのセキュリティグループ/FW 設定（ヒアリング）と実スキャン結果を突き合わせ、差分を指摘
@@ -42,7 +42,7 @@ WSTG の Test Objectives:
 
 - **pass**: 公開ポートが業務上必要なものだけで、管理系は接続元制限がかかっている。
 - **fail**: SSH・RDP・DB・管理コンソール等が無制限に公開されている、またはサポート切れの製品が動いている。
-- 補足: クラウドのセキュリティグループ設定と実際のスキャン結果を突き合わせる。
+- 補足: クラウドのセキュリティグループ設定と実際のスキャン結果を突き合わせる。ポート一覧は WSTG-INFO-04 の結果を再利用する（走査を2回しない）。SSH/RDP/DB は社外 nmap にだけ出る（出た＝インターネットに公開）。管理コンソールはポートが製品ごとに違うので、抽出に出なくても一覧の見慣れないサービスを目視する。
 
 ## 記録すべき成果物（run.yaml へ）
 
