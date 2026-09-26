@@ -151,6 +151,9 @@ run.yaml ─▶ tasks.py（端末の進捗表示）
   画面とボタン名まで書く（例: 「F12 → Network タブの『Preserve log』に✓ → … → 右クリック →
   『Save all as HAR』→ OUTDIR/site.har として保存」）。「ブラウザや Burp で保存」のような曖昧な書き方をしない
   （selftest が、コマンド手順の説明にブラウザ・Burp・DevTools・Wappalyzer・ZAP が出てこないことを検査）。
+  WSTG ページの「前提となるエビデンス」は `new_activity.prerequisites` が手順の書き方（`OUTDIR/<名前>`・
+  `OUTDIR/../../<活動>-target-*/artifacts/<名前>`・書き込み先・手動手順本文の `OUTDIR/<名前>`）から導く。
+  手書きの依存表は持たない。**手動手順で人が置くファイルは本文に `OUTDIR/<名前>` と書く**（書かないと取得元として拾えない）。
   「取得できたかの確認」（`verify_commands`）は**その手順が書いたファイル**（`>`・`tee`・`-o` 等の後ろ）
   だけを対象にする。結果を標準出力にしか出さない手順は `| tee OUTDIR/<名前>` でファイルにも残す。
 - **`finding`・所見タイトルは要約のみ**。生トークン・資格情報・生ホスト名を CSV や

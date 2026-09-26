@@ -7,7 +7,7 @@
     /                    ダッシュボード（WSTG の完了数・所見の深刻度・次にやること・アクティビティ一覧）
     /tasks               指示書＋チェックリスト（自動チェック＋手動チェック）＋エビデンスへのリンク
     /wstg/               WSTG 索引（カテゴリ別・完了状況・実施記録と所見へのリンク）
-    /wstg/<WSTG-ID>      1項目の判定・実施記録・所見・カード
+    /wstg/<WSTG-ID>      1項目の判定・前提となるエビデンス（取得状況と取得元へのリンク）・実施記録・所見・カード
     /findings/           所見一覧（深刻度順）
     /findings/<F-ID>     所見の詳細（CVSS 内訳・エビデンスへの深いリンク）
     /findings/new, /findings/<F-ID>/edit   所見の作成・編集フォーム（CVSS は設問形式）
@@ -21,6 +21,7 @@ evidence/_state/checks.yaml、エビデンス本体は cmd/・artifacts/。こ�
 from __future__ import annotations
 
 import argparse
+import datetime
 import html
 import json
 import re
@@ -36,6 +37,8 @@ PLAYBOOKS = REPO_ROOT / "playbooks"
 sys.path.insert(0, str(SCRIPTS))
 
 import cvss31  # noqa: E402
+from new_activity import prerequisites  # noqa: E402
+from run_activity import PENDING_EXIT, cmd_exit_code  # noqa: E402
 import findings as fnd  # noqa: E402
 from export_checklist import build_rows, collect_runs  # noqa: E402
 from tasks import (  # noqa: E402
@@ -104,6 +107,19 @@ class Site:
                     self.wstg_runs.setdefault(c["id"], []).append(
                         (d.name, aid, str(c.get("verdict", "todo")).lower(),
                          str(c.get("finding") or ""), roles.get(c["id"], "primary")))
+
+    @property
+    def prereqs(self) -> dict:
+        """WSTG-ID → 前提となるエビデンス（手順から機械的に導く。new_activity.prerequisites）。"""
+        if not hasattr(self, "_prereqs"):
+            self._prereqs = prerequisites(self.coverage.get("activities") or [], self.criteria)
+        return self._prereqs
+
+    def latest_folder(self, aid: str, target: str | None):
+        """アクティビティ aid の、同じ対象（target_scope）の最新フォルダ（無ければ None）。"""
+        cands = [d for d, data in self.act_runs.get(aid) or []
+                 if target is None or str(data.get("target_scope") or "") == target]
+        return max(cands, key=lambda d: d.name) if cands else None
 
     # 集計
     def active_tests(self) -> list:
@@ -524,6 +540,8 @@ def page_wstg_detail(site: Site, wid: str):
             if crit.get(k):
                 parts.append(f"<p><b>{label}</b>: {_inline(str(crit[k]))}</p>")
 
+    parts.append(prereq_section(site, wid))
+
     parts.append("<h2>実施記録</h2>")
     runs = site.wstg_runs.get(wid, [])
     if runs:
@@ -559,6 +577,65 @@ def page_wstg_detail(site: Site, wid: str):
         parts.append(f'<details><summary>カード（playbooks/{wid}.md）を開く</summary>'
                      f'{md(pb.read_text(encoding="utf-8"))}</details>')
     return page(site, f"{wid} — {t['title']}", "".join(parts), "wstg")
+
+
+def _size(n: int) -> str:
+    return f"{n} B" if n < 1024 else f"{n / 1024:.1f} KB" if n < 1024 * 1024 else f"{n / 1048576:.1f} MB"
+
+
+def prereq_status(site: Site, folder, producer: tuple, name: str) -> tuple:
+    """前提ファイルの取得状況 → (ok: bool, 表示 HTML)。folder は作り手のフォルダ（Path か None）。"""
+    aid, pwid, idx, kind = producer
+    if folder is None:
+        return False, f'<span class="warn">未着手</span>（<a href="/tasks#act-{E(aid)}">{E(aid)} をタスクで見る</a>）'
+    f = folder / "artifacts" / name
+    if f.exists() and f.stat().st_size > 0:
+        rel = f.relative_to(site.root).as_posix()
+        ts = datetime.datetime.fromtimestamp(f.stat().st_mtime).strftime("%m-%d %H:%M")
+        return True, (f'<span class="ck ok">✓</span>取得済み（<a href="/{quote(rel)}">{_size(f.stat().st_size)}</a>・{ts}）')
+    if f.exists():
+        return False, '<span class="warn">空（0 バイト）</span>'
+    if kind == "manual":
+        return False, '<span class="warn">未取得（手動で置く）</span>'
+    code = cmd_exit_code(folder, f"cmd/{pwid}-s{idx}-c1.txt")
+    why = ("未実行" if code is None else "入力待ち" if code == PENDING_EXIT
+           else f"失敗（exit {code}）" if code else "出力なし")
+    return False, f'<span class="warn">未取得（{why}）</span>'
+
+
+def prereq_section(site: Site, wid: str) -> str:
+    """この WSTG のコマンドが読む、別の WSTG・別アクティビティの成果物と、その取得状況・取得元へのリンク。"""
+    items = site.prereqs.get(wid) or []
+    if not items:
+        return ""
+    runs = site.wstg_runs.get(wid, [])
+    trs = []
+    for e in items:
+        # この WSTG を実施したフォルダ（同じアクティビティ）ごとに見る。未実施なら対象を問わず最新
+        mine = [site.root / folder for folder, aid, *_ in runs if aid == e["activity"]]
+        for cf in (mine or [None]):
+            target = None
+            if cf is not None:
+                target = str((_load_yaml(cf / "run.yaml") or {}).get("target_scope") or "")
+            for prod in e["producers"][:1]:
+                paid, pwid, pidx, kind = prod
+                pf = cf if (e["same_folder"] and cf is not None) else site.latest_folder(paid, target)
+                ok, status = prereq_status(site, pf, prod, e["file"])
+                where = (f'<a href="{record_href(pf.name, pwid, str(pidx))}">{E(paid)} / {E(pwid)} 手順{pidx}</a>'
+                         if pf is not None else f'{E(paid)} / {E(pwid)} 手順{pidx}')
+                kind_l = "（手動）" if kind == "manual" else ""
+                use = ", ".join(
+                    (f'<a href="{record_href(cf.name, wid, str(i))}">手順{i}</a>' if cf is not None else f"手順{i}")
+                    for i in e["used_by"])
+                copy = '' if e["same_folder"] else ('<div class="mut">別アクティビティの成果物'
+                                                     + ('' if cf is None else f'（対象: {E(target or "—")}）') + '</div>')
+                trs.append(f'<tr><td class="mono">{E(e["file"])}</td><td>{where}{kind_l}{copy}</td>'
+                           f"<td>{status}</td><td>{use}</td></tr>")
+    note = ('<p class="mut">この WSTG のコマンドが読む、別の WSTG・アクティビティの成果物。'
+            "未取得なら先に取得元の手順を済ませる（手順の書き方から自動で導いている）。</p>")
+    return ("<h2>前提となるエビデンス</h2>" + note
+            + '<div class="tbl"><table><tr><th>ファイル</th><th>取得する手順</th><th>取得状況</th>'
+            f'<th>この WSTG で使う手順</th></tr>{"".join(trs)}</table></div>')
 
 
 def page_playbook(site: Site, wid: str):

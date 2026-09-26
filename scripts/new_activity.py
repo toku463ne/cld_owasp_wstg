@@ -814,6 +814,86 @@ def split_delegated(steps: list, owners: dict) -> tuple:
     return keep, delegated
 
 
+# ---- 前提となるエビデンス（ある WSTG のコマンドが読む、別の WSTG・別アクティビティの成果物） ----
+# 手順の書き方（OUTDIR・`OUTDIR/../../<活動>-target-*/artifacts/<名前>`・書き込み先）から機械的に導く。
+# 手書きの依存表は持たない（手順を直せば自動で追従する）。
+_PR_TARGET = "TGT"
+_PR_NAME = r"[A-Za-z0-9_-][A-Za-z0-9._-]*"
+# 他フォルダ参照: `OUTDIR/../../enum-apps-target-*/artifacts/ports-http.txt` と
+# `"$(ls -1d OUTDIR/../../metafiles-crawl-target-*/artifacts | tail -1)"/index.html` の2形
+_PR_CROSS_RE = re.compile(
+    rf"/\.\./\.\./([a-z0-9-]+?)-{_PR_TARGET}-\*/artifacts"
+    rf"(?:/({_PR_NAME})|\s*\|\s*tail -1\)\"?/({_PR_NAME}))")
+
+
+def prerequisites(activities: list, criteria: dict) -> dict:
+    """WSTG-ID → 前提となるエビデンスの一覧。
+
+    各要素は dict: file（artifacts/ 直下の名前）, activity（それを使うこの WSTG の実施アクティビティ）,
+    used_by（それを読むこの WSTG の手順番号の一覧）, same_folder（同じフォルダ内か）,
+    producers（[(アクティビティ, WSTG-ID, 手順番号, 'cmd'|'manual')]。取れる手順）。
+    自分の WSTG の手順が作るもの（人が置く入力・前の手順の出力）は前提に含めない。
+    同じフォルダに作り手が無く、別アクティビティに同名の成果物があるもの（コピーして使う入力）も前提に含める。
+    """
+    # 作り手の索引: (アクティビティ, ファイル名) → [(アクティビティ, WSTG, 手順, 種別)]
+    made: dict = {}
+    steps_of: dict = {}
+    for a in activities:
+        act_dir = f"@{a['id']}"
+        pre = f"{act_dir}/artifacts/"
+        steps = iter_steps(a, criteria, _PR_TARGET, act_dir)
+        steps_of[a["id"]] = steps
+        for s in steps:
+            if s["kind"] == "cmd":
+                names = {p[len(pre):] for r in s["runs"] if r["role"] == "main"
+                         for p in output_paths(r["cmd"], act_dir)}
+            else:   # 手動手順は本文の「OUTDIR/<名前> として保存 / に書く」を作るものとみなす
+                names = set(re.findall(re.escape(pre) + f"({_PR_NAME})", s["text"]))
+            for n in names:
+                made.setdefault((a["id"], n), []).append((a["id"], s["wid"], s["idx"], s["kind"]))
+    by_name: dict = {}
+    for (aid, n), ps in made.items():
+        by_name.setdefault(n, []).extend(ps)
+
+    # この WSTG を実際に実行するアクティビティ（primary があればそれ。secondary は委譲されるので見ない）
+    owners = primary_owners(activities)
+    out: dict = {}
+    for wid in sorted({c["id"] for a in activities for c in a.get("covers", [])}):
+        aid = (owners.get(wid) or [next(a["id"] for a in activities
+                                        if any(c["id"] == wid for c in a.get("covers", [])))])[0]
+        act_dir = f"@{aid}"
+        pre = f"{act_dir}/artifacts/"
+        mine = [s for s in steps_of[aid] if s["wid"] == wid]
+        own = {n for (a2, n), ps in made.items() if a2 == aid and any(p[1] == wid for p in ps)}
+        found: dict = {}
+        for s in mine:
+            if s["kind"] != "cmd":
+                continue
+            for r in s["runs"]:
+                if r["role"] != "main":
+                    continue
+                refs = [(aid, n, True) for n in re.findall(re.escape(pre) + f"({_PR_NAME})", r["cmd"])]
+                refs += [(m.group(1), m.group(2) or m.group(3), False)
+                         for m in _PR_CROSS_RE.finditer(r["cmd"])]
+                for a2, n, same in refs:
+                    if same and n in own:
+                        continue
+                    ps = [p for p in made.get((a2, n), []) if not (a2 == aid and p[1] == wid)]
+                    if not ps and same:   # 同じフォルダに作り手が無い＝別アクティビティの成果物をコピーして使う
+                        ps = [p for p in by_name.get(n, []) if p[0] != aid]
+                        same = False if ps else same
+                    if not ps:
+                        continue
+                    key = (ps[0][0], n)
+                    e = found.setdefault(key, {"file": n, "activity": aid, "used_by": [],
+                                               "same_folder": same, "producers": ps})
+                    if s["idx"] not in e["used_by"]:
+                        e["used_by"].append(s["idx"])
+        if found:
+            out[wid] = list(found.values())
+    return out
+
+
 def manual_stub_text(activity: dict, step: dict) -> str:
     """手動手順の観察を書き込むための素の .txt ひな型（これ自体がエビデンス）。"""
     return "\n".join([

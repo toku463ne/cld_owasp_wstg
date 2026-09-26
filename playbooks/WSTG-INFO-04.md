@@ -25,7 +25,7 @@ WSTG の Test Objectives:
    > ⚠️ **負荷注意（手順2）**: バーチャルホスト総当り（`ffuf -H "Host: FUZZ"`）はワードリストの大きさに比例して大量のリクエストを送る。リストを対象に合わせて絞る。
 3. 見つけたホスト/ポートを evidence/<活動フォルダ>/artifacts/hosts.txt に1行1件で置き（手順1・2 の結果から）、用途判別の材料を一括取得: `test -s evidence/<活動フォルダ>/artifacts/hosts.txt || exit 75; while read -r hp; do echo "===== $hp ====="; curl -s -k -m 8 -D - -o evidence/<活動フォルダ>/artifacts/_body "https://$hp/" | grep -iE '^(HTTP/|server:|x-powered-by:|www-authenticate:)'; grep -oiE '<title>[^<]*' evidence/<活動フォルダ>/artifacts/_body | head -1; done < evidence/<活動フォルダ>/artifacts/hosts.txt | tee evidence/<活動フォルダ>/artifacts/vhosts-fingerprint.txt`。取得したタイトル・`Server`・realm と、`dev`/`stg`/`test`/`old`/`admin`/`jenkins`/`grafana`/`phpmyadmin` などのホスト名から用途（検証環境・管理コンソールの疑い）を判別し、各ホストの用途と根拠を artifacts/vhosts.md に1行ずつ書く
 4. スコープ外のものは攻撃せず「存在の報告」に留め、artifacts に一覧化
-5. 社外の端末から全ポートを nmap で走査する（手動）: `nmap -sV -Pn -p- --open -oN nmap-allports.txt target`。結果をこのフォルダの artifacts/ に置き、スキャン元 IP・日時を manual-WSTG-INFO-04-s5.txt に書く
+5. 社外の端末から全ポートを nmap で走査する（手動）: `nmap -sV -Pn -p- --open -oN nmap-allports.txt target`。結果を evidence/<活動フォルダ>/artifacts/nmap-allports.txt に置き、スキャン元 IP・日時を観察欄に書く
    > ⚠️ **負荷注意（手順5）**: `nmap -p-` は全 65535 ポートへ接続を試みる重いスキャン。IDS/IPS や機器の接続数上限を刺激しうる。時間帯に注意し、詰まるなら `--max-rate 100` や `-T2` で抑える（`--scan-delay` は `-p-` だと事実上終わらないので使わない）。社外 IP からのスキャンなので、スキャン元 IP を対象の管理者に事前に伝える。
 
 ## ⚠️ 負荷・レート制限・想定外への注意

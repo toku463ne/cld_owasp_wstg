@@ -606,6 +606,24 @@ bad = sorted({(s["wid"], s["idx"]) for a in cov["activities"]
               for r in s["runs"] if re.search(r"(^|[;&|{]\s*)(sudo\s+(-E\s+)?)?nmap\b", r["cmd"])})
 assert not bad, bad
 NMAP
+# 前提となるエビデンス（別の WSTG・アクティビティの成果物）を手順から導き、WSTG ページに取得状況と取得元へのリンクを出す
+"${PY[@]}" - "${TMP}" <<'PREQ' || ng "前提となるエビデンスの導出か WSTG ページの表示が想定と違う"
+import sys; sys.path.insert(0, "scripts")
+from pathlib import Path
+from new_activity import COVERAGE_YAML, CRITERIA_YAML, load_yaml, prerequisites
+P = prerequisites(load_yaml(COVERAGE_YAML)["activities"], load_yaml(CRITERIA_YAML))
+got = {(w, e["file"], e["producers"][0][:3]) for w, l in P.items() for e in l}
+for need in [("WSTG-INFO-08", "whatweb.json", ("fingerprint-stack", "WSTG-INFO-02", 2)),
+             ("WSTG-CONF-01", "nmap-allports.txt", ("enum-apps", "WSTG-INFO-04", 5)),
+             ("WSTG-CONF-01", "ports-http.txt", ("enum-apps", "WSTG-INFO-04", 1)),
+             ("WSTG-CONF-11", "site.har", ("fingerprint-stack", "WSTG-INFO-08", 4))]:
+    assert need in got, (need, sorted(got))
+assert "WSTG-INFO-02" not in P   # 自分の手順が作るもの・人が置く入力は前提に入れない
+import web_pages as W
+root = Path(sys.argv[1]) / "preq-empty"; root.mkdir(exist_ok=True)
+h = W.page_wstg_detail(W.Site(root), "WSTG-CONF-01")
+assert "前提となるエビデンス" in h and "nmap-allports.txt" in h and "/tasks#act-enum-apps" in h, h[:300]
+PREQ
 # 人の作業で置く入力を読む手順（入力ガード `|| exit 75`）は手動→コマンドとして一括では走らない
 "${PY[@]}" - <<'MRUN' || ng "入力ガードを持つ手順が一括実行の対象に入っている（手動→コマンドにする）"
 import sys; sys.path.insert(0, "scripts")

@@ -83,7 +83,7 @@ WSTG-INFO-04:
     - "同一 IP の他ホストを列挙する。証明書透明性ログ（WSTG-INFO-01 の crt.sh）で既知の名前を拾い、バーチャルホスト総当りで応答するホスト名を洗う: `test -s \"${WSTG_WORDLIST_VHOST:=/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt}\" || { echo \"ワードリストが無い: $WSTG_WORDLIST_VHOST（sudo apt install -y seclists か export WSTG_WORDLIST_VHOST=/path/to/list）\" >&2; exit 2; }; ffuf -w \"$WSTG_WORDLIST_VHOST:FUZZ\" ${WSTG_PAUSE:+-p \"$WSTG_PAUSE\" -t 1} ${https_proxy:+-x \"$https_proxy\"} -u https://target/ -H \"Host: FUZZ.target\" -ac -o OUTDIR/ffuf-vhost.json -of json`。残ったホスト名を手順3 の材料にする"
     - "見つけたホスト/ポートを OUTDIR/hosts.txt に1行1件で置き（手順1・2 の結果から）、用途判別の材料を一括取得: `test -s OUTDIR/hosts.txt || exit 75; while read -r hp; do echo \"===== $hp =====\"; curl -s -k -m 8 -D - -o OUTDIR/_body \"https://$hp/\" | grep -iE '^(HTTP/|server:|x-powered-by:|www-authenticate:)'; grep -oiE '<title>[^<]*' OUTDIR/_body | head -1; done < OUTDIR/hosts.txt | tee OUTDIR/vhosts-fingerprint.txt`。取得したタイトル・`Server`・realm と、`dev`/`stg`/`test`/`old`/`admin`/`jenkins`/`grafana`/`phpmyadmin` などのホスト名から用途（検証環境・管理コンソールの疑い）を判別し、各ホストの用途と根拠を artifacts/vhosts.md に1行ずつ書く"
     - "スコープ外のものは攻撃せず「存在の報告」に留め、artifacts に一覧化"
-    - "社外の端末から全ポートを nmap で走査する（手動）: `nmap -sV -Pn -p- --open -oN nmap-allports.txt target`。結果をこのフォルダの artifacts/ に置き、スキャン元 IP・日時を manual-WSTG-INFO-04-s5.txt に書く"
+    - "社外の端末から全ポートを nmap で走査する（手動）: `nmap -sV -Pn -p- --open -oN nmap-allports.txt target`。結果を OUTDIR/nmap-allports.txt に置き、スキャン元 IP・日時を観察欄に書く"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
     1: "管理系ポート（Docker API 2375・Elasticsearch 9200 等）にも接続するので、IDS/IPS が反応しうる。リクエスト数は 24 ポート×http/https の 48 回程度。"
     2: "バーチャルホスト総当り（`ffuf -H \"Host: FUZZ\"`）はワードリストの大きさに比例して大量のリクエストを送る。リストを対象に合わせて絞る。"
