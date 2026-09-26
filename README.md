@@ -464,14 +464,21 @@ Web の「CSV」（`/export.csv`）からも同じものをダウンロードで
 Web は同じ機械で動かし、nginx から公開する（`serve_record.py` 自体は 127.0.0.1 でしか待ち受けない）。
 
 ```bash
-uv run scripts/serve_record.py --behind-proxy     # 常駐は templates/nginx/wstg-web.service
+uv run scripts/serve_record.py --behind-proxy --owners alice,bob   # 常駐は templates/nginx/wstg-web.service
 sudo apt install -y nginx apache2-utils
-sudo htpasswd -c /etc/nginx/wstg.htpasswd alice    # 2人目以降は -c なし
+sudo htpasswd -c /etc/nginx/wstg.htpasswd alice    # 2人目以降は -c なし（閲覧だけの人も同じファイルに足す）
 sudo cp templates/nginx/wstg.conf /etc/nginx/sites-available/wstg   # 証明書・許可ネットワークを直す
 sudo ln -s /etc/nginx/sites-available/wstg /etc/nginx/sites-enabled/wstg
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+- **権限は2種類**。`--owners` に並べた認証ユーザ（WSTG を実施する人）は **owner** で、判定・所見・
+  チェック・結果の貼り付けなど全部を編集できる。それ以外の認証ユーザは **閲覧専用**（結果を見るだけの人）で、
+  編集ボタン・チェックボックス・画像の貼り付け欄が出ず、書き込み API もサーバ側で 403 になる
+  （画面の表示だけでなくサーバで止めるので、誤操作でも書き換わらない）。CSV のダウンロードはできる。
+  `--owners` を省くと全員が閲覧専用。owner の増減は `--owners` を直して再起動
+  （systemd なら `ExecStart` を直して `sudo systemctl daemon-reload && sudo systemctl restart wstg-web`）。
+  ローカルモード（`--behind-proxy` なし）は常に編集できる。
 - `--behind-proxy` では、nginx の認証ユーザ（`X-Remote-User`）が所見・チェックの編集者名になる。
   サーバ機の画面を撮る『📷 スクショを撮る』は無効になり、各自の PC で撮って**貼り付け**る。
 - 書き込み API は独自ヘッダと Origin を検査する（他サイトからの書き込みを弾く）。書き込みは直列化される。

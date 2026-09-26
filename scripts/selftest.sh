@@ -364,15 +364,44 @@ try:
 finally:
     httpd.shutdown(); httpd.server_close()
 
-# 共有モード（nginx の後ろ）: 編集者名は X-Remote-User、サーバ画面の撮影は無効
-httpd = serve_record.build_server(Path(root), "127.0.0.1", 0, behind_proxy=True)
+# 共有モード（nginx の後ろ）: 編集者名は X-Remote-User、サーバ画面の撮影は無効、
+# --owners にいない利用者は閲覧専用（書き込み API は 403・編集フォームは 403・編集ボタンを出さない）
+httpd = serve_record.build_server(Path(root), "127.0.0.1", 0, behind_proxy=True,
+                                  owners=serve_record.parse_owners(["alice, carol"]))
 port = httpd.server_address[1]
 B = f"http://127.0.0.1:{port}"
 threading.Thread(target=httpd.serve_forever, daemon=True).start()
+def status(path, hdr):
+    try:
+        return get(path, hdr)[0]
+    except urllib.error.HTTPError as e:
+        return e.code
 try:
     info = json.loads(get("/api/info", {"X-Remote-User": "alice"})[1])
-    assert info == {"capture": False, "user": "alice"}, info
-    r = fpost("/api/capture", {"wid": "WSTG-INFO-01", "step": 1, "delay": 0})
+    assert info == {"capture": False, "user": "alice", "editable": True}, info
+    RO = {"X-Remote-User": "bob"}
+    info = json.loads(get("/api/info", RO)[1])
+    assert info == {"capture": False, "user": "bob", "editable": False}, info
+    assert json.loads(get("/api/info", {})[1])["editable"] is False, "認証ユーザ不明なのに編集可になった"
+    for route, obj in [("/api/check", {"key": "p0:agree", "on": True}),
+                       ("/api/finding/save", {"title": "閲覧者", "wstg": ["WSTG-INFO-01"], "body": ""}),
+                       (f"/{folder}/api/save", {"wid": "WSTG-INFO-01", "verdict": "pass", "finding": "x"}),
+                       (f"/{folder}/api/delete_shot", {"path": "artifacts/shot-x.png"})]:
+        r = post(route, obj, RO)
+        assert r.get("status") == 403 and "閲覧専用" in r["error"], (route, r)
+    for route in ("/findings/new", "/findings/F-001/edit", "/findings/attach?wid=WSTG-INFO-01&ev=x"):
+        assert status(route, RO) == 403, f"閲覧専用ユーザに編集フォームを出した: {route}"
+        assert status(route, {"X-Remote-User": "carol"}) == 200, route
+    s, fp = get("/findings/F-001", RO)
+    assert "/findings/F-001/edit" not in fp and "閲覧専用" in fp, "閲覧専用ユーザに編集ボタンを出した"
+    s, t = get("/tasks", RO)
+    assert "data-check=" not in t, "閲覧専用ユーザに押せるチェックを出した"
+    s, t = get("/tasks", {"X-Remote-User": "alice"})
+    assert "data-check=" in t
+    s, rh = get(f"/{folder}/record.html", RO)
+    assert "canEdit = served && info.editable" in rh, "record.html が編集可否を見ていない"
+    r = post(f"/{folder}/api/capture", {"wid": "WSTG-INFO-01", "step": 1, "delay": 0},
+             {"X-Remote-User": "alice"})
     assert r["ok"] is False and "共有モード" in r["error"], r
     r = post("/api/finding/save", {"title": "共有で作成", "wstg": ["WSTG-INFO-01"], "body": ""},
              {"X-Remote-User": "alice"})

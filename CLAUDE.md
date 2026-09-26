@@ -24,6 +24,9 @@
   nginx（社内ネットワーク限定・TLS・認証。`templates/nginx/wstg.conf`）経由だけ。
   この制限・書き込み API の CSRF 検査（`X-WSTG-Request` ヘッダ＋Origin/Host 一致）・
   `X-Remote-User` を `--behind-proxy` のときだけ信用する挙動を緩める変更はしない。
+  共有モードの権限は `--owners` に名前がある利用者だけが owner（書き込み可）、それ以外は閲覧専用。
+  閲覧専用の制限は **サーバ側（`do_POST` の `can_edit` 検査・編集フォームの 403）で止める**のが本体で、
+  画面から編集ボタンを隠すのは補助。`--owners` 省略時に全員閲覧専用になる既定を緩めない。
 
 ## 2. どのファイルを直すか（最重要）
 
@@ -122,7 +125,8 @@ run.yaml ─▶ tasks.py（端末の進捗表示）
   根拠が残らなくなるため）。CVSS の計算式を JS に二重実装しない（Web は `/api/cvss` を呼ぶ）。
 - **Web の書き込みは `serve_record.WRITE_LOCK` で直列化**し、所見の更新は読み込み時の `rev` と
   一致しなければ 409 にする（チームの同時編集で他人の更新を潰さない）。新しい書き込み API を足すときも
-  `do_POST` の CSRF 検査とロックを通す。
+  `do_POST` の CSRF 検査・閲覧専用の検査（`can_edit`）とロックを通す（利用者の操作による書き込みは POST だけ。GET の record 再生成は別）。
+  新しい編集 UI を足すときは、ページ側は `Site.editable`、record.html 側は `canEdit` を見て閲覧専用には出さない。
 - **エビデンス本体は `cmd/`・`artifacts/` のファイル、`record.html` はそれを参照するだけの表示**。
   `record.html` は静的で、手順・コマンド・判定などの**メタデータ**を `evidence.js`
   （`run_activity.py`／`gen_record.py` が生成）から読み、**各コマンドの出力は evidence.js に

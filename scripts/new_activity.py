@@ -195,7 +195,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
       "evidence.js が見つかりません。uv run scripts/gen_record.py <このフォルダ> で生成してください。"));
     return; }
   var served = location.protocol.indexOf("http") === 0;   // serve_record.py 経由か
-  var info = { capture: false, user: "" };                 // /api/info で上書き（撮影可否・利用者）
+  var info = { capture: false, user: "", editable: false };   // /api/info で上書き（撮影可否・利用者・編集可否）
   var folder = d.folder || "";
   function evPath(rel) { return folder + "/" + rel; }      // evidence ルートからの相対パス
   function q(obj) { return Object.keys(obj).map(function (k) {
@@ -212,12 +212,13 @@ RECORD_HTML = r"""<!DOCTYPE html>
   var NET_ERR = "サーバに接続できません。serve_record.py で開いていますか？";
 
   function start() {
+  var canEdit = served && info.editable;   // 閲覧専用ユーザには編集・貼り付け・添付を出さない
   app.innerHTML = "";
   if (served) {
     var nav = el("nav", "nav");
     [["/", "ダッシュボード"], ["/tasks", "タスク"], ["/wstg/", "WSTG 索引"], ["/findings/", "所見"]]
       .forEach(function (x) { nav.appendChild(link(x[0], null, x[1])); });
-    if (info.user) nav.appendChild(el("span", "who", "👤 " + info.user));
+    if (info.user || !canEdit) nav.appendChild(el("span", "who", "👤 " + info.user + (canEdit ? "" : "（閲覧専用）")));
     app.appendChild(nav);
   }
   app.appendChild(el("h1", null, "実施記録 — " + d.activity_id + (d.target ? " / " + d.target : "")));
@@ -226,7 +227,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
      d.generated_at && ("生成 " + d.generated_at)].filter(Boolean).join("  ·  ")));
 
   var delayInput = null;
-  if (served && info.capture) {
+  if (canEdit && info.capture) {
     var ctl = el("div", "controls");
     ctl.appendChild(el("span", null, "スクショ待ち時間(秒):"));
     delayInput = document.createElement("input");
@@ -261,7 +262,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
       im.className = "shot"; im.src = src; im.loading = "lazy"; im.alt = src;
       parent.appendChild(im);
       var rc = el("div", "rc", "→ " + src);
-      if (served) {   // 削除・添付はサーバ経由（file:// では出さない）
+      if (canEdit) {   // 削除・添付はサーバ経由（file:// と閲覧専用では出さない）
         rc.appendChild(document.createTextNode("  "));
         rc.appendChild(attachLink(wid, src));
         rc.appendChild(document.createTextNode("  "));
@@ -366,7 +367,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
   function findingsBox(it) {
     var w = el("div", "fbox");
     var head = el("div", "cap", "所見（" + (it.findings || []).length + " 件）");
-    if (served) {
+    if (canEdit) {
       head.appendChild(document.createTextNode("  "));
       head.appendChild(link("/findings/new?" + q({ wid: it.wid, ev: folder + "/" }), "attach", "＋ 所見を作成"));
     }
@@ -453,7 +454,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
       cp.appendChild(document.createTextNode(it.pass)); box.appendChild(cp); }
     if (it.fail) { var cf = el("div", "crit"); cf.appendChild(el("b", null, "fail "));
       cf.appendChild(document.createTextNode(it.fail)); box.appendChild(cf); }
-    if (served) {
+    if (canEdit) {
       box.appendChild(editForm(it));   // verdict/判定理由 をその場で編集して保存
     } else if (it.finding) {
       box.appendChild(el("div", "finding", "判定理由: " + it.finding));
@@ -487,7 +488,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
         if (r.cmd) {
           var pre = el("pre", "cmd", "$ " + r.cmd);
           s.appendChild(pre);
-          if (served && r.role === "main" && !st.manual_run) {   // 手順のコマンドをその場で編集
+          if (canEdit && r.role === "main" && !st.manual_run) {   // 手順のコマンドをその場で編集
             var ck = r.output_path.replace(/^cmd\//, "").replace(/\.txt$/, "");
             var ce = el("button", "edit-out-btn", "✎ コマンドを編集");
             ce.addEventListener("click", function () { editCmd(ck, r.cmd, pre, ce); });
@@ -499,7 +500,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
           fr.className = "out"; fr.src = r.output_path; fr.loading = "lazy";
           s.appendChild(fr);
           var rc = el("div", "rc", "→ " + r.output_path);
-          if (served) { rc.appendChild(document.createTextNode("  ")); rc.appendChild(attachLink(it.wid, r.output_path)); }
+          if (canEdit) { rc.appendChild(document.createTextNode("  ")); rc.appendChild(attachLink(it.wid, r.output_path)); }
           s.appendChild(rc);
         } else {
           s.appendChild(el("p", "empty", r.role === "manual"
@@ -507,13 +508,13 @@ RECORD_HTML = r"""<!DOCTYPE html>
             : (st.manual_run ? "未実行（作業のあと上のコマンドで実行）"
                             : "未実行（uv run scripts/run_activity.py でこのコマンドを実行）")));
         }
-        if (served && r.output_path) {   // 別環境で取った結果を貼る/直す
+        if (canEdit && r.output_path) {   // 別環境で取った結果を貼る/直す
           var eb = el("button", "edit-out-btn", "✎ 結果を貼る/編集");
           eb.addEventListener("click", function () { editOutput(r.output_path, eb); });
           s.appendChild(eb);
         }
       });
-      if (served) {
+      if (canEdit) {
         if (info.capture) {
           var b = el("button", "shot-btn", "📷 この手順のスクショを撮る");
           b.addEventListener("click", function () { capture(it.wid, st.idx, b); });

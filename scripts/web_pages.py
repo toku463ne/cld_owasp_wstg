@@ -79,10 +79,11 @@ def load_checks(root: Path) -> dict:
 class Site:
     """1リクエスト分のスナップショット（毎回ファイルから読み直す＝手編集も即反映）。"""
 
-    def __init__(self, root: Path, user: str = "", capture: bool = False):
+    def __init__(self, root: Path, user: str = "", capture: bool = False, editable: bool = True):
         self.root = Path(root)
         self.user = user
         self.capture = capture
+        self.editable = editable   # False = 閲覧専用ユーザ（編集ボタン・チェックを出さない）
         self.coverage = _load_yaml(COVERAGE_YAML)
         self.tests = {t["id"]: t for t in _load_yaml(WSTG_TESTS)["tests"]}
         self.criteria = _load_yaml(CRITERIA_YAML) or {}
@@ -266,7 +267,8 @@ NAV = [("/", "ダッシュボード", "home"), ("/tasks", "タスク", "tasks"),
 
 def page(site: Site, title: str, body: str, active: str = "", script: str = "") -> str:
     nav = "".join(f'<a href="{h}" class="{"on" if k == active else ""}">{E(t)}</a>' for h, t, k in NAV)
-    who = f'<span class="who">👤 {E(site.user)}</span>' if site.user else ""
+    ro = "（閲覧専用）" if not site.editable else ""
+    who = f'<span class="who">👤 {E(site.user)}{ro}</span>' if site.user or ro else ""
     return (f'<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1">'
             f'<title>{E(title)}</title><style>{CSS}</style></head><body>'
@@ -570,7 +572,8 @@ def page_wstg_detail(site: Site, wid: str):
     if confirmed and not any(v == "fail" for _, _, v, _, _ in runs):
         parts.append('<p class="warn">⚠ 確定した所見があるのに、どのアクティビティでも fail になっていません。'
                      "判定を見直してください。</p>")
-    parts.append(f'<p><a class="btn" href="/findings/new?{new_q}">＋ この WSTG の所見を作成</a></p>')
+    if site.editable:
+        parts.append(f'<p><a class="btn" href="/findings/new?{new_q}">＋ この WSTG の所見を作成</a></p>')
 
     pb = PLAYBOOKS / f"{wid}.md"
     if pb.exists():
@@ -702,7 +705,7 @@ def page_findings(site: Site, status: str = "", wid: str = "") -> str:
             f'Medium ≥4.0 / Low ≥0.1 / 情報 0.0）。未評価はベクトル未入力。</div>'
             f'<div class="chips"><a class="chip" href="/findings/">すべて {len(site.findings)}</a> {stat_links}'
             + (f' <span class="mut">WSTG 絞り込み: {E(wid)}</span>' if wid else "") + "</div>"
-            f'<p><a class="btn" href="/findings/new">＋ 所見を作成</a></p>'
+            + ('<p><a class="btn" href="/findings/new">＋ 所見を作成</a></p>' if site.editable else "")
             + (f'<div class="tbl"><table><tr><th>ID</th><th>深刻度</th><th>タイトル</th><th>状態</th><th>WSTG</th>'
                f"<th>証跡</th><th>更新</th></tr>{trs}</table></div>" if fs
                else '<p class="empty">該当する所見はありません。record.html の『＋ 所見を作成』'
@@ -738,7 +741,7 @@ def page_finding(site: Site, fid: str):
              f'<h1>{E(fid)} {E(f["title"])}</h1>',
              f'<div class="chips">{chip_sev(f)} {chip_status(f)} <span class="mut">作成 {E(f["author"])} '
              f'{E(f["created"])} · 更新 {E(f["updated_by"])} {E(f["updated"])}</span></div>',
-             f'<p><a class="btn" href="/findings/{E(fid)}/edit">✎ 編集</a></p>']
+             f'<p><a class="btn" href="/findings/{E(fid)}/edit">✎ 編集</a></p>' if site.editable else ""]
     parts.append("<h2>深刻度の根拠（CVSS v3.1）</h2>")
     if sc:
         parts.append(f'<div class="score"><div><div class="big">{sc["base"]}</div>{chip_sev(f)}</div>'
@@ -943,6 +946,9 @@ def _check_label(site: Site, key: str) -> str:
 
 def manual_check(site: Site, key: str, text: str) -> str:
     on = isinstance(site.checks.get(key), dict)
+    if not site.editable:   # 閲覧専用: 状態だけ見せる（押せるチェックボックスを出さない）
+        mark = '<span class="ck ok">✓</span>' if on else '<span class="ck">・</span>'
+        return f'<li>{mark}<span>{text} <span class="by">{E(_check_label(site, key))}</span></span></li>'
     return (f'<li><input type="checkbox" data-check="{E(key)}"{" checked" if on else ""}>'
             f'<span>{text} <span class="by">{E(_check_label(site, key))}</span></span></li>')
 
