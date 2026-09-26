@@ -132,8 +132,10 @@ RECORD_HTML = r"""<!DOCTYPE html>
       font:.82rem/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
       white-space:pre-wrap;word-break:break-word;}
   pre.cmd{background:var(--cmdbg);color:var(--cmd);}
-  iframe.out{display:block;width:100%;min-height:120px;max-height:420px;margin:6px 0;
-             border:1px solid var(--line);border-radius:8px;background:#fff;resize:vertical;}
+  /* iframe そのものは多くのブラウザでリサイズできないので、枠（div）をリサイズさせる */
+  .outbox{height:220px;min-height:80px;margin:6px 0;padding-bottom:10px;resize:vertical;overflow:hidden;
+          border:1px solid var(--line);border-radius:8px;background:#fff;}
+  iframe.out{display:block;width:100%;height:100%;border:0;border-radius:8px 8px 0 0;background:#fff;}
   img.shot{display:block;max-width:100%;margin:6px 0;border:1px solid var(--line);
            border-radius:8px;background:#fff;}
   .shot-btn{font:inherit;font-size:.8rem;margin:8px 0;padding:5px 10px;border:1px solid var(--line);
@@ -198,6 +200,10 @@ RECORD_HTML = r"""<!DOCTYPE html>
 (function () {
   var app = document.getElementById("app");
   var d = window.WSTG_EVIDENCE;
+  // 表示するコマンドが exit を含むとき（入力ガード `|| exit 75` 等）は ( … ) のサブシェルで包む。
+  // そのまま端末に貼ると exit が対話シェルごと終了させるため。run_activity は bash -c で実行するので影響しない。
+  function pasteSafe(cmd) { return /\bexit\b/.test(cmd) ? "( " + cmd + " )" : cmd; }
+
   function el(tag, cls, txt) { var e = document.createElement(tag);
     if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function link(href, cls, txt) { var a = el("a", cls, txt); a.href = href; return a; }
@@ -609,7 +615,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
         if (r.role === "check") s.appendChild(el("div", "cap", "取得できたかの確認（サイズ・行数・先頭）"));
         else if (r.role === "manual") s.appendChild(el("div", "cap", "手動での観察"));
         if (r.cmd) {
-          var pre = el("pre", "cmd", "$ " + r.cmd);
+          var pre = el("pre", "cmd", "$ " + pasteSafe(r.cmd));
           s.appendChild(pre);
           if (canEdit && r.role === "main" && !st.manual_run) {   // 手順のコマンドをその場で編集
             var ck = r.output_path.replace(/^cmd\//, "").replace(/\.txt$/, "");
@@ -621,7 +627,8 @@ RECORD_HTML = r"""<!DOCTYPE html>
         if (r.has_output) {
           var fr = document.createElement("iframe");
           fr.className = "out"; fr.src = r.output_path; fr.loading = "lazy";
-          s.appendChild(fr);
+          var ob = el("div", "outbox"); ob.appendChild(fr);
+          s.appendChild(ob);
           var rc = el("div", "rc", "→ " + r.output_path);
           if (canEdit) { rc.appendChild(document.createTextNode("  ")); rc.appendChild(attachLink(it.wid, r.output_path)); }
           s.appendChild(rc);

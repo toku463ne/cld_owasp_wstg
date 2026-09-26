@@ -215,7 +215,8 @@ legend{font-weight:700;font-size:.92rem;padding:0 6px}
 .score .big{font-size:1.5rem;font-weight:700}
 .meter{min-width:200px;flex:1} .meter .bar>i{background:var(--acc)}
 .ev img{max-width:100%;border:1px solid var(--line);border-radius:8px;margin:4px 0}
-.ev iframe{width:100%;min-height:120px;max-height:320px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.ev .outbox{height:220px;min-height:80px;padding-bottom:10px;resize:vertical;overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#fff}
+.ev iframe{display:block;width:100%;height:100%;border:0;border-radius:8px 8px 0 0;background:#fff}
 .hint{font-size:.82rem;color:var(--mut);border-left:3px solid var(--line);padding:4px 10px;margin:8px 0}
 .empty{color:var(--mut);font-style:italic}
 tr.hide{display:none}
@@ -728,7 +729,7 @@ def _evidence_block(rel: str, preview: bool = True) -> str:
         if low.endswith((".png", ".jpg", ".jpeg", ".gif")):
             pv = f'<img src="{raw}" loading="lazy" alt="{E(rel)}">'
         elif low.endswith((".txt", ".md", ".json", ".xml", ".csv", ".log")):
-            pv = f'<iframe src="{raw}" loading="lazy"></iframe>'
+            pv = f'<div class="outbox"><iframe src="{raw}" loading="lazy"></iframe></div>'  # 枠ごと縦にリサイズ
     return f'<div class="ev card"><div class="mono">{E(rel)}</div><div>{links}</div>{pv}</div>'
 
 

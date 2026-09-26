@@ -130,6 +130,11 @@ grep -qF 'fr.src = r.output_path' "${TDIR}/record.html" \
   || ng "record.html がエビデンスを iframe 参照で表示していない"
 grep -qF 'r.output && r.output' "${TDIR}/record.html" \
   && ng "record.html にエビデンス本体が埋め込まれている（参照でなく複製）" || true
+# exit を含むコマンドは端末に貼っても対話シェルを終了させないよう ( … ) で包んで表示する
+grep -qF '"$ " + pasteSafe(r.cmd)' "${TDIR}/record.html" \
+  || ng "record.html が exit を含むコマンドをサブシェルで包まずに表示している"
+grep -qF 'el("div", "outbox")' "${TDIR}/record.html" \
+  || ng "record.html のエビデンス表示枠がリサイズできない（outbox で包んでいない）"
 ok "record.html / evidence.js 生成（target/OUTDIR 置換・手動ひな型）"
 
 # 負荷・レート制限・ロック・DoS を招きうる手順の強調注釈（criteria.yaml の load_notes）
