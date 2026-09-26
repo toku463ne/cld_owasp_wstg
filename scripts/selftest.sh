@@ -633,7 +633,7 @@ OUTP
 # 手順は「簡潔な説明: `コマンド`。読み方を1文」。record.html・カードの見出し（コマンドを抜いた説明）が
 # 長すぎないこと（上限 300 字。目安 150 字。解説は note へ）と、OUTDIR を使うコマンドが実行コマンドとして
 # 拾われていること（先頭語が CLI_BINARIES に無いと「手動」扱いになり、コマンド行が説明に丸ごと出る）
-"${PY[@]}" - <<'DESC' || ng "手順の説明が長すぎる（300字超。解説は note へ）か、OUTDIR を使うコマンドが実行コマンドとして拾われていない"
+"${PY[@]}" - <<'DESC' || ng "手順の説明が長すぎる（300字超。解説は note へ）、OUTDIR を使うコマンドが実行コマンドとして拾われていない、またはコマンド手順にブラウザ作業が混ざる"
 import re, sys; sys.path.insert(0, "scripts")
 from new_activity import COVERAGE_YAML, CRITERIA_YAML, load_yaml, iter_steps
 cov, cr = load_yaml(COVERAGE_YAML), load_yaml(CRITERIA_YAML)
@@ -641,6 +641,10 @@ steps = {(s["wid"], s["idx"]): s for a in cov["activities"] for s in iter_steps(
 long_ = sorted((k, len(s["desc"])) for k, s in steps.items() if len(s["desc"]) > 300)
 raw = sorted(k for k, s in steps.items() if re.search(r"`[^`]*X/artifacts/[^`]*`", s["desc"]))
 assert not long_ and not raw, {"300字超": long_, "コマンドが説明に残る": raw}
+# ブラウザ・Burp の作業はコマンド手順に混ぜず、前の独立した手動手順に具体的に書く
+mixed = sorted(k for k, s in steps.items() if s["kind"] == "cmd"
+               and re.search(r"ブラウザ|Burp|DevTools|開発者ツール|Wappalyzer|ZAP", s["desc"]))
+assert not mixed, {"コマンド手順にブラウザ作業が混ざる（手動手順に分ける）": mixed}
 DESC
 # NVD 照合（cpes/2.0 の keywordSearch・cves/2.0 の virtualMatchString）を例示の固定値
 # （apache http server 2.4.49 等）で自動実行しない。前の手順で検出した製品・CPE を変数で渡す

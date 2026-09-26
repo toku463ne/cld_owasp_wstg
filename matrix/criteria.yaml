@@ -95,10 +95,11 @@ WSTG-INFO-05:
   fail: "ソース中に API キー・パスワード・内部ホスト名・デバッグ用エンドポイントが含まれる。"
   note: "minify 済み JS の source map（.map）も確認する。"
   steps:
-    - "トップページの HTML コメントを機械抽出する: `curl -s https://target/ -o OUTDIR/index.html && grep -aoE '<!--.*-->' OUTDIR/index.html | tee OUTDIR/html-comments.txt`。開発メモ・無効化されたリンク・内部パス・認証情報が残っていないか読む（複数行コメントや JS でレンダリングされる DOM 上のコメントは取りこぼすので、主要画面はブラウザの Ctrl+U でも目視する）"
+    - "トップページの HTML コメントを機械抽出する: `curl -s https://target/ -o OUTDIR/index.html && grep -aoE '<!--.*-->' OUTDIR/index.html | tee OUTDIR/html-comments.txt`。開発メモ・無効化されたリンク・内部パス・認証情報が残っていないか読む（複数行コメント・JS で描画されるコメントは取りこぼすので手順5 で補う）"
     - "読み込まれる JS を集めて機微語を走査する（手順1で取った index.html の script を辿る）: `grep -oiE 'src=\"[^\"]+\\.js[^\"]*' OUTDIR/index.html | sed -E 's/^src=\"//I' | while read -r j; do case \"$j\" in http*) curl -s \"$j\";; /*) curl -s \"https://target$j\";; *) curl -s \"https://target/$j\";; esac; echo; done > OUTDIR/app-js.txt; grep -inE 'password|passwd|apikey|api[_-]?key|secret|token|bearer|authorization|internal|todo|fixme|debug' OUTDIR/app-js.txt OUTDIR/index.html | tee OUTDIR/js-secrets.txt`。ヒット行は変数名だけの空振りも多いので1つずつ真偽判定し、資格情報・内部 URL は evidence にパス参照で残す"
     - "minify JS の `//# sourceMappingURL` を辿り `.map` を取得、原本コードにコメント/内部情報が無いか見る"
     - "`<meta>`・生成コメント（CMS 名・バージョン）・非公開エンドポイントの記述を記録"
+    - "主要画面のソースをブラウザで目視する（手動）: ログイン画面・主要画面ごとに Ctrl+U でソースを開き、Ctrl+F で `<!--` を検索 → JS で描画される画面は F12 → Elements タブで Ctrl+F `<!--` → 開発メモ・内部パス・認証情報があれば、画面の URL と該当箇所を観察欄に書く"
 
 WSTG-INFO-06:
   purpose: "アプリが受け付ける入力点（URL・パラメータ・ヘッダ・Cookie・ファイル）を漏れなく列挙し、以降のテストの土台にする。"
@@ -126,15 +127,17 @@ WSTG-INFO-08:
   purpose: "アプリのフレームワーク・CMS・ライブラリとそのバージョンを特定する。"
   pass: "使用フレームワークが特定できない、または特定できても既知脆弱性のないバージョン。"
   fail: "既知脆弱性のあるバージョンのフレームワーク・ライブラリを使用している（Cookie 名・パス・ヘッダ・JS から特定）。"
-  note: "フロント側のライブラリ（jQuery 等）は Retire.js で確認できる。Retire.js は実行時に github から脆弱性DB（jsrepository.json）を取りに行くため、プロキシ必須／外向き通信が絞られた環境では更新に失敗することがある（amass の libpostal と同じ構図）。`--path` は既にダウンロード済みのローカル JS を走査するので、DB さえ取得できれば対象への通信は不要。更新できないときは事前に DB を取得しておくか、下の NVD API での照合に回す。CMS・フレームワーク側の CVE 照合はブラウザ不要で、NVD の cpes/2.0（製品名+バージョン → cpeName）→ cves/2.0（cpeName → CVE 一覧）を curl で引く（API キー無しは 30 秒 5 リクエストまで。0 件の読み替えは WSTG-INFO-02 の note と同じ）。whatweb は再実行せず WSTG-INFO-02 の結果を読む（無ければ先に INFO-02 を回す。1件1行で読むので追記で壊れたファイルも読める）。retire は脆弱性を見つけると exit 13 で一括が止まるので `--exitwith 0` で抑え、判断は retire.json で。JS を置いたあと、record.html に出る run_activity の --only コマンドで実行する。"
+  note: "フロント側のライブラリ（jQuery 等）は Retire.js で確認できる。Retire.js は実行時に github から脆弱性DB（jsrepository.json）を取りに行くため、プロキシ必須／外向き通信が絞られた環境では更新に失敗することがある（amass の libpostal と同じ構図）。`--path` は既にダウンロード済みのローカル JS を走査するので、DB さえ取得できれば対象への通信は不要。更新できないときは事前に DB を取得しておくか、下の NVD API での照合に回す。CMS・フレームワーク側の CVE 照合はブラウザ不要で、NVD の cpes/2.0（製品名+バージョン → cpeName）→ cves/2.0（cpeName → CVE 一覧）を curl で引く（API キー無しは 30 秒 5 リクエストまで。0 件の読み替えは WSTG-INFO-02 の note と同じ）。whatweb は再実行せず WSTG-INFO-02 の結果を読む（無ければ先に INFO-02 を回す。1件1行で読むので追記で壊れたファイルも読める）。手順4 の HAR は Chrome/Edge/Firefox の開発者ツールで保存できる（Burp の内蔵ブラウザも F12 で同じ）。HAR には Cookie・トークンも入るので evidence の外に出さない。手順5 は HAR の URL から JS を取り直す（認証が要る JS は取れないことがあるので、js-urls.txt と走査件数を見比べる）。retire は脆弱性を見つけると exit 13 で一括が止まるので `--exitwith 0` で抑え、判断は retire.json / retire-summary.tsv で。"
   steps:
-    - "WSTG-INFO-02 の whatweb.json からフレームワーク/CMS を一覧する: `test -s OUTDIR/whatweb.json || { echo \"whatweb.json が無い。先に WSTG-INFO-02 を回す\" >&2; exit 2; }; grep '^{' OUTDIR/whatweb.json 2>/dev/null | sed 's/,[[:space:]]*$//' | jq -rR 'fromjson? | .plugins // {} | keys[]' | sort -u | tee OUTDIR/whatweb-plugins.txt`。ブラウザ拡張 Wappalyzer でも突き合わせる"
+    - "WSTG-INFO-02 の whatweb.json からフレームワーク/CMS を一覧する: `test -s OUTDIR/whatweb.json || { echo \"whatweb.json が無い。先に WSTG-INFO-02 を回す\" >&2; exit 2; }; grep '^{' OUTDIR/whatweb.json 2>/dev/null | sed 's/,[[:space:]]*$//' | jq -rR 'fromjson? | .plugins // {} | keys[]' | sort -u | tee OUTDIR/whatweb-plugins.txt`。結果は whatweb-plugins.txt"
+    - "ブラウザ拡張 Wappalyzer で技術スタックを確認する（手動）: Chrome/Firefox に Wappalyzer 拡張を入れる → 対象のトップとログイン後の主要画面を開き、ツールバーの Wappalyzer アイコンをクリック → 表示された製品名とバージョン（例: jQuery 1.8.1、ASP.NET）を観察欄に書き、手順1 の一覧と突き合わせる"
     - "応答ヘッダと Cookie を保存して基盤を推定: `curl -sD OUTDIR/headers.txt -o /dev/null https://target/ && { grep -iE '^(set-cookie|x-powered-by|server|x-aspnet-version|x-generator):' OUTDIR/headers.txt || [ $? -eq 1 ]; }`。Cookie 名（`JSESSIONID`=Java / `ASP.NET_SessionId`=.NET / `laravel_session`=Laravel / `ci_session`=CodeIgniter）・`X-Powered-By`・URL パスから基盤を特定"
-    - "フロント JS をブラウザや Burp で保存して artifacts/js/ に置き、Retire.js で既知脆弱性を確認する: `test -n \"$(ls -A OUTDIR/js/ 2>/dev/null)\" || exit 75; retire --path OUTDIR/js/ --outputformat json --outputpath OUTDIR/retire.json --exitwith 0`。JS を置いたあと手で実行する"
+    - "ブラウザで対象の通信を HAR に記録する（手動）: F12 で開発者ツールを開く → Network タブの「Preserve log」に✓ → Ctrl+Shift+R で再読み込みし、ログイン画面・主要画面も一通り開く → 一覧を右クリック →「Save all as HAR」（Firefox は「すべてを HAR 形式で保存」）→ OUTDIR/site.har として保存"
+    - "手順4 の HAR に記録された JS を取得し、Retire.js で既知脆弱性を確認する: `test -s OUTDIR/site.har || exit 75; mkdir -p OUTDIR/js; jq -r '.log.entries[] | select((.response.content.mimeType // \"\") | test(\"javascript|ecmascript\")) | .request.url' OUTDIR/site.har | sort -u | tee OUTDIR/js-urls.txt | while read -r u; do f=$(printf '%s' \"$u\" | sed -E 's|^[a-z]+://||; s|[?#].*$||; s|[^A-Za-z0-9._-]|_|g'); case \"$f\" in *.js) ;; *) f=\"$f.js\";; esac; curl -sk -m 30 -o \"OUTDIR/js/$f\" \"$u\"; done; retire --path OUTDIR/js/ --outputformat json --outputpath OUTDIR/retire.json --exitwith 0; jq -r '.data[]? | (.file | sub(\".*/\"; \"\")) as $f | .results[]? | select((.vulnerabilities // []) | length > 0) | [.component + \" \" + .version, ([.vulnerabilities[].severity] | unique | join(\",\")), ([.vulnerabilities[].identifiers.CVE[]?] | unique | join(\" \")), $f] | @tsv' OUTDIR/retire.json | tee OUTDIR/retire-summary.tsv; echo \"走査した JS: $(ls OUTDIR/js/ | wc -l) 件 / 既知脆弱性のあるライブラリ: $(grep -c . OUTDIR/retire-summary.tsv) 件\"`。retire-summary.tsv に「ライブラリ 版・深刻度・CVE・ファイル」が出る"
     - "CMS・フレームワークの CVE 照合は WSTG-INFO-02 手順4・5 が whatweb の検出分（WordPress・PHP 等）もまとめて引いている（products.txt・nvd-cpe.tsv・nvd-cve.tsv）。NVD を二重に叩かず、手順1・2 で特定したものの行をそこから読む"
-    - "whatweb に出ず手順2（Cookie・パス）や Wappalyzer でだけ特定できたものは、WSTG-INFO-02 の note の要領で手で引く（cpes/2.0 に keywordSearch=製品名 バージョン → 得た cpeName で cves/2.0 に virtualMatchString）。finding にバージョン根拠（どこで判ったか）を添える"
+    - "whatweb に出ず手順2（Wappalyzer）や手順3（Cookie・パス）でだけ特定できたものは、WSTG-INFO-02 の note の要領で手で引く（cpes/2.0 に keywordSearch=製品名 バージョン → 得た cpeName で cves/2.0 に virtualMatchString）。finding にバージョン根拠（どこで判ったか）を添える"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
-    5: "NVD API はキー無しで 30 秒 5 リクエストまで（超過は 403）。手で続けて引くときは間隔を空ける。"
+    7: "NVD API はキー無しで 30 秒 5 リクエストまで（超過は 403）。手で続けて引くときは間隔を空ける。"
 
 WSTG-INFO-10:
   purpose: "WAF・LB・リバースプロキシ・API GW・DB など、経路上の構成要素を推定する。"
@@ -271,11 +274,11 @@ WSTG-CONF-11:
   purpose: "クラウドストレージの公開設定が過剰でないかを確認する。"
   pass: "バケット・コンテナが匿名アクセス不可、または公開すべきファイルのみ公開。"
   fail: "一覧取得や任意ファイル取得が匿名でできる、または書き込みができる。"
-  note: "書き込み可否の確認は影響が大きい。実施前に許可範囲を確認し、無害なファイル名で検証する。"
+  note: "書き込み可否の確認は影響が大きい。実施前に許可範囲を確認し、無害なファイル名で検証する。手順1 は SPA が画面操作で動的に読むストレージ URL を index.html・JS からは拾えないので、WSTG-INFO-08 手順4 の HAR があればそこからも拾う（HAR が無ければ静的に見える分だけ）。"
   steps:
-    - "アプリが参照するストレージ URL を、metafiles-crawl（WSTG-INFO-05 手順1/2）が取得済みの index.html・app-js.txt から抽出する（同じ全 JS クロールを繰り返さない）: `grep -rhoiE 'https?://[A-Za-z0-9._-]+\\.(s3[A-Za-z0-9.-]*\\.amazonaws\\.com|s3\\.amazonaws\\.com|blob\\.core\\.windows\\.net|storage\\.googleapis\\.com)[A-Za-z0-9._~:/?#@!$&*+,;=%-]*' \"$(ls -1d OUTDIR/../../metafiles-crawl-target-*/artifacts | tail -1)\"/index.html \"$(ls -1d OUTDIR/../../metafiles-crawl-target-*/artifacts | tail -1)\"/app-js.txt > OUTDIR/storage-urls.txt; rc=$?; [ $rc -le 1 ] || exit $rc; sort -u -o OUTDIR/storage-urls.txt OUTDIR/storage-urls.txt`。「No such file」で止まったら先に metafiles-crawl を回す（uv run scripts/run_target.py --target target --only metafiles-crawl）。動的生成 URL は取りこぼすので、SPA では Burp/ZAP のサイトマップで補う"
+    - "アプリが参照するストレージ URL を、metafiles-crawl（WSTG-INFO-05 手順1/2）が取得済みの index.html・app-js.txt と、WSTG-INFO-08 手順4 の HAR（あれば）から抽出する（同じ全 JS クロールを繰り返さない）: `grep -rhoiE 'https?://[A-Za-z0-9._-]+\\.(s3[A-Za-z0-9.-]*\\.amazonaws\\.com|s3\\.amazonaws\\.com|blob\\.core\\.windows\\.net|storage\\.googleapis\\.com)[A-Za-z0-9._~:/?#@!$&*+,;=%-]*' \"$(ls -1d OUTDIR/../../metafiles-crawl-target-*/artifacts | tail -1)\"/index.html \"$(ls -1d OUTDIR/../../metafiles-crawl-target-*/artifacts | tail -1)\"/app-js.txt $(ls -1 OUTDIR/../../fingerprint-stack-target-*/artifacts/site.har 2>/dev/null | tail -1) > OUTDIR/storage-urls.txt; rc=$?; [ $rc -le 1 ] || exit $rc; sort -u -o OUTDIR/storage-urls.txt OUTDIR/storage-urls.txt`。「No such file」で止まったら先に metafiles-crawl を回す（uv run scripts/run_target.py --target target --only metafiles-crawl）"
     - "抽出した各ストレージのホストルートに匿名アクセスできるか確認: `while read -r u; do b=$(echo \"$u\" | sed -E 's#(https?://[^/]+).*#\\1/#'); echo \"===== $b =====\"; curl -s -m 10 -o /dev/null -w 'code %{http_code}\\n' \"$b\"; curl -s -m 10 \"$b\" | head -c 300; echo; done < OUTDIR/storage-urls.txt | tee OUTDIR/storage-anon.txt`。`ListBucketResult`/ディレクトリ一覧が返る、または 200 で中身が見えるものは匿名読取可"
-    - "S3 ホスト名からバケット名を割り出し、匿名で一覧できるか確認: `grep -oiE '[a-z0-9.-]+\\.s3[a-z0-9.-]*\\.amazonaws\\.com' OUTDIR/storage-urls.txt | sed -E 's#\\.s3.*##' | sort -u | while read -r b; do echo \"===== $b =====\"; aws s3 ls --no-sign-request \"s3://$b\" 2>&1 | head -20; done | tee OUTDIR/s3-list.txt`。書き込み可否（`aws s3 cp` 相当）は破壊的になり得るので、許可範囲を確認してから手動で試す"
+    - "S3 ホスト名からバケット名を割り出し、匿名で一覧できるか確認: `grep -oiE '[a-z0-9.-]+\\.s3[a-z0-9.-]*\\.amazonaws\\.com' OUTDIR/storage-urls.txt | sed -E 's#\\.s3.*##' | sort -u | while read -r b; do echo \"===== $b =====\"; aws s3 ls --no-sign-request \"s3://$b\" 2>&1 | head -20; done | tee OUTDIR/s3-list.txt`。書き込み可否（aws s3 cp での書き込み）は破壊的になり得るので、許可範囲を確認してから手動で試す"
     - "公開が業務上意図されたものか切り分け、意図しない公開のみ finding にする"
 
 WSTG-IDNT-01:
@@ -398,9 +401,10 @@ WSTG-ATHN-06:
   purpose: "認証済み画面がブラウザキャッシュに残り、後から閲覧されないかを確認する。"
   pass: "機微画面の応答に Cache-Control: no-store（必要なら no-cache, must-revalidate）が付いている。"
   fail: "認証後の画面がキャッシュされ、ログアウト後に戻るボタンや履歴から内容を再表示できる。"
-  note: "実機で「ログアウト→戻る」を試すのが最も伝わる証拠になる。"
+  note: "実機で「ログアウト→戻る」を試すのが最も伝わる証拠になる。cookie-header.txt はセッションそのものなので evidence の外に出さない。確認後はログアウトしてセッションを無効にする。"
   steps:
-    - "認証済みの機微画面 URL を OUTDIR/auth-urls.txt に1行1件で置き、ログイン後の Cookie を OUTDIR/cookies.txt に用意（ブラウザからエクスポート、または curl -c で保存）した上で、キャッシュ抑止ヘッダを一括確認: `test -s OUTDIR/auth-urls.txt -a -s OUTDIR/cookies.txt || exit 75; while read -r u; do echo \"== $u ==\"; curl -sI -b OUTDIR/cookies.txt \"$u\" | grep -iE '^(cache-control|pragma|expires):'; done < OUTDIR/auth-urls.txt | tee OUTDIR/cache-headers.txt`。`no-store`（理想）/`no-cache`/`private` が無い・`max-age>0`＝ディスクにキャッシュされ得る"
+    - "認証済みの機微画面の URL と Cookie をブラウザで用意する（手動）: ログインしてマイページ・個人情報・決済・設定など機微な画面を開き、アドレスバーの URL を OUTDIR/auth-urls.txt に1行1件で書く → F12 → Network でその画面のリクエストをクリック → 「Request Headers」の `Cookie:` の値（名前=値; …）をコピーし OUTDIR/cookie-header.txt に1行で保存"
+    - "手順1 の各 URL のキャッシュ抑止ヘッダを一括確認する: `test -s OUTDIR/auth-urls.txt -a -s OUTDIR/cookie-header.txt || exit 75; ck=$(sed -E 's/^cookie: *//I' OUTDIR/cookie-header.txt | tr -d '\\r\\n'); while read -r u; do echo \"== $u ==\"; curl -sI -b \"$ck\" \"$u\" | grep -iE '^(cache-control|pragma|expires):'; done < OUTDIR/auth-urls.txt | tee OUTDIR/cache-headers.txt`。`no-store`（理想）/`no-cache`/`private` が無い・`max-age>0`＝ディスクにキャッシュされ得る"
     - "ログアウト後にブラウザの「戻る」で認証済み画面が再表示されないか確認"
     - "機微画面をディスクキャッシュから復元できないか確認する: 認証済みで機微画面を開いた後、DevTools→Network で当該レスポンスを再読込し `(from disk cache)` と出るか、または about:cache（Firefox）/ ブラウザのキャッシュ保存先に当該 URL のエントリが残るか。残る＝ログアウトや別ユーザでもディスクから中身を復元され得る（共用端末で漏えい）"
     - "機微画面でキャッシュ抑止がない場合、共用端末での漏えいリスクとして finding に"
@@ -516,9 +520,10 @@ WSTG-SESS-02:
   purpose: "セッション Cookie の属性が適切に設定されているかを確認する。"
   pass: "Secure・HttpOnly が付き、SameSite が Lax 以上、Domain/Path が必要最小限。"
   fail: "Secure か HttpOnly が欠けている、SameSite=None なのに用途上不要、Domain が広すぎる。"
-  note: "認証済みで発行される Cookie を対象にする。トラッキング用 Cookie と混同しない。"
+  note: "認証済みで発行される Cookie を対象にする。トラッキング用 Cookie と混同しない。手順1 は curl でログインできるなら `curl -si -c OUTDIR/cookies.txt -d '<ログイン POST の本文>' https://target/<ログイン URL>` の応答を保存してもよい。Burp なら Proxy → HTTP history でログインの応答を選び、Response の Raw からヘッダ部分をコピーする。"
   steps:
-    - "ログイン応答のヘッダを OUTDIR/login-headers.txt に保存（curl -i -c OUTDIR/cookies.txt でログインを実行してヘッダを残すか、Burp/DevTools の応答からコピー）した上で、発行 Cookie の属性を抽出: `test -s OUTDIR/login-headers.txt || exit 75; grep -iE '^set-cookie:' OUTDIR/login-headers.txt || [ $? -eq 1 ]`。出てきた Set-Cookie 行を1つずつ下の属性で確認する"
+    - "ログイン応答のヘッダをブラウザで保存する（手動）: F12 で開発者ツールを開く → Network タブの「Preserve log」に✓ → ログインする → 一覧からログイン送信のリクエスト（多くは POST。応答に set-cookie があるもの）をクリック → Headers タブの「Response Headers」で「Raw」をオン → 全選択してコピー → OUTDIR/login-headers.txt に貼って保存"
+    - "手順1 のヘッダから発行 Cookie を抽出する: `test -s OUTDIR/login-headers.txt || exit 75; grep -iE '^set-cookie:' OUTDIR/login-headers.txt || [ $? -eq 1 ]`。出てきた Set-Cookie 行を1つずつ下の属性で確認する"
     - "手順1で保存した Set-Cookie の属性欠落を自動抽出する: `grep -iE '^set-cookie:' OUTDIR/login-headers.txt | while read -r c; do for a in Secure HttpOnly SameSite; do echo \"$c\" | grep -qi \"$a\" || echo \"[要確認] $a なし: $(echo \"$c\" | cut -c1-70)\"; done; done | tee OUTDIR/cookie-attrs.txt`。出力が空＝全 Cookie に3属性あり。行が出たセッション/認証系 Cookie は `Secure`（HTTPS 限定）・`HttpOnly`（JS 遮断）・`SameSite`（Lax/Strict）のいずれかが欠けている（CSRF/その他の非機微 Cookie は SameSite 無しでも許容の場合があるので finding では Cookie 名で区別する）"
     - "`Domain`/`Path` が過度に広くないか、`__Host-`/`__Secure-` prefix の適否を確認"
     - "セッション Cookie と CSRF/その他 Cookie で属性が適切に分かれているか確認"

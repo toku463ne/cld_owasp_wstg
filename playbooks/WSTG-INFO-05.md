@@ -21,14 +21,16 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. トップページの HTML コメントを機械抽出する: `curl -s https://target/ -o evidence/<活動フォルダ>/artifacts/index.html && grep -aoE '<!--.*-->' evidence/<活動フォルダ>/artifacts/index.html | tee evidence/<活動フォルダ>/artifacts/html-comments.txt`。開発メモ・無効化されたリンク・内部パス・認証情報が残っていないか読む（複数行コメントや JS でレンダリングされる DOM 上のコメントは取りこぼすので、主要画面はブラウザの Ctrl+U でも目視する）
+1. トップページの HTML コメントを機械抽出する: `curl -s https://target/ -o evidence/<活動フォルダ>/artifacts/index.html && grep -aoE '<!--.*-->' evidence/<活動フォルダ>/artifacts/index.html | tee evidence/<活動フォルダ>/artifacts/html-comments.txt`。開発メモ・無効化されたリンク・内部パス・認証情報が残っていないか読む（複数行コメント・JS で描画されるコメントは取りこぼすので手順5 で補う）
 2. 読み込まれる JS を集めて機微語を走査する（手順1で取った index.html の script を辿る）: `grep -oiE 'src="[^"]+\.js[^"]*' evidence/<活動フォルダ>/artifacts/index.html | sed -E 's/^src="//I' | while read -r j; do case "$j" in http*) curl -s "$j";; /*) curl -s "https://target$j";; *) curl -s "https://target/$j";; esac; echo; done > evidence/<活動フォルダ>/artifacts/app-js.txt; grep -inE 'password|passwd|apikey|api[_-]?key|secret|token|bearer|authorization|internal|todo|fixme|debug' evidence/<活動フォルダ>/artifacts/app-js.txt evidence/<活動フォルダ>/artifacts/index.html | tee evidence/<活動フォルダ>/artifacts/js-secrets.txt`。ヒット行は変数名だけの空振りも多いので1つずつ真偽判定し、資格情報・内部 URL は evidence にパス参照で残す
 3. minify JS の `//# sourceMappingURL` を辿り `.map` を取得、原本コードにコメント/内部情報が無いか見る
 4. `<meta>`・生成コメント（CMS 名・バージョン）・非公開エンドポイントの記述を記録
+5. 主要画面のソースをブラウザで目視する（手動）: ログイン画面・主要画面ごとに Ctrl+U でソースを開き、Ctrl+F で `<!--` を検索 → JS で描画される画面は F12 → Elements タブで Ctrl+F `<!--` → 開発メモ・内部パス・認証情報があれば、画面の URL と該当箇所を観察欄に書く
 
 ## 使用ツール
 
 - curl
+- ブラウザ
 
 ## 判定基準（pass / fail の見分け）
 

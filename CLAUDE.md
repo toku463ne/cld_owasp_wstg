@@ -147,6 +147,10 @@ run.yaml ─▶ tasks.py（端末の進捗表示）
   （run_target・run_activity の既定）から外れ、record.html に「手動→コマンド」と実行方法
   （`run_activity.py <フォルダ> --only <WSTG-ID>:<手順>`）が出る。その出力を読む後続の自動手順は、
   実行が済むまで「入力待ち」で飛ばされる（selftest が、入力ガード付きの手順が一括に入らないことを検査）。
+  **ブラウザ・Burp での作業はコマンド手順に混ぜず、その前の独立した手動手順にする**。手動手順には
+  画面とボタン名まで書く（例: 「F12 → Network タブの『Preserve log』に✓ → … → 右クリック →
+  『Save all as HAR』→ OUTDIR/site.har として保存」）。「ブラウザや Burp で保存」のような曖昧な書き方をしない
+  （selftest が、コマンド手順の説明にブラウザ・Burp・DevTools・Wappalyzer・ZAP が出てこないことを検査）。
   「取得できたかの確認」（`verify_commands`）は**その手順が書いたファイル**（`>`・`tee`・`-o` 等の後ろ）
   だけを対象にする。結果を標準出力にしか出さない手順は `| tee OUTDIR/<名前>` でファイルにも残す。
 - **`finding`・所見タイトルは要約のみ**。生トークン・資格情報・生ホスト名を CSV や
