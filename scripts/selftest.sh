@@ -623,6 +623,9 @@ import web_pages as W
 root = Path(sys.argv[1]) / "preq-empty"; root.mkdir(exist_ok=True)
 h = W.page_wstg_detail(W.Site(root), "WSTG-CONF-01")
 assert "前提となるエビデンス" in h and "nmap-allports.txt" in h and "/tasks#act-enum-apps" in h, h[:300]
+# ファイルの前提が無い WSTG も節を出し、「なし」とアクティビティ単位の前提（depends_on）を示す
+h = W.page_wstg_detail(W.Site(root), "WSTG-ATHN-01")
+assert "ファイルの前提なし" in h and "/tasks#act-burp-crawl-authn" in h and "未着手" in h, h[:300]
 PREQ
 # 人の作業で置く入力を読む手順（入力ガード `|| exit 75`）は手動→コマンドとして一括では走らない
 "${PY[@]}" - <<'MRUN' || ng "入力ガードを持つ手順が一括実行の対象に入っている（手動→コマンドにする）"

@@ -7,7 +7,7 @@
     /                    ダッシュボード（WSTG の完了数・所見の深刻度・次にやること・アクティビティ一覧）
     /tasks               指示書＋チェックリスト（自動チェック＋手動チェック）＋エビデンスへのリンク
     /wstg/               WSTG 索引（カテゴリ別・完了状況・実施記録と所見へのリンク）
-    /wstg/<WSTG-ID>      1項目の判定・前提となるエビデンス（取得状況と取得元へのリンク）・実施記録・所見・カード
+    /wstg/<WSTG-ID>      1項目の判定・前提となるエビデンス（先に済ませるアクティビティ・ファイルの取得状況と取得元へのリンク）・実施記録・所見・カード
     /findings/           所見一覧（深刻度順）
     /findings/<F-ID>     所見の詳細（CVSS 内訳・エビデンスへの深いリンク）
     /findings/new, /findings/<F-ID>/edit   所見の作成・編集フォーム（CVSS は設問形式）
@@ -606,8 +606,6 @@ def prereq_status(site: Site, folder, producer: tuple, name: str) -> tuple:
 def prereq_section(site: Site, wid: str) -> str:
     """この WSTG のコマンドが読む、別の WSTG・別アクティビティの成果物と、その取得状況・取得元へのリンク。"""
     items = site.prereqs.get(wid) or []
-    if not items:
-        return ""
     runs = site.wstg_runs.get(wid, [])
     trs = []
     for e in items:
@@ -631,11 +629,44 @@ def prereq_section(site: Site, wid: str) -> str:
                                                      + ('' if cf is None else f'（対象: {E(target or "—")}）') + '</div>')
                 trs.append(f'<tr><td class="mono">{E(e["file"])}</td><td>{where}{kind_l}{copy}</td>'
                            f"<td>{status}</td><td>{use}</td></tr>")
-    note = ('<p class="mut">この WSTG のコマンドが読む、別の WSTG・アクティビティの成果物。'
-            "未取得なら先に取得元の手順を済ませる（手順の書き方から自動で導いている）。</p>")
-    return ("<h2>前提となるエビデンス</h2>" + note
-            + '<div class="tbl"><table><tr><th>ファイル</th><th>取得する手順</th><th>取得状況</th>'
-            f'<th>この WSTG で使う手順</th></tr>{"".join(trs)}</table></div>')
+    out = ["<h2>前提となるエビデンス</h2>", _depends_line(site, wid)]
+    if trs:
+        out.append('<p class="mut">この WSTG のコマンドが読む、別の WSTG・アクティビティの成果物。'
+                   "未取得なら先に取得元の手順を済ませる（手順の書き方から自動で導いている）。</p>"
+                   '<div class="tbl"><table><tr><th>ファイル</th><th>取得する手順</th><th>取得状況</th>'
+                   f'<th>この WSTG で使う手順</th></tr>{"".join(trs)}</table></div>')
+    else:
+        out.append('<p class="mut">ファイルの前提なし（この WSTG のコマンドは、別の WSTG・アクティビティの'
+                   "成果物を読まない）。</p>")
+    return "".join(out)
+
+
+ACT_STATE = {"todo": ("未着手", "c-todo"), "doing": ("実施中", "c-doing"), "done": ("完了", "c-done")}
+
+
+def _depends_line(site: Site, wid: str) -> str:
+    """この WSTG を実施するアクティビティの depends_on（先に済ませるアクティビティ）と進み具合。
+
+    Burp の履歴・ヒアリング結果のようにファイルに現れない前提は、ファイルの前提表では拾えないので
+    アクティビティ単位（coverage.yaml の depends_on）で示す。
+    """
+    covering = [(a, c) for a in site.activities for c in a.get("covers", []) if c["id"] == wid]
+    mine = [a for a, c in covering if c.get("role", "primary") == "primary"] or [a for a, _ in covering]
+    lines = []
+    for a in mine:
+        deps = a.get("depends_on") or []
+        if not deps:
+            lines.append(f'<p class="mut">{E(a["id"])}: 先に済ませるアクティビティなし。</p>')
+            continue
+        chips = []
+        for d in deps:
+            label, cls = ACT_STATE[site.act_state(d)]
+            folder = site.latest_folder(d, None)
+            href = record_href(folder.name) if folder is not None else f"/tasks#act-{quote(d)}"
+            chips.append(f'<a href="{href}">{E(d)}</a> <span class="chip {cls}">{label}</span>')
+        lines.append(f'<p>先に済ませるアクティビティ（<a href="/tasks#act-{quote(a["id"])}">{E(a["id"])}</a> の前提）: '
+                     + "・".join(chips) + "</p>")
+    return "".join(lines)
 
 
 def page_playbook(site: Site, wid: str):
