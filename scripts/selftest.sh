@@ -854,6 +854,10 @@ ok "フェーズ単位の Kali ツール準備（apt 一括）"
 grep -qF "sudo apt install -y npm && sudo npm install -g retire" TASKS.md \
   || ng "npm 系ツールの案内に npm の導入が含まれていない（sudo: npm: command not found になる）"
 ok "npm 系ツールは apt 前提込みで案内"
+# Burp Suite 本体は apt（burpsuite）でセットアップに含める（機能・拡張は Burp 内なので個別導入不要）
+grep -Eq "apt install -y .*\bburpsuite\b" TASKS.md \
+  || ng "Burp Suite（burpsuite）が apt セットアップに含まれていない"
+ok "Burp Suite は apt（burpsuite）でセットアップに含まれる"
 "${PY[@]}" scripts/tasks.py --root "${TMP}/ev" > "${TMP}/progress.txt" || ng "進捗表示が落ちる"
 grep -q "次にやること" "${TMP}/progress.txt" || ng "次にやることが出ない"
 grep -q "実施中\|完了" "${TMP}/progress.txt" || ng "進捗が反映されない"

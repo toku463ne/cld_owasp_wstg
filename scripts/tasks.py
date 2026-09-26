@@ -57,6 +57,9 @@ APT_PKG = {
     "jq": "jq", "searchsploit": "exploitdb", "traceroute": "traceroute",
     # ffuf の既定ワードリスト（/usr/share/seclists/...）。パス中の語から拾って案内する
     "seclists": "seclists",
+    # Burp Suite は Kali の burpsuite パッケージ（Community 版）。Kali 既定イメージには
+    # 同梱されているが、最小構成や非 Kali では未導入なので apt でセットアップに含める。
+    "burp suite": "burpsuite", "burpsuite": "burpsuite",
 }
 # nmap / ncat / nikto は 2025 年の nmap ライセンス変更で main → non-free に移った。
 # Kali 既定の sources.list（main contrib non-free non-free-firmware）ならそのまま入るが、
@@ -81,7 +84,8 @@ OTHER_CMD = {
 # Burp HTTP Request Smuggler は Professional が要る（Community では使えない）ので、
 # 該当手順は curl / 自前の外部受信先や手動確認で代替する前提で書く。
 BUILTIN = {
-    "burp suite", "burp collaborator", "burp http request smuggler", "burp intruder",
+    # Burp Suite 本体は APT_PKG（burpsuite）に移した。以下は Burp を入れれば使える機能・拡張。
+    "burp collaborator", "burp http request smuggler", "burp intruder",
     "burp repeater", "burp sequencer", "dom invader", "inql", "autorize / authmatrix",
     "owasp zap",
 }
@@ -153,7 +157,7 @@ def render_phase_setup(acts_in_phase: list, criteria: dict) -> list:
     for cmd in other:
         out.append(f"- 個別: `{cmd}`")
     if builtin:
-        out.append(f"- Kali 同梱 / Burp 内（導入不要）: {', '.join(sorted(builtin))}")
+        out.append(f"- Kali 同梱 / Burp を入れれば使える機能・拡張（個別導入は不要）: {', '.join(sorted(builtin))}")
     out.append("")
     return out
 

@@ -62,9 +62,9 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 外から見えるサービス・設定・残骸を洗い出す。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y awscli bind9-dnsutils curl dirsearch ffuf gobuster httpx-toolkit jq ncat nikto ripgrep seclists sslyze testssl.sh wget whatweb`
+- apt: `sudo apt install -y awscli bind9-dnsutils burpsuite curl dirsearch ffuf gobuster httpx-toolkit jq ncat nikto ripgrep seclists sslyze testssl.sh wget whatweb`
 - 個別: `sudo apt install -y npm && sudo npm install -g retire`
-- Kali 同梱 / Burp 内（導入不要）: Burp Repeater, Burp Suite
+- Kali 同梱 / Burp を入れれば使える機能・拡張（個別導入は不要）: Burp Repeater
 
 ### 2. `fingerprint-stack` — サーバ・フレームワークのフィンガープリント
 
@@ -197,8 +197,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 認証済みでアプリ全体を歩き、入力点と構造を地図にする。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y curl ffuf seclists traceroute`
-- Kali 同梱 / Burp 内（導入不要）: Burp Suite, OWASP ZAP
+- apt: `sudo apt install -y burpsuite curl ffuf seclists traceroute`
+- Kali 同梱 / Burp を入れれば使える機能・拡張（個別導入は不要）: OWASP ZAP
 
 ### 11. `burp-crawl-authn` — 認証済みクロールとエントリポイント洗い出し
 
@@ -261,8 +261,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 認証まわりとセッションの生成・維持・破棄を検証する。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y curl ffuf`
-- Kali 同梱 / Burp 内（導入不要）: Burp Intruder, Burp Sequencer, Burp Suite
+- apt: `sudo apt install -y burpsuite curl ffuf`
+- Kali 同梱 / Burp を入れれば使える機能・拡張（個別導入は不要）: Burp Intruder, Burp Sequencer
 
 ### 15. `authn-flow-review` — 認証フロー一括レビュー
 
@@ -339,8 +339,8 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 ロール横断・識別子差し替えで権限制御を検証する。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y curl ffuf`
-- Kali 同梱 / Burp 内（導入不要）: Autorize / AuthMatrix, Burp Suite
+- apt: `sudo apt install -y burpsuite curl ffuf`
+- Kali 同梱 / Burp を入れれば使える機能・拡張（個別導入は不要）: Autorize / AuthMatrix
 
 ### 20. `authz-matrix` — 権限マトリクス試験（ロール横断リクエスト再送）
 
@@ -375,11 +375,11 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 洗い出した入力点に対して注入系・クライアント側の検証を行う。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y curl padbuster sqlmap testssl.sh`
+- apt: `sudo apt install -y burpsuite curl padbuster sqlmap testssl.sh`
 - 個別: `sudo apt install -y npm && sudo npm install -g retire`
 - 個別: `sudo apt install -y npm && sudo npm install -g wscat`
 - 個別: `sudo apt install -y golang-go && go install github.com/projectdiscovery/interactsh/cmd/interactsh-client@latest && export PATH="$PATH:$(go env GOPATH)/bin"`
-- Kali 同梱 / Burp 内（導入不要）: Burp Collaborator, Burp HTTP Request Smuggler, Burp Intruder, Burp Suite, DOM Invader, InQL
+- Kali 同梱 / Burp を入れれば使える機能・拡張（個別導入は不要）: Burp Collaborator, Burp HTTP Request Smuggler, Burp Intruder, DOM Invader, InQL
 
 ### 22. `xss-probe` — XSS・HTML インジェクションの検証
 
@@ -512,7 +512,7 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 業務フローの逸脱と誤用を、実装ではなく業務の観点で検証する。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- Kali 同梱 / Burp 内（導入不要）: Burp Suite
+- apt: `sudo apt install -y burpsuite`
 
 ### 31. `business-logic-walkthrough` — 業務ロジックの通し検証
 
