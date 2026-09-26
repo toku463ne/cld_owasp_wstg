@@ -865,7 +865,7 @@ ok "進捗表示（evidence 走査）"
 
 echo "[8/8] 機密境界"
 git -C "${REPO_ROOT}" ls-files evidence | grep -qv '^evidence/.gitkeep$' && ng "evidence/ が追跡されている" || true
-git -C "${REPO_ROOT}" ls-files docs | grep -qv '^docs/owasp/FETCH.md$' && ng "docs/owasp/ が追跡されている" || true
+git -C "${REPO_ROOT}" ls-files docs/owasp | grep -qv '^docs/owasp/FETCH.md$' && ng "docs/owasp/ が追跡されている" || true
 ok "evidence/ と docs/owasp/ は未追跡（.gitkeep と FETCH.md のみ）"
 
 echo "すべて通過しました。"

@@ -160,10 +160,13 @@ CAPTCHA そのものの強度・レート制限は `WSTG-ATHN-*` / `WSTG-BUSL-07
 | 資格情報の位置 | Raw の空行より下（本文） | `username=…&password=…` や JSON | URL のクエリに載っている |
 
 4. 直前の行も見て、ログイン画面自体が `https` で配信されているか確認する。
-5. Request ペインのスクリーンショットを撮り、**パスワードの値を塗りつぶして**から
-   Web の画像貼り付けで `artifacts/shot-WSTG-ATHN-01-s2-*.png` に保存する。
-   `run.yaml` の `finding` には要約だけ書く（例:「ログインは https の POST 本文で送信」）。
-   資格情報の実物は finding にも CSV にも書かない。
+5. 判定の証跡を残す: その行を右クリック →「**Save item**」→「Base64-encode requests and responses」は
+   ✓のまま → 活動フォルダの `artifacts/login-item.xml` として保存する。Raw のコピーには https かどうかが
+   出ないので、URL・protocol まで残る Save item を使う。保存後に
+   `uv run scripts/run_activity.py <フォルダ> --only WSTG-ATHN-01:3` を実行すると、protocol・method・
+   URL と本文のパラメータ名が `artifacts/login-check.txt` に抜き出される（値は出さない）。
+   XML にはパスワードも入るので evidence の外に出さない。スクリーンショットを貼るときは
+   パスワードを塗りつぶす。`run.yaml` の `finding` には要約だけ書く（例:「ログインは https の POST 本文で送信」）。
 
 ## 困ったとき
 
