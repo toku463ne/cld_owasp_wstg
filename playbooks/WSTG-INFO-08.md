@@ -21,7 +21,7 @@ WSTG の Test Objectives:
 
 1. WSTG-INFO-02 の whatweb.json からフレームワーク/CMS を一覧する: `test -s evidence/<活動フォルダ>/artifacts/whatweb.json || { echo "whatweb.json が無い。先に WSTG-INFO-02 を回す" >&2; exit 2; }; grep '^{' evidence/<活動フォルダ>/artifacts/whatweb.json 2>/dev/null | sed 's/,[[:space:]]*$//' | jq -rR 'fromjson? | .plugins // {} | keys[]' | sort -u | tee evidence/<活動フォルダ>/artifacts/whatweb-plugins.txt`。ブラウザ拡張 Wappalyzer でも突き合わせる
 2. 応答ヘッダと Cookie を保存して基盤を推定: `curl -sD evidence/<活動フォルダ>/artifacts/headers.txt -o /dev/null https://target/ && { grep -iE '^(set-cookie|x-powered-by|server|x-aspnet-version|x-generator):' evidence/<活動フォルダ>/artifacts/headers.txt || [ $? -eq 1 ]; }`。Cookie 名（`JSESSIONID`=Java / `ASP.NET_SessionId`=.NET / `laravel_session`=Laravel / `ci_session`=CodeIgniter）・`X-Powered-By`・URL パスから基盤を特定
-3. フロント JS をブラウザや Burp で保存して artifacts/js/ に置き、Retire.js で既知脆弱性を確認する: `test -n "$(ls -A evidence/<活動フォルダ>/artifacts/js/ 2>/dev/null)" || exit 75; retire --path evidence/<活動フォルダ>/artifacts/js/ --outputformat json --outputpath evidence/<活動フォルダ>/artifacts/retire.json --exitwith 0`。JS を置くまでは入力待ちで飛ばす
+3. フロント JS をブラウザや Burp で保存して artifacts/js/ に置き、Retire.js で既知脆弱性を確認する: `test -n "$(ls -A evidence/<活動フォルダ>/artifacts/js/ 2>/dev/null)" || exit 75; retire --path evidence/<活動フォルダ>/artifacts/js/ --outputformat json --outputpath evidence/<活動フォルダ>/artifacts/retire.json --exitwith 0`。JS を置いたあと手で実行する
 4. CMS・フレームワークの CVE 照合は WSTG-INFO-02 手順4・5 が whatweb の検出分（WordPress・PHP 等）もまとめて引いている（products.txt・nvd-cpe.tsv・nvd-cve.tsv）。NVD を二重に叩かず、手順1・2 で特定したものの行をそこから読む
 5. whatweb に出ず手順2（Cookie・パス）や Wappalyzer でだけ特定できたものは、WSTG-INFO-02 の note の要領で手で引く（cpes/2.0 に keywordSearch=製品名 バージョン → 得た cpeName で cves/2.0 に virtualMatchString）。finding にバージョン根拠（どこで判ったか）を添える
    > ⚠️ **負荷注意（手順5）**: NVD API はキー無しで 30 秒 5 リクエストまで（超過は 403）。手で続けて引くときは間隔を空ける。
@@ -45,7 +45,7 @@ WSTG の Test Objectives:
 
 - **pass**: 使用フレームワークが特定できない、または特定できても既知脆弱性のないバージョン。
 - **fail**: 既知脆弱性のあるバージョンのフレームワーク・ライブラリを使用している（Cookie 名・パス・ヘッダ・JS から特定）。
-- 補足: フロント側のライブラリ（jQuery 等）は Retire.js で確認できる。Retire.js は実行時に github から脆弱性DB（jsrepository.json）を取りに行くため、プロキシ必須／外向き通信が絞られた環境では更新に失敗することがある（amass の libpostal と同じ構図）。`--path` は既にダウンロード済みのローカル JS を走査するので、DB さえ取得できれば対象への通信は不要。更新できないときは事前に DB を取得しておくか、下の NVD API での照合に回す。CMS・フレームワーク側の CVE 照合はブラウザ不要で、NVD の cpes/2.0（製品名+バージョン → cpeName）→ cves/2.0（cpeName → CVE 一覧）を curl で引く（API キー無しは 30 秒 5 リクエストまで。0 件の読み替えは WSTG-INFO-02 の note と同じ）。whatweb は再実行せず WSTG-INFO-02 の結果を読む（無ければ先に INFO-02 を回す。1件1行で読むので追記で壊れたファイルも読める）。retire は脆弱性を見つけると exit 13 で一括が止まるので `--exitwith 0` で抑え、判断は retire.json で。JS を置いた後は run_target を再実行するか `--only WSTG-INFO-08:3` で走らせる。
+- 補足: フロント側のライブラリ（jQuery 等）は Retire.js で確認できる。Retire.js は実行時に github から脆弱性DB（jsrepository.json）を取りに行くため、プロキシ必須／外向き通信が絞られた環境では更新に失敗することがある（amass の libpostal と同じ構図）。`--path` は既にダウンロード済みのローカル JS を走査するので、DB さえ取得できれば対象への通信は不要。更新できないときは事前に DB を取得しておくか、下の NVD API での照合に回す。CMS・フレームワーク側の CVE 照合はブラウザ不要で、NVD の cpes/2.0（製品名+バージョン → cpeName）→ cves/2.0（cpeName → CVE 一覧）を curl で引く（API キー無しは 30 秒 5 リクエストまで。0 件の読み替えは WSTG-INFO-02 の note と同じ）。whatweb は再実行せず WSTG-INFO-02 の結果を読む（無ければ先に INFO-02 を回す。1件1行で読むので追記で壊れたファイルも読める）。retire は脆弱性を見つけると exit 13 で一括が止まるので `--exitwith 0` で抑え、判断は retire.json で。JS を置いたあと、record.html に出る run_activity の --only コマンドで実行する。
 
 ## 記録すべき成果物（run.yaml へ）
 

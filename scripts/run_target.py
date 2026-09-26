@@ -17,8 +17,10 @@
      既定は再開モード（--skip-done）: 前回 exit_code 0 で終わったコマンドは飛ばす（手順を直してコマンドが変わったものは再実行）。
      既定は停止モード（--stop-on-error）: 非0終了が出たらそこで打ち切る。
         → エラー箇所を直して同じコマンドを再実行すれば、成功済みは飛ばして続きから進む。
-     人が artifacts/ に置く入力（ログイン応答のヘッダ等）が無い手順は「入力待ち」（exit 75）として
-     止めずに飛ばし、最後に一覧を出す。置いてから同じコマンドを再実行すればその手順だけ走る。
+     人の作業（ブラウザで保存・ログイン・一覧の作成・社外での実行など）で置く入力を読む手順
+     （手動→コマンド。入力ガード `|| exit 75` を持つもの）は一括では走らせず、最後に一覧と
+     実行コマンド（run_activity.py <フォルダ> --only <WSTG-ID>:<手順>）を出す。作業のあと人が実行する。
+     その結果を読む後続の手順は、結果ができるまで「入力待ち」で飛ばし、再実行すると走る。
 
 対象は1サイト固定（--target）。複数サイトを混ぜたいときはサイトごとに叩く。
 coverage.yaml で target_kind: domain のアクティビティ（recon-osint など。target が FQDN ではなく
@@ -44,7 +46,10 @@ from new_activity import (  # noqa: E402
     create_activity, resolve_activity, iter_steps, refresh_record, find_latest_dir,
     primary_owners, split_delegated,
 )
-from run_activity import select_steps, execute_steps  # noqa: E402
+from run_activity import (  # noqa: E402
+    select_steps, execute_steps, manual_run_steps, manual_not_done,
+)
+from new_activity import manual_run_hint  # noqa: E402
 
 # primary_owners / split_delegated は new_activity に移動（run_activity 単体実行でも同じ委譲を
 # 使えるようにするため）。ここでは import して従来どおりの名前で使う。
@@ -115,6 +120,7 @@ def main() -> int:
     created = existed = 0
     total = {"ran": 0, "failed": 0, "skipped": 0, "pending": 0}
     waiting: list = []
+    manual_left: list = []   # (act_dir, step) 一括では走らない手動→コマンドで、まだ実行していないもの
     for a in activities:
         aid = a["id"]
         reused = find_latest_dir(root, a, args.target) if args.reuse_latest else None
@@ -139,16 +145,18 @@ def main() -> int:
         activity, tests2, criteria2, target, act_dir = resolve_activity(target_dir)
         steps = iter_steps(activity, criteria2, target, act_dir)
         todo, delegated = split_delegated(select_steps(steps, None), owners)
+        manual, _ = split_delegated(manual_run_steps(steps), owners)
+        manual_left += [(act_dir, s) for s in manual_not_done(target_dir, manual)]
         for wid, acts in delegated.items():
             print(f"  （{wid} は secondary。コマンドは primary の {', '.join(acts)} で実行するので、ここでは実行しない）")
         if not todo:
-            print(f"  （コマンド手順なし: {aid} は手動手順のみ。フォルダだけ用意しました）")
+            print(f"  （一括で走らせるコマンド手順なし: {aid} は手動手順のみ。フォルダだけ用意しました）")
             refresh_record(target_dir)
             continue
 
         summary = execute_steps(target_dir / "run.yaml", target_dir, todo,
                                 timeout=args.timeout, skip_done=skip_done,
-                                stop_on_error=stop_on_error)
+                                stop_on_error=stop_on_error, manual=manual)
         refresh_record(target_dir)
         for k in total:
             total[k] += summary[k]
@@ -180,6 +188,12 @@ def main() -> int:
             print(f"    - {w}")
         print(f"    uv run scripts/run_target.py --target {args.target} --date {date}"
               f"{' --reuse-latest' if args.reuse_latest else ''}")
+    if manual_left:
+        print("  手動→コマンド（一括では走らない。各手順の説明の作業を済ませてから、次のコマンドで実行）:")
+        for act_dir, s in manual_left:
+            print(f"    - {s['wid']} 手順{s['idx']}: {s['desc'][:50]}")
+            print(f"        {manual_run_hint(act_dir, s['wid'], s['idx'])}")
+        print("    実行したあと run_target を再実行すると、その結果を読む後続の手順が走る。")
     if total["failed"]:
         print("  ※ --keep-going 指定で非0終了があります。cmd/*.txt を見て pass の根拠にしないこと。")
     print("  判定: 各 run.yaml の covers に verdict / finding を記入（Web の record.html でも可）。")

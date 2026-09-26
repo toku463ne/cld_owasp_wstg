@@ -156,8 +156,9 @@ sudo curl -sI https://github.com | head -1
     （Squid は既定で 443 以外への CONNECT を拒否するので、`noresp ... connect=403` は「不明」であって「閉」ではない）
   - SSH/RDP/DB などの全ポート（WSTG-INFO-04 手順5・手動）… 社内プロキシがこれらのポートへの CONNECT を
     許可しないので、**社外の端末（検査用 VPS 等）から** `nmap -sV -Pn -p- --open -oN nmap-allports.txt <対象>`
-    を回し、結果を enum-apps の `artifacts/nmap-allports.txt` に置く。置くまで WSTG-CONF-01 の手順1・2 は
-    「入力待ち」（exit 75）で飛ばされ、置いてから再実行すると走る。スキャン元 IP・日時は
+    を回し、結果を enum-apps の `artifacts/nmap-allports.txt` に置く。WSTG-CONF-01 手順1 は「手動→コマンド」
+    なので一括では走らない。置いたあと run_target の最後に出る `run_activity.py … --only WSTG-CONF-01:1` で
+    実行し、run_target を再実行すると手順2 が続けて走る。スキャン元 IP・日時は
     `artifacts/manual-WSTG-INFO-04-s5.txt` に書き、対象の管理者に事前に伝えておく
   - TLS バージョン（WSTG-CRYP-01 手順4）… `nmap --script ssl-enum-ciphers` → `curl --tlsv1.x --tls-max 1.x`
 

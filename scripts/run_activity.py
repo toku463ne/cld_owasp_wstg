@@ -33,7 +33,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from new_activity import (  # noqa: E402
     iter_steps, resolve_activity, refresh_record, write_manual_stubs,
-    print_missing_run_yaml, primary_owners, split_delegated,
+    print_missing_run_yaml, primary_owners, split_delegated, manual_run_hint,
     COVERAGE_YAML, load_yaml,
 )
 from run_cmd import append_command  # noqa: E402
@@ -46,10 +46,14 @@ PENDING_EXIT = 75
 
 
 def select_steps(steps: list, only: str | None) -> list:
-    """--only で手順を絞る（未指定なら「コマンド手順」を全部）。"""
+    """--only で手順を絞る（未指定なら「コマンド手順」を全部。ただし手動→コマンドは除く）。
+
+    手動→コマンド（manual_run: 人の作業で置く入力を読む手順）は一括では走らせず、
+    作業を済ませた人が --only <WSTG-ID>:<手順> で明示したときだけ実行する。
+    """
     cmds = [s for s in steps if s["kind"] == "cmd"]
     if not only:
-        return cmds
+        return [s for s in cmds if not s.get("manual_run")]
     wid, _, idx = only.partition(":")
     wid = wid.strip().upper()
     picked = [s for s in cmds if s["wid"] == wid and (not idx or str(s["idx"]) == idx)]
@@ -141,9 +145,21 @@ def write_pending(run: dict, step: dict, activity_dir: Path, waits_on: set) -> N
     ]) + "\n", encoding="utf-8")
 
 
+def manual_run_steps(steps: list) -> list:
+    """一括では走らせない手動→コマンドの手順（人の作業のあとに --only で実行する）。"""
+    return [s for s in steps if s["kind"] == "cmd" and s.get("manual_run")]
+
+
+def manual_not_done(activity_dir: Path, manual: list) -> list:
+    """手動→コマンドの手順のうち、まだ exit 0 で終わっていないもの。"""
+    return [s for s in manual
+            if any(cmd_exit_code(activity_dir, r["output"]) != 0
+                   for r in s["runs"] if r["role"] == "main")]
+
+
 def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
                   timeout: int | None, skip_done: bool,
-                  stop_on_error: bool) -> dict:
+                  stop_on_error: bool, manual: list = ()) -> dict:
     """コマンド手順を順に実行する。集計 dict（ran/failed/skipped/pending/aborted/waiting）を返す。
 
     skip_done   … 前回 exit_code 0 で終わっているコマンドは再実行しない（再開用）。
@@ -152,10 +168,15 @@ def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
     PENDING_EXIT（入力待ち）は非0終了に数えず止めない。その手順の残りのコマンドだけ飛ばし、
     どの出力が待っているかを waiting に積む。入力待ちのコマンドが参照するファイルを
     後続のコマンドが参照していれば、それも実行せず入力待ちにする（連鎖する）。
+    manual      … 一括では走らせない手動→コマンドの手順。まだ実行されていないものが参照する
+                  ファイルは、それを読む後続の手順を入力待ちにする（作業・実行が済めば走る）。
     """
     ran = failed = skipped = pending = 0
     waiting: list = []
     missing: set = set()   # 入力待ちで揃っていない artifacts/ のパス
+    for s in manual_not_done(activity_dir, list(manual)):
+        for r in s["runs"]:
+            missing |= own_artifacts(activity_dir, r["cmd"])
     aborted = False
 
     def result() -> dict:
@@ -204,6 +225,16 @@ def execute_steps(run_yaml: Path, activity_dir: Path, todo: list, *,
                       file=sys.stderr)
                 return result()
     return result()
+
+
+def print_manual_left(left: list, act_dir: str) -> None:
+    """まだ実行されていない手動→コマンドの手順と、作業のあとに実行するコマンドを出す。"""
+    if not left:
+        return
+    print("  手動→コマンド（一括では走らない。説明の作業を済ませてから実行する）:")
+    for s in left:
+        print(f"    - {s['wid']} 手順{s['idx']}: {s['desc'][:50]}")
+        print(f"        {manual_run_hint(act_dir, s['wid'], s['idx'])}")
 
 
 def run_command(run: dict, step: dict, activity_dir: Path, timeout: int | None) -> dict:
@@ -293,11 +324,12 @@ def main() -> int:
 
     if args.list:
         for s in steps:
-            mark = "cmd " if s["kind"] == "cmd" else "手動"
+            mark = ("手動→cmd" if s.get("manual_run") else "cmd     ") if s["kind"] == "cmd" else "手動    "
             print(f"  [{mark}] {s['wid']}:{s['idx']}  {s['desc'][:70]}")
         return 0
 
     todo = select_steps(steps, args.only)
+    manual = [] if args.only else manual_run_steps(steps)
     # secondary（入力・補強）のコマンド手順は、その WSTG を primary で扱うアクティビティが
     # 別にある限り、そちらで1回だけ実行する（run_target と同じ委譲）。単体実行でも ffuf 等を
     # 二重に走らせないため、ここでも委譲する。委譲範囲は coverage.yaml 全体（＝どこかに primary が
@@ -305,10 +337,13 @@ def main() -> int:
     if not args.only:
         owners = primary_owners(load_yaml(COVERAGE_YAML)["activities"])
         todo, delegated = split_delegated(todo, owners)
+        manual, _ = split_delegated(manual, owners)
         for wid, acts in delegated.items():
             print(f"  （{wid} は secondary。コマンドは primary の {', '.join(acts)} で"
                   "実行するので、ここでは実行しない）")
+    left = manual_not_done(activity_dir, manual)
     if not todo:
+        print_manual_left(left, act_dir)
         print("実行するコマンド手順がありません（--only の指定か、手動手順のみ、"
               "または secondary で primary 側に委譲）。")
         print("  手順一覧は --list、手動手順は artifacts/manual-*.txt に観察を書いてください。")
@@ -323,7 +358,8 @@ def main() -> int:
 
     run_yaml = activity_dir / "run.yaml"
     summary = execute_steps(run_yaml, activity_dir, todo, timeout=args.timeout,
-                            skip_done=args.skip_done, stop_on_error=args.stop_on_error)
+                            skip_done=args.skip_done, stop_on_error=args.stop_on_error,
+                            manual=manual)
 
     refresh_record(activity_dir)
     skipped_note = f"、スキップ {summary['skipped']}" if summary["skipped"] else ""
@@ -335,6 +371,7 @@ def main() -> int:
           f"uv run scripts/gen_record.py {activity_dir}")
     if summary["failed"]:
         print("  ※ 非0終了の手順は出力が空/失敗の可能性。cmd/*.txt を見て pass の根拠にしない。")
+    print_manual_left(left, act_dir)
     # 打ち切ったときは戻り値を非0にして、呼び出し側（run_target.py 等）が止まれるようにする
     return 3 if summary["aborted"] else 0
 

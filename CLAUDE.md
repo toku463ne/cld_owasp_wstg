@@ -58,7 +58,8 @@ coverage.yaml ─┬─▶ TASKS.md（実施順・テキスト版）
                │      （既存フォルダ・前回成功コマンドはスキップ／非0終了で停止。中身は下の2つを呼ぶだけ）
                └─▶ new_activity.py ─▶ evidence/*/{run.yaml, record.html, cmd/, artifacts/}
                      run_activity.py ─▶ criteria.yaml の手順を bash 実行
-                        （--skip-done で前回成功を飛ばし、--stop-on-error で非0終了時に打ち切る）
+                        （--skip-done で前回成功を飛ばし、--stop-on-error で非0終了時に打ち切る。
+                          人の作業で置く入力を読む「手動→コマンド」は一括では走らせず --only で実行）
                         ├─▶ cmd/<WSTG-ID>-s<n>-c<k>.txt（コマンドごとの純粋なエビデンス）
                         ├─▶ run.yaml の commands: に追記
                         └─▶ evidence.js（gen_record.py も同じ。所見の要約も載る）
@@ -140,6 +141,12 @@ run.yaml ─▶ tasks.py（端末の進捗表示）
   コマンドは先頭語が `CLI_BINARIES`（`test`・`grep`・`curl` 等）で、`OUTDIR` か target を参照すること。
   外れると「手動」扱いになり、コマンド行が説明にそのまま出る（selftest が `OUTDIR` を含むコマンドの
   取りこぼしを検査）。`cat`・`:`・変数代入で始めない（`test …; cat …` のように CLI で始める）。
+  **人の作業（ブラウザで保存・ログイン・一覧の作成・社外での実行・ファイルのコピー）が要る手順は、
+  コマンドも作業のあとに人が実行する「手動→コマンド」にする**。コマンドに入力ガード
+  `test -s OUTDIR/<入力> || exit 75` を付けると `iter_steps` が `manual_run` と判定し、一括実行
+  （run_target・run_activity の既定）から外れ、record.html に「手動→コマンド」と実行方法
+  （`run_activity.py <フォルダ> --only <WSTG-ID>:<手順>`）が出る。その出力を読む後続の自動手順は、
+  実行が済むまで「入力待ち」で飛ばされる（selftest が、入力ガード付きの手順が一括に入らないことを検査）。
   「取得できたかの確認」（`verify_commands`）は**その手順が書いたファイル**（`>`・`tee`・`-o` 等の後ろ）
   だけを対象にする。結果を標準出力にしか出さない手順は `| tee OUTDIR/<名前>` でファイルにも残す。
 - **`finding`・所見タイトルは要約のみ**。生トークン・資格情報・生ホスト名を CSV や

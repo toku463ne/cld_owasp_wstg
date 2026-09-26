@@ -436,7 +436,8 @@ RECORD_HTML = r"""<!DOCTYPE html>
       var s = el("div", "step");
       s.id = it.wid + "/s" + st.idx;   // 深いリンク: record.html#<WSTG-ID>/s<n>
       var t = el("p", "t");
-      t.appendChild(el("span", "badge k-" + st.kind, st.kind === "cmd" ? "コマンド" : "手動"));
+      t.appendChild(st.manual_run ? el("span", "badge k-manual", "手動→コマンド")
+                                  : el("span", "badge k-" + st.kind, st.kind === "cmd" ? "コマンド" : "手動"));
       t.appendChild(document.createTextNode(" 手順" + st.idx + "： " + (st.desc || "")));
       t.appendChild(link("#" + s.id, "anchor", "#"));
       s.appendChild(t);
@@ -445,6 +446,11 @@ RECORD_HTML = r"""<!DOCTYPE html>
         lw.appendChild(el("span", "lwtag", "⚠ 負荷注意"));
         lw.appendChild(document.createTextNode(" " + st.load_note));
         s.appendChild(lw);
+      }
+      if (st.manual_run) {   // 人の作業のあとに手で実行する（一括実行では走らない）
+        var mr = el("div", "cap", "説明の作業を済ませてから、このコマンドを実行する（一括実行では走らない）:");
+        s.appendChild(mr);
+        s.appendChild(el("pre", "cmd", "$ " + st.run_hint));
       }
       (st.runs || []).forEach(function (r) {
         if (r.role === "check") s.appendChild(el("div", "cap", "取得できたかの確認（サイズ・行数・先頭）"));
@@ -460,7 +466,8 @@ RECORD_HTML = r"""<!DOCTYPE html>
         } else {
           s.appendChild(el("p", "empty", r.role === "manual"
             ? "未記入（" + r.output_path + " に観察を書く）"
-            : "未実行（uv run scripts/run_activity.py でこのコマンドを実行）"));
+            : (st.manual_run ? "未実行（作業のあと上のコマンドで実行）"
+                            : "未実行（uv run scripts/run_activity.py でこのコマンドを実行）")));
         }
         if (served && r.output_path) {   // 別環境で取った結果を貼る/直す
           var eb = el("button", "edit-out-btn", "✎ 結果を貼る/編集");
@@ -569,6 +576,18 @@ def sub_outdir(text: str, act_dir: str) -> str:
     コマンドはリポジトリルートから実行する前提のパスにする。
     """
     return text.replace("OUTDIR", f"{act_dir}/artifacts")
+
+
+# 人の作業（ブラウザで保存・ログイン・一覧の作成・社外での実行など）で置く入力を読むコマンドは
+# `test -s OUTDIR/<入力> || exit 75` の入力ガードを持つ。こうした手順は「手動→コマンド」
+# （manual_run）として一括実行（run_target / run_activity の既定）では走らせず、人が作業を
+# 済ませてから `run_activity.py <フォルダ> --only <WSTG-ID>:<手順>` で実行する。
+MANUAL_RUN_RE = re.compile(r"\|\|\s*exit\s+75\b")
+
+
+def manual_run_hint(act_dir: str, wid: str, idx: int) -> str:
+    """手動→コマンドの手順を、作業のあとに実行するためのコマンド。"""
+    return f"uv run scripts/run_activity.py {act_dir} --only {wid}:{idx}"
 
 
 # for/while ループ（複数サブドメインを一括処理する等）を1つの実行コマンドとして拾う。
@@ -755,6 +774,8 @@ def iter_steps(activity: dict, criteria: dict, target, act_dir: str) -> list:
                 "text": text,
                 "desc": step_desc(text),
                 "kind": "cmd" if cmds else "manual",
+                # 人の作業のあとに手で実行するコマンド手順（一括では走らせない）
+                "manual_run": any(MANUAL_RUN_RE.search(c) for c in cmds),
                 "runs": runs,                       # コマンド手順: 1コマンド=1要素
                 "manual_output": (None if cmds else f"artifacts/manual-{wid}-s{idx}.txt"),
                 "load_note": load_note,             # 負荷・レート制限等の強調注釈（空可）
@@ -939,6 +960,9 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
             steps_out.append({
                 "idx": step["idx"],
                 "kind": step["kind"],
+                "manual_run": step.get("manual_run", False),
+                "run_hint": (manual_run_hint(act_dir, wid, step["idx"])
+                             if step.get("manual_run") else ""),
                 "desc": step["desc"],
                 "load_note": step.get("load_note", ""),
                 "runs": runs_out,

@@ -540,6 +540,21 @@ assert c3["ran"]==0 and c3["skipped"]==4, c3
 t = time.time() + 60; os.utime(d/"artifacts/in.txt", (t, t))     # 入力を差し替えた
 c4 = execute_steps(ry, d, chain, timeout=None, skip_done=True, stop_on_error=True)
 assert c4["ran"]==3 and c4["skipped"]==1, c4                      # in.txt→out.txt を使う3つが再実行
+# 手動→コマンド（人の作業で置く入力を読む手順）は一括では走らせず、--only で明示したときだけ走る。
+# まだ実行していない手動→コマンドが参照するファイルを読む後続は入力待ち。実行が済めば走る
+from run_activity import select_steps, manual_run_steps
+mr = {"wid":"T","idx":21,"desc":"m","kind":"cmd","manual_run":True,
+      "runs":[{"cmd":f"test -s {A}/mi.txt || exit 75; cat {A}/mi.txt > {A}/mo.txt","output":"cmd/mr-s21.txt","role":"main"}]}
+dep = dict(st(22, f"cat {A}/mo.txt", "cmd/mr-s22.txt"), kind="cmd")
+assert select_steps([mr, dep], None) == [dep] and manual_run_steps([mr, dep]) == [mr]
+assert select_steps([mr, dep], "T:21") == [mr]
+m1 = execute_steps(ry, d, [dep], timeout=None, skip_done=True, stop_on_error=True, manual=[mr])
+assert m1["pending"]==1 and m1["ran"]==0 and not (d/"cmd/mr-s21.txt").exists(), m1   # 手動は走らない
+(d/"artifacts/mi.txt").write_text("m\n")                           # 人の作業
+m2 = execute_steps(ry, d, [mr], timeout=None, skip_done=True, stop_on_error=True)  # --only 相当
+assert m2["ran"]==1 and m2["failed"]==0 and (d/"artifacts/mo.txt").exists(), m2
+m3 = execute_steps(ry, d, [dep], timeout=None, skip_done=True, stop_on_error=True, manual=[mr])
+assert m3["pending"]==0 and m3["ran"]==1 and m3["failed"]==0, m3
 RT
 # 実行されるコマンドに日本語のプレースホルダ（<JSフォルダ> 等）が残っていない
 # （bash はリダイレクトと解釈して失敗する）。入力置き場 OUTDIR/<name>/ は実行前に作られる
@@ -591,6 +606,20 @@ bad = sorted({(s["wid"], s["idx"]) for a in cov["activities"]
               for r in s["runs"] if re.search(r"(^|[;&|{]\s*)(sudo\s+(-E\s+)?)?nmap\b", r["cmd"])})
 assert not bad, bad
 NMAP
+# 人の作業で置く入力を読む手順（入力ガード `|| exit 75`）は手動→コマンドとして一括では走らない
+"${PY[@]}" - <<'MRUN' || ng "入力ガードを持つ手順が一括実行の対象に入っている（手動→コマンドにする）"
+import sys; sys.path.insert(0, "scripts")
+from new_activity import COVERAGE_YAML, CRITERIA_YAML, load_yaml, iter_steps
+from run_activity import select_steps
+cov, cr = load_yaml(COVERAGE_YAML), load_yaml(CRITERIA_YAML)
+bad, n = [], 0
+for a in cov["activities"]:
+    steps = iter_steps(a, cr, "t.test", "X")
+    n += sum(1 for s in steps if s.get("manual_run"))
+    bad += [(a["id"], s["wid"], s["idx"]) for s in select_steps(steps, None)
+            if any("exit 75" in r["cmd"] for r in s["runs"])]
+assert not bad and n >= 7, (bad, n)
+MRUN
 # 「取得できたかの確認」はその手順が書いたファイルだけを見る（読むだけの入力の中身を出しても確認にならない）
 "${PY[@]}" - <<'OUTP' || ng "確認コマンドが読むだけの入力ファイルを対象にしている（書き込み先だけにする）"
 import sys; sys.path.insert(0, "scripts")
