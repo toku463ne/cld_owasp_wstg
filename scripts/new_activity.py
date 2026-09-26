@@ -607,6 +607,15 @@ def extract_commands(steps: list, target: str | None) -> list:
 _BINARY_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".pdf", ".zip", ".pcap")
 
 
+# 直後の語が「書き込み先」になる指定（リダイレクト・tee・各ツールの出力オプション）
+_WRITE_FLAGS = {
+    ">", ">>", "tee", "-o", "-O", "-D", "-sD", "-c", "-oN", "-oA", "-oX", "-oG",
+    "--output", "--outputpath", "--logfile", "--json_out", "--dump-header",
+}
+# 書き込み先が語に直接付く指定（`>path`・`--log-json=path`）
+_WRITE_PREFIXES = (">>", ">", "--log-json=", "--json_out=", "--output=")
+
+
 def output_paths(cmd: str, act_dir: str) -> list:
     """コマンドが artifacts/ に書き出すファイルのパスを拾う。
 
@@ -621,8 +630,21 @@ def output_paths(cmd: str, act_dir: str) -> list:
     toks = [tok.rstrip(";&|)").strip("'\"") for tok in cmd.split()]
     paths = []
     for i, tok in enumerate(toks):
+        # `>path` / `--log-json=path` のように書き込み指定が語に付いている形
+        for pre in _WRITE_PREFIXES:
+            if tok.startswith(pre + prefix):
+                tok, written = tok[len(pre):], True
+                break
+        else:
+            prev = toks[i - 1] if i else ""
+            written = prev in _WRITE_FLAGS or (prev == "-a" and i >= 2 and toks[i - 2] == "tee")
         # OUTDIR/../../<別アクティビティ>/… は他フォルダの入力（読むだけ）なので確認対象にしない
         if not tok.startswith(prefix) or "/../" in tok:
+            continue
+        # 読むだけの入力（`test -s`・`grep … file`・`curl -b`・`retire --path` 等）は確認しない。
+        # 確認は「この手順で取れたか」を見るためのもので、入力の中身を出しても意味がない
+        # （mv/cp の移動先ディレクトリ `OUTDIR/` は下で扱う）
+        if not written and not tok.endswith("/"):
             continue
         # `nvd-cpe-$n.json` のようにループ変数を含むパスは静的に決まらない（確認すると必ず失敗する）
         if "$" in tok:

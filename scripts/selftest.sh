@@ -591,6 +591,16 @@ bad = sorted({(s["wid"], s["idx"]) for a in cov["activities"]
               for r in s["runs"] if re.search(r"(^|[;&|{]\s*)(sudo\s+(-E\s+)?)?nmap\b", r["cmd"])})
 assert not bad, bad
 NMAP
+# 「取得できたかの確認」はその手順が書いたファイルだけを見る（読むだけの入力の中身を出しても確認にならない）
+"${PY[@]}" - <<'OUTP' || ng "確認コマンドが読むだけの入力ファイルを対象にしている（書き込み先だけにする）"
+import sys; sys.path.insert(0, "scripts")
+from new_activity import output_paths
+c = ("test -s A/artifacts/in.txt || exit 75; grep x A/artifacts/in.txt 2>/dev/null | sort -u | tee A/artifacts/out.txt; "
+     "curl -b A/artifacts/ck.txt -sD A/artifacts/h.txt -o A/artifacts/b.html u; whatweb --log-json=A/artifacts/w.json u; "
+     "cmd | tee -a A/artifacts/log.tsv; mv x.xml x.json A/artifacts/")
+got = [p.split("/")[-1] for p in output_paths(c, "A")]
+assert got == ["out.txt", "h.txt", "b.html", "w.json", "log.tsv", "x.xml", "x.json"], got
+OUTP
 # 手順は「簡潔な説明: `コマンド`。読み方を1文」。record.html・カードの見出し（コマンドを抜いた説明）が
 # 長すぎないこと（上限 300 字。目安 150 字。解説は note へ）と、OUTDIR を使うコマンドが実行コマンドとして
 # 拾われていること（先頭語が CLI_BINARIES に無いと「手動」扱いになり、コマンド行が説明に丸ごと出る）
