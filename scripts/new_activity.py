@@ -172,6 +172,17 @@ RECORD_HTML = r"""<!DOCTYPE html>
   .drop{margin:8px 0;padding:8px 10px;border:1px dashed var(--line);border-radius:8px;font-size:.8rem;
         color:var(--mut);cursor:pointer;}
   .drop:focus{outline:2px solid #1565c0;color:var(--fg);}
+  .crop{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.82);display:flex;flex-direction:column;
+        align-items:center;padding:10px;gap:8px;}
+  .crop .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:#eee;font-size:.85rem;}
+  .crop .bar button{font:inherit;font-size:.85rem;padding:4px 12px;border-radius:6px;border:1px solid #888;
+                    background:#222;color:#eee;cursor:pointer;}
+  .crop .bar button.pri{background:#0a7c33;border-color:#0a7c33;font-weight:700;}
+  .crop .bar button:disabled{opacity:.5;cursor:default;}
+  .crop .stage{position:relative;cursor:crosshair;user-select:none;line-height:0;}
+  .crop .stage canvas{max-width:calc(100vw - 20px);max-height:calc(100vh - 70px);}
+  .crop .sel{position:absolute;border:2px solid #ffcc00;box-shadow:0 0 0 9999px rgba(0,0,0,.45);
+             pointer-events:none;display:none;}
   .fbox{margin:10px 0 0;} .frow{font-size:.88rem;margin:3px 0;display:flex;gap:8px;align-items:baseline;}
   .fcount{font-size:.7rem;background:#c62828;color:#fff;border-radius:999px;padding:0 6px;}
   .sev{font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:999px;white-space:nowrap;}
@@ -226,15 +237,19 @@ RECORD_HTML = r"""<!DOCTYPE html>
     [d.title, d.date && ("date " + d.date), d.tester && ("tester " + d.tester),
      d.generated_at && ("生成 " + d.generated_at)].filter(Boolean).join("  ·  ")));
 
+  // ブラウザの画面共有（getDisplayMedia）で撮る。サーバ画面を撮れない共有モード・RDP 越しでも使える
+  var browserShot = !!(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
   var delayInput = null;
-  if (canEdit && info.capture) {
+  if (canEdit && (info.capture || browserShot)) {
     var ctl = el("div", "controls");
     ctl.appendChild(el("span", null, "スクショ待ち時間(秒):"));
     delayInput = document.createElement("input");
     delayInput.type = "number"; delayInput.value = "3"; delayInput.min = "0";
     ctl.appendChild(delayInput);
-    ctl.appendChild(el("span", "mut",
-      "『スクショを撮る』を押すとこの秒数だけ待つので、その間に対象ウィンドウを前面へ→範囲選択"));
+    ctl.appendChild(el("span", "mut", info.capture
+      ? "『スクショを撮る』を押すとこの秒数だけ待つので、その間に対象ウィンドウを前面へ→範囲選択"
+      : "『スクショを撮る』→ 共有する画面を選ぶ → この秒数のうちに対象ウィンドウを前面へ"
+        + " → このタブに戻って保存する範囲をドラッグ"));
     app.appendChild(ctl);
   } else if (!served) {
     app.appendChild(el("div", "note",
@@ -274,9 +289,13 @@ RECORD_HTML = r"""<!DOCTYPE html>
     });
   }
 
-  function capture(wid, step, btn) {
+  function getDelay() {
     var delay = 3;
-    if (delayInput) { var v = parseInt(delayInput.value, 10); if (!isNaN(v)) delay = v; }
+    if (delayInput) { var v = parseInt(delayInput.value, 10); if (!isNaN(v)) delay = Math.max(0, Math.min(60, v)); }
+    return delay;
+  }
+  function capture(wid, step, btn) {
+    var delay = getDelay();
     var old = btn.textContent; btn.disabled = true;
     btn.textContent = "撮影中… " + delay + "秒以内に対象を前面へ→範囲選択";
     post("api/capture", { wid: wid, step: step, delay: delay })
@@ -300,18 +319,122 @@ RECORD_HTML = r"""<!DOCTYPE html>
     img.onerror = function () { fail("画像として読み込めませんでした"); };
     img.src = url;
   }
+  function sendPng(wid, step, dataUrl, onFail) {
+    post("api/upload_shot", { wid: wid, step: step, data: dataUrl.split(",", 2)[1] })
+      .then(function (res) {
+        if (res.ok) { remember(wid); location.hash = wid + (step ? "/s" + step : ""); location.reload(); }
+        else { fail("保存できませんでした:\n" + (res.error || "")); onFail(); }
+      })
+      .catch(function () { fail(NET_ERR); onFail(); });
+  }
   function uploadShot(wid, step, file, zone) {
     zone.textContent = "アップロード中…";
     toPngDataUrl(file, function (dataUrl) {
-      post("api/upload_shot", { wid: wid, step: step, data: dataUrl.split(",", 2)[1] })
-        .then(function (res) {
-          if (res.ok) { remember(wid); location.hash = wid + (step ? "/s" + step : ""); location.reload(); }
-          else { fail("保存できませんでした:\n" + (res.error || "")); zone.textContent = zoneText; }
-        })
-        .catch(function () { fail(NET_ERR); zone.textContent = zoneText; });
+      sendPng(wid, step, dataUrl, function () { zone.textContent = zoneText; });
     });
   }
-  var zoneText = "🖼 ここをクリックして Ctrl+V で画像を貼り付け／ダブルクリックでファイル選択";
+  var zoneText = "🖼 または: ここをクリックして Ctrl+V で画像を貼り付け／ダブルクリックでファイル選択";
+
+  // 画面共有で1フレーム撮る → 範囲をドラッグで選ぶ → PNG で保存（クリップボードを使わない）
+  function shotByBrowser(wid, step, btn) {
+    var old = btn.textContent; btn.disabled = true;
+    function reset() { btn.disabled = false; btn.textContent = old; }
+    navigator.mediaDevices.getDisplayMedia({ video: true, audio: false }).then(function (stream) {
+      var v = document.createElement("video");
+      v.muted = true; v.playsInline = true; v.srcObject = stream;
+      v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none";
+      document.body.appendChild(v);
+      function stop() { stream.getTracks().forEach(function (t) { t.stop(); }); v.remove(); }
+      var left = getDelay();
+      var title = document.title;
+      function tick() {
+        if (left > 0) {
+          btn.textContent = "撮影まで " + left + " 秒… 対象ウィンドウを前面へ";
+          left -= 1; setTimeout(tick, 1000); return;
+        }
+        if (!v.videoWidth) { setTimeout(tick, 200); return; }   // 最初のフレームを待つ
+        var c = document.createElement("canvas");
+        c.width = v.videoWidth; c.height = v.videoHeight;
+        c.getContext("2d").drawImage(v, 0, 0);
+        stop();
+        document.title = "📷 範囲を選んで保存してください";
+        btn.textContent = "範囲を選んで保存（このタブに戻る）";
+        cropDialog(c, function (dataUrl) {
+          document.title = title; btn.textContent = "保存中…";
+          sendPng(wid, step, dataUrl, reset);
+        }, function () { document.title = title; reset(); });
+      }
+      v.play().catch(function () {}).then(tick);
+    }).catch(function (e) {
+      reset();
+      if (e && e.name !== "NotAllowedError" && e.name !== "AbortError")
+        fail("画面を取得できませんでした:\n" + (e.message || e.name || e));
+    });
+  }
+
+  function cropDialog(src, onSave, onCancel) {
+    var ov = el("div", "crop");
+    var bar = el("div", "bar");
+    bar.appendChild(el("span", null, "保存する範囲をドラッグ（Enter=保存 / Esc=やめる）"));
+    var bSel = el("button", "pri", "選択範囲を保存"); bSel.disabled = true;
+    var bAll = el("button", null, "全体を保存");
+    var bNo = el("button", null, "やめる");
+    bar.appendChild(bSel); bar.appendChild(bAll); bar.appendChild(bNo);
+    var stage = el("div", "stage");
+    stage.appendChild(src);
+    var sel = el("div", "sel"); stage.appendChild(sel);
+    ov.appendChild(bar); ov.appendChild(stage);
+    document.body.appendChild(ov);
+    var r = null, start = null;
+    function pos(ev) {
+      var b = src.getBoundingClientRect();
+      return { x: Math.max(0, Math.min(b.width, ev.clientX - b.left)),
+               y: Math.max(0, Math.min(b.height, ev.clientY - b.top)) };
+    }
+    stage.addEventListener("mousedown", function (ev) { ev.preventDefault(); start = pos(ev); r = null; });
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    document.addEventListener("keydown", key);
+    function move(ev) {
+      if (!start) return;
+      var p = pos(ev);
+      r = { x: Math.min(start.x, p.x), y: Math.min(start.y, p.y),
+            w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) };
+      sel.style.display = "block";
+      sel.style.left = r.x + "px"; sel.style.top = r.y + "px";
+      sel.style.width = r.w + "px"; sel.style.height = r.h + "px";
+    }
+    function up() {
+      if (!start) return;
+      start = null;
+      if (!r || r.w < 4 || r.h < 4) { r = null; sel.style.display = "none"; }
+      bSel.disabled = !r;
+    }
+    function close() {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      document.removeEventListener("keydown", key);
+      ov.remove();
+    }
+    function save(whole) {
+      var out = src;
+      if (!whole && r) {   // 表示サイズ → 実画素に換算して切り出す
+        var k = src.width / src.getBoundingClientRect().width;
+        out = document.createElement("canvas");
+        out.width = Math.round(r.w * k); out.height = Math.round(r.h * k);
+        out.getContext("2d").drawImage(src, Math.round(r.x * k), Math.round(r.y * k), out.width, out.height,
+                                       0, 0, out.width, out.height);
+      }
+      close(); onSave(out.toDataURL("image/png"));
+    }
+    function key(ev) {
+      if (ev.key === "Escape") { close(); onCancel(); }
+      else if (ev.key === "Enter" && r) { ev.preventDefault(); save(false); }
+    }
+    bSel.addEventListener("click", function () { save(false); });
+    bAll.addEventListener("click", function () { save(true); });
+    bNo.addEventListener("click", function () { close(); onCancel(); });
+  }
   function imageAdder(wid, step) {
     var zone = el("div", "drop", zoneText); zone.tabIndex = 0;
     var fi = document.createElement("input"); fi.type = "file"; fi.accept = "image/*"; fi.style.display = "none";
@@ -515,10 +638,14 @@ RECORD_HTML = r"""<!DOCTYPE html>
         }
       });
       if (canEdit) {
-        if (info.capture) {
+        if (info.capture) {          // ローカルモード: サーバ機の画面をツールで範囲選択して撮る
           var b = el("button", "shot-btn", "📷 この手順のスクショを撮る");
           b.addEventListener("click", function () { capture(it.wid, st.idx, b); });
           s.appendChild(b);
+        } else if (browserShot) {    // 共有モード: ブラウザの画面共有で撮って範囲を選ぶ
+          var bb = el("button", "shot-btn", "📷 この手順のスクショを撮る（数秒後に撮影→範囲選択）");
+          bb.addEventListener("click", function () { shotByBrowser(it.wid, st.idx, bb); });
+          s.appendChild(bb);
         }
         s.appendChild(imageAdder(it.wid, st.idx));
       }

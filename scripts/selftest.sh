@@ -145,6 +145,8 @@ assert "テストアカウント" in notes[("WSTG-ATHN-03", 1)], notes[("WSTG-AT
 assert not notes.get(("WSTG-ATHN-03", 2)), "注釈の無い手順にまで load_note が付いている"
 LOAD
 [ $? -eq 0 ] || ng "load_note が evidence.js に反映されていない"
+grep -qF 'getDisplayMedia' "${TDIR}/record.html" && grep -qF 'cropDialog' "${TDIR}/record.html" \
+  || ng "record.html にブラウザでの撮影（画面共有→範囲選択。RDP・共有モード用）がない"
 grep -qF 'st.load_note' "${AEP}/record.html" && grep -qF 'loadwarn' "${AEP}/record.html" \
   || ng "record.html が load_note を強調表示しない"
 # カード側にも「負荷・レート制限」セクションと手順注釈が出ること

@@ -480,7 +480,10 @@ sudo nginx -t && sudo systemctl reload nginx
   （systemd なら `ExecStart` を直して `sudo systemctl daemon-reload && sudo systemctl restart wstg-web`）。
   ローカルモード（`--behind-proxy` なし）は常に編集できる。
 - `--behind-proxy` では、nginx の認証ユーザ（`X-Remote-User`）が所見・チェックの編集者名になる。
-  サーバ機の画面を撮る『📷 スクショを撮る』は無効になり、各自の PC で撮って**貼り付け**る。
+  サーバ機の画面を撮る機能は無効になり、『📷 スクショを撮る』はブラウザの画面共有で撮る方式になる
+  （共有する画面を選ぶ → 待ち時間のうちに対象ウィンドウを前面へ → タブに戻って範囲をドラッグ → 保存）。
+  RDP 越しなどでクリップボードに画像が入らなくても使える。HTTPS（nginx）か 127.0.0.1 で開いたときだけ動く。
+  Ctrl+V での貼り付け・ファイル選択も残してある。
 - 書き込み API は独自ヘッダと Origin を検査する（他サイトからの書き込みを弾く）。書き込みは直列化される。
 - **evidence がそのまま見えるので、社内ネットワーク限定・TLS・認証を外さない**（設定例はその前提）。
 
