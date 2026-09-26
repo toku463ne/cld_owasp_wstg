@@ -695,13 +695,18 @@ def verify_commands(cmd: str, act_dir: str) -> list:
 
     -s で黙るコマンド（curl 等）は「結果:」に貼るものが無くなり、失敗と
     「何も無い」の区別がつかなくなる。行数と先頭を必ず出させる。
+
+    確認は表示のためのもので、成否は本体の exit_code で決まる。本体が意図して出力を作らずに
+    正常終了した（照合対象なし等）ときに確認が失敗して一括処理を止めないよう、出力が無ければ
+    その旨を出して exit 0 にする。
     """
     checks = []
     for path in output_paths(cmd, act_dir):
+        missing = f'test -e {path} || {{ echo "出力なし: {path} は作られていない（本体の出力を確認）"; exit 0; }}; '
         if path.lower().endswith((".json", ".xml", ".html")):
-            checks.append(f"ls -l {path}; head -c 400 {path}; echo")
+            checks.append(f"{missing}ls -l {path}; head -c 400 {path}; echo")
         else:
-            checks.append(f"wc -l {path}; head -5 {path}")
+            checks.append(f"{missing}wc -l {path}; head -5 {path}")
     return checks
 
 

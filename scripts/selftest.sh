@@ -606,6 +606,16 @@ bad = sorted({(s["wid"], s["idx"]) for a in cov["activities"]
               for r in s["runs"] if re.search(r"(^|[;&|{]\s*)(sudo\s+(-E\s+)?)?nmap\b", r["cmd"])})
 assert not bad, bad
 NMAP
+# 確認コマンドは表示のため。本体が意図して出力を作らずに正常終了したとき（照合対象なし等）に
+# 確認が失敗して一括を止めない（出力が無ければその旨を出して exit 0）
+"${PY[@]}" - "${TMP}" <<'VCHK' || ng "出力ファイルが無いと確認コマンドが非0終了して一括処理を止める"
+import subprocess, sys; sys.path.insert(0, "scripts")
+from new_activity import verify_commands
+d = f"{sys.argv[1]}/vchk"
+for c in verify_commands(f"curl -o {d}/artifacts/a.json u | tee {d}/artifacts/b.txt", d):
+    p = subprocess.run(["bash", "-c", c], capture_output=True, text=True)
+    assert p.returncode == 0 and "出力なし" in p.stdout, (c, p.returncode, p.stdout, p.stderr)
+VCHK
 # 前提となるエビデンス（別の WSTG・アクティビティの成果物）を手順から導き、WSTG ページに取得状況と取得元へのリンクを出す
 "${PY[@]}" - "${TMP}" <<'PREQ' || ng "前提となるエビデンスの導出か WSTG ページの表示が想定と違う"
 import sys; sys.path.insert(0, "scripts")
