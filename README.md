@@ -193,18 +193,18 @@ uv run scripts/run_activity.py evidence/<活動フォルダ> --only WSTG-CONF-01
 
 ## Burp のブラウザが reCAPTCHA / ボット検知で弾かれるとき
 
+Burp の起動・内蔵ブラウザでの接続・上流プロキシの設定は [`docs/burp-setup.md`](docs/burp-setup.md) にまとめてある。
+
 カードの多くは「Burp で捕捉」「Burp Repeater」と書いてあるが、**Burp 内蔵ブラウザは
 自動化フラグ付きの使い捨て Chromium** なので、reCAPTCHA やボット検知（Cloudflare 等）に
 引っかかってログインすら通らないことがある。Burp を捨てる必要はなく、**「普段のブラウザで
 人間として一度通し、その後の中身をツールに渡す」** に切り替える。上流ほど確実:
 
-1. **普段のブラウザ＋プロキシ設定（まずこれ）** — Burp 内蔵ブラウザではなく、日常使いの
-   Firefox/Chrome（本物のプロファイル・UA・Cookie）を FoxyProxy 等で Burp（`127.0.0.1:8080`）に
-   向ける。Burp の CA 証明書を入れておく（`http://burp` → CA Certificate、Firefox は
-   `about:config` の `security.enterprise_roots.enabled=true` かブラウザに手動インポート）。
-   本物のブラウザ指紋なので弾かれにくく、通信は今までどおり Burp の Proxy history に溜まる。
-   - reCAPTCHA が出る画面（主にログイン）だけこのブラウザで**人間が解く**。解いた後の
-     認証済みリクエストは Repeater/Intruder にそのまま送れる。
+1. **普段のブラウザ＋プロキシ設定（まずこれ）** — Burp 内蔵ブラウザではなく、本物の
+   Firefox（検査専用プロファイル）を Burp（`127.0.0.1:8080`）に向け、Burp の CA 証明書を入れる。
+   reCAPTCHA が出る画面は**人間が解き**、解いた後の認証済みリクエストを Repeater/Intruder に送る。
+   プロキシ設定・FoxyProxy・証明書の入れ方・再送できる範囲は
+   [`docs/burp-setup.md`](docs/burp-setup.md) の「3. 普段のブラウザを Burp に通す」を参照。
 2. **CAPTCHA は人が一度だけ解き、セッションを引き継ぐ** — ログイン（＋CAPTCHA）を普段の
    ブラウザで済ませ、**発行された Cookie を書き出して以降の検査に使い回す**。Burp を介さず
    `curl` / `run_cmd.py` で回せるので、多くの手順（ATHN-06・ATHZ 系・SESS 系の「認証済みで
@@ -492,6 +492,7 @@ sudo nginx -t && sudo systemctl reload nginx
 | `templates/artifacts/` | `.md` 成果物の検索用フォーマット雛形（**手編集**） | ✅ |
 | `templates/nginx/` | チーム共有用の nginx 設定・systemd ユニットの例 | ✅ |
 | `pyproject.toml` / `uv.lock` / `.python-version` | uv による環境定義 | ✅ |
+| `docs/burp-setup.md` | Burp Suite の準備手順（初めての人向け・**手編集**） | ✅ |
 | `docs/owasp/` | WSTG 原文（`FETCH.md` 以外は追跡しない） | ❌ |
 | `evidence/` | 生エビデンス（共用 Kali のみ）。`_findings/` に所見、`_state/` に手動チェック | ❌ |
 | `checklist_export.csv` | 集約 CSV（レビュー用の一時物） | ❌ |
