@@ -13,12 +13,12 @@
 | activity_id | 概要 | 主なツール | primary | secondary |
 |---|---|---|---|---|
 | `recon-osint` | 外部 OSINT・公開情報の収集 | theHarvester, crt.sh, whois, Google/Bing dorking, subfinder | WSTG-INFO-01 | WSTG-CONF-10 |
-| `fingerprint-stack` | サーバ・フレームワークのフィンガープリント | nmap -sV, whatweb, Wappalyzer, httpx-toolkit | WSTG-INFO-02, WSTG-INFO-08 | WSTG-CONF-01, WSTG-CONF-02 |
-| `tls-scan` | TLS 設定スキャン | testssl.sh, sslyze, nmap --script ssl-enum-ciphers | WSTG-CRYP-01, WSTG-CONF-07 | WSTG-CONF-01 |
-| `http-methods` | HTTP メソッドの列挙と検証 | curl, nmap http-methods NSE, ncat, Burp Repeater | WSTG-CONF-06 | WSTG-INPV-03 |
+| `fingerprint-stack` | サーバ・フレームワークのフィンガープリント | curl, whatweb, Wappalyzer, httpx-toolkit | WSTG-INFO-02, WSTG-INFO-08 | WSTG-CONF-01, WSTG-CONF-02 |
+| `tls-scan` | TLS 設定スキャン | testssl.sh, sslyze, curl --tls-max | WSTG-CRYP-01, WSTG-CONF-07 | WSTG-CONF-01 |
+| `http-methods` | HTTP メソッドの列挙と検証 | curl, ncat, Burp Repeater | WSTG-CONF-06 | WSTG-INPV-03 |
 | `headers-review` | レスポンスヘッダ一括精査（匿名 + 認証済み） | curl, Burp Suite, securityheaders.io 相当の手動チェック | WSTG-SESS-02, WSTG-CONF-07, WSTG-CLNT-09, WSTG-ATHN-06, WSTG-CLNT-07 | WSTG-CRYP-03 |
 | `metafiles-crawl` | メタファイル・公開コンテンツの収集 | curl, wget, grep/ripgrep, Burp Suite | WSTG-INFO-03, WSTG-INFO-05 | WSTG-CONF-05 |
-| `enum-apps` | 仮想ホスト・パスの列挙 | ffuf, dirsearch, gobuster, nmap -p- | WSTG-INFO-04 | WSTG-INFO-06 |
+| `enum-apps` | 仮想ホスト・パスの列挙 | ffuf, dirsearch, gobuster, curl（ポート確認）, nmap -p-（社外から手動） | WSTG-INFO-04 | WSTG-INFO-06 |
 | `burp-crawl-authn` | 認証済みクロールとエントリポイント洗い出し | Burp Suite, OWASP ZAP | WSTG-INFO-06, WSTG-INFO-07, WSTG-INFO-10, WSTG-CONF-05 | — |
 | `session-capture` | セッション取得とログイン/ログアウト解析 | Burp Suite, Burp Sequencer, curl | WSTG-SESS-01, WSTG-SESS-02, WSTG-SESS-03, WSTG-SESS-06, WSTG-SESS-07 | WSTG-SESS-09 |
 | `backup-unref` | 旧・バックアップ・未参照ファイルの探索 | ffuf, dirsearch, nikto | WSTG-CONF-03, WSTG-CONF-04 | — |
@@ -215,10 +215,10 @@
 
 ### `fingerprint-stack` — サーバ・フレームワークのフィンガープリント
 
-ポート/サービス/ヘッダ/既知の指紋から、OS・Web サーバ・ミドルウェア・アプリ基盤を特定する。
+応答ヘッダ/既知の指紋から、OS・Web サーバ・ミドルウェア・アプリ基盤を特定する。
 
-- ツール: nmap -sV, whatweb, Wappalyzer, httpx-toolkit
-- 想定成果物: `cmd/nmap-sv.txt`, `cmd/whatweb.txt`, `artifacts/stack-summary.md`
+- ツール: curl, whatweb, Wappalyzer, httpx-toolkit
+- 想定成果物: `artifacts/headers-http.txt`, `artifacts/headers-https.txt`, `artifacts/whatweb.json`, `artifacts/stack-summary.md`
 - カバー:
   - WSTG-INFO-02 (primary) Fingerprint Web Server
   - WSTG-INFO-08 (primary) Fingerprint Web Application Framework
@@ -229,7 +229,7 @@
 
 対象の全 TLS ポートに対して暗号スイート・プロトコル・証明書・HSTS を一括検査する。
 
-- ツール: testssl.sh, sslyze, nmap --script ssl-enum-ciphers
+- ツール: testssl.sh, sslyze, curl --tls-max
 - 想定成果物: `cmd/testssl.txt`, `artifacts/tls-summary.md`
 - カバー:
   - WSTG-CRYP-01 (primary) Testing for Weak Transport Layer Security
@@ -240,8 +240,8 @@
 
 OPTIONS 応答を鵜呑みにせず、実際に各メソッドを投げて許可状況と挙動差を確認する。
 
-- ツール: curl, nmap http-methods NSE, ncat, Burp Repeater
-- 想定成果物: `cmd/curl-options.txt`, `cmd/nmap-http-methods.txt`
+- ツール: curl, ncat, Burp Repeater
+- 想定成果物: `cmd/curl-options.txt`, `artifacts/http-methods.txt`
 - カバー:
   - WSTG-CONF-06 (primary) Test HTTP Methods
   - WSTG-INPV-03 (secondary) Testing for HTTP Verb Tampering — v4.2 では CONF-06 に統合（HTTP verb tampering）
@@ -275,8 +275,8 @@ robots.txt・sitemap・.well-known・security.txt・HTML コメント・JS ソ�
 
 DNS/vhost と URL パスをファジングし、同一ホスト上の別アプリ・別インスタンスを洗い出す。
 
-- ツール: ffuf, dirsearch, gobuster, nmap -p-
-- 想定成果物: `cmd/ffuf-paths.txt`, `cmd/ffuf-vhost.txt`, `artifacts/app-inventory.md`
+- ツール: ffuf, dirsearch, gobuster, curl（ポート確認）, nmap -p-（社外から手動）
+- 想定成果物: `cmd/ffuf-paths.txt`, `cmd/ffuf-vhost.txt`, `artifacts/ports-http.txt`, `artifacts/nmap-allports.txt`, `artifacts/app-inventory.md`
 - カバー:
   - WSTG-INFO-04 (primary) Enumerate Applications on Webserver
   - WSTG-INFO-06 (secondary) Identify Application Entry Points — 発見したパスがエントリポイント洗い出しの入力

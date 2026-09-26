@@ -95,7 +95,7 @@ sudo env | grep -i proxy            # 疎通確認（sudo に環境変数が渡�
 sudo curl -sI https://github.com | head -1
 ```
 
-- **`sudo` は環境変数を落とす**。`sudo -E nmap ...` で実行するか、上の `env_keep` を入れる
+- **`sudo` は環境変数を落とす**。`sudo -E <コマンド>` で実行するか、上の `env_keep` を入れる
 - **amass は内部で `sudo` を呼ぶ**。Kali のラッパーが起動時に libpostal データを
   `sudo curl` で github から取りに行くため、`env_keep` が無いと必ずここで固まる
   （`curl: (28) Failed to connect to github.com:443` + `[sudo] password for ...`）。
@@ -108,8 +108,8 @@ sudo curl -sI https://github.com | head -1
   「何も無い」と見分けがつかない。起動時の `Read proxies.yaml from ...` は `-p` の有無に
   関わらず出るので、動作証拠にならない
 - **Burp 経由**にするなら `https_proxy=http://127.0.0.1:8080`（Burp CA を入れていなければ `curl -k`）
-- **DNS とポートスキャンはプロキシを通らない**。`dig` / `nmap` の名前解決・スキャンは直接出るので、
-  そこが塞がっているならプロキシとは別に経路の手当てが要る
+- **DNS とポートスキャンはプロキシを通らない**。`dig` の名前解決や `nmap` のスキャンは直接出るので、
+  そこが塞がっているならプロキシとは別に経路の手当てが要る（criteria の手順は nmap を使わず curl で代替済み。下記）
 - **amass v5 は外向き UDP/53 が無いと起動しない**（このため手順は `subfinder` に差し替えてある。
   subfinder は HTTPS の API 主体で UDP/53 は要らないが、環境変数のプロキシを見ないので
   `-proxy "$https_proxy"` を明示する。付けないと全ソースが timeout して0件になる
@@ -142,13 +142,25 @@ sudo curl -sI https://github.com | head -1
   | `sslyze` | `--https_tunnel="$https_proxy"` | × |
   | `ffuf` | `-x "$https_proxy"` | × |
   | `sqlmap` | `--proxy="$https_proxy"` | × |
-  | `nmap` | **不可**（下記） | — |
+  | `nmap` | **不可**（下記。自動実行せず社外から手動） | — |
 
 - **`nmap` は HTTP プロキシを通せない**（ポートスキャン/NSE は生ソケット）。対象がプロキシ越しに
   しか届かないなら、`nmap` は経路の手当て（VPN・踏み台・ルーティング）が別途要る。TCP connect
   スキャン（`-sT`）に限れば `proxychains nmap -sT ...` で HTTP CONNECT 経由にできるが遅く、
   UDP/生パケット系（`-sU`・`-sS`・多くの NSE）は通らない。プロキシ越しの対象では
   `nmap` の結果が空でも「閉じている」と即断しない。
+  このため **nmap は自動実行しない**。社内からはプロキシを通る curl で代替し、HTTP 以外のポートだけ社外から手動で nmap を回す:
+  - 製品名・バージョン（WSTG-INFO-02 手順2）… `nmap -sV` → 80/443 の応答ヘッダ（`Server` 等）＋ whatweb
+  - 公開ポート（WSTG-INFO-04 手順1 → CONF-01/CONF-05 が再利用）… `nmap -p-` → Web・管理系の主要ポートへ
+    http/https で当てる（`artifacts/ports-http.txt`）。確かめられるのは HTTP を話すポートだけ
+    （Squid は既定で 443 以外への CONNECT を拒否するので、`noresp ... connect=403` は「不明」であって「閉」ではない）
+  - SSH/RDP/DB などの全ポート（WSTG-INFO-04 手順5・手動）… 社内プロキシがこれらのポートへの CONNECT を
+    許可しないので、**社外の端末（検査用 VPS 等）から** `nmap -sV -Pn -p- --open -oN nmap-allports.txt <対象>`
+    を回し、結果を enum-apps の `artifacts/nmap-allports.txt` に置く。置くまで WSTG-CONF-01 の手順1・2 は
+    「入力待ち」（exit 75）で飛ばされ、置いてから再実行すると走る。スキャン元 IP・日時は
+    `artifacts/manual-WSTG-INFO-04-s5.txt` に書き、対象の管理者に事前に伝えておく
+  - TLS バージョン（WSTG-CRYP-01 手順4）… `nmap --script ssl-enum-ciphers` → `curl --tlsv1.x --tls-max 1.x`
+
 
 ツールが 0 件を返したときは、まず疎通を疑う。「何も無い」と「収集に失敗した」は別で、
 後者を `pass` にしてはいけない（`playbooks/WSTG-INFO-01.md` の疎通確認の手順を参照）。
@@ -170,7 +182,6 @@ uv run scripts/run_activity.py evidence/<活動フォルダ> --only WSTG-CONF-01
 | `nikto` | `-Pause <秒>`（各リクエスト間の待ち）。加えて `-maxtime 30m` で打ち切り、`-T` で試験を限定 |
 | `ffuf` | `-p <秒>` の待ち＋`-t 1`（並列を1に。既定40並列が飽和の主因） |
 | `sqlmap` | `--delay <秒>`（`--threads` は上げない） |
-| `nmap` | `WSTG_PAUSE` は未対応。ポートスキャンの負荷は `--max-rate <n>`（例 `--max-rate 100`）や `-T2` で下げる。`-p-` に `--scan-delay` を付けると事実上終わらないので使わない |
 
 - 504 が出始めたら、まず今のスキャンを止めて `WSTG_PAUSE` を上げてから `--only` でその手順だけ回し直す。
 - それでも厳しい対象は、ワードリストを小さくする・`-T`（nikto）で試験カテゴリを絞る・実施時間帯を

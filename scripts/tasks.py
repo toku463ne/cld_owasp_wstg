@@ -91,6 +91,7 @@ MANUAL = {
     "ls -l / icacls", "eicar テストファイル", "ブラウザ2枚", "ブラウザ開発者ツール",
     "メールクライアント", "ヒアリング", "業務仕様書", "手動", "手動 payload",
     "手動レビュー", "手動操作",
+    "nmap -p-（社外から手動）",   # この Kali ではなく社外の端末で回す（導入指示を出さない）
 }
 
 
@@ -230,7 +231,7 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
       "または人が一度 CAPTCHA を解いて Cookie を引き継ぐ（README「Burp のブラウザが reCAPTCHA "
       "/ ボット検知で弾かれるとき」）")
     w("- 対象が非力で 504 / CPU 100% になるときは `export WSTG_PAUSE=2`（秒）でスキャンをゆっくり実行"
-      "（nikto/ffuf/sqlmap に効く。README「対象が非力で落ちる / 504 になるとき」。nmap は `--max-rate`）")
+      "（nikto/ffuf/sqlmap に効く。README「対象が非力で落ちる / 504 になるとき」）")
     w("")
     w("Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の `apt` をまとめてある。")
     w("まず `sudo apt update`。`pipx` / `npm` / `go` を使う個別導入もフェーズ内に記載。")

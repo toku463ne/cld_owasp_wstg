@@ -52,7 +52,9 @@ ARTIFACT_TEMPLATES = REPO_ROOT / "templates" / "artifacts"
 # GUI（Burp 等）は対象外。判定は「先頭語が CLI で、かつ target を参照している」こと
 # （`curl` 単独のような不完全な言及を除くため）。
 CLI_BINARIES = {
-    "whois", "theharvester", "amass", "subfinder", "nmap", "curl", "wget",
+    # nmap は入れない（自動実行しない）。HTTP プロキシを通らず、社内網からは filtered のまま exit 0 で
+    # 終わって成功扱いになるため。社外の端末から手で回す手動手順（WSTG-INFO-04 手順5）にしてある
+    "whois", "theharvester", "amass", "subfinder", "curl", "wget",
     "ffuf", "gobuster",
     "sqlmap", "testssl", "testssl.sh", "sslyze", "nikto", "whatweb", "httpx", "dig", "nslookup", "traceroute",
     "ncat", "nc", "hydra", "dotdotpwn", "wfuzz", "retire", "git-dumper", "aws",

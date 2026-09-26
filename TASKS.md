@@ -18,7 +18,7 @@
 - 実施できるアクティビティ ID の一覧: `uv run scripts/new_activity.py`（引数なし）
 - 複数サイトを回すときは各アクティビティで `--target <site>` を付ける
 - Burp 内蔵ブラウザが reCAPTCHA / ボット検知で弾かれるときは、普段のブラウザ＋Burp プロキシ、または人が一度 CAPTCHA を解いて Cookie を引き継ぐ（README「Burp のブラウザが reCAPTCHA / ボット検知で弾かれるとき」）
-- 対象が非力で 504 / CPU 100% になるときは `export WSTG_PAUSE=2`（秒）でスキャンをゆっくり実行（nikto/ffuf/sqlmap に効く。README「対象が非力で落ちる / 504 になるとき」。nmap は `--max-rate`）
+- 対象が非力で 504 / CPU 100% になるときは `export WSTG_PAUSE=2`（秒）でスキャンをゆっくり実行（nikto/ffuf/sqlmap に効く。README「対象が非力で落ちる / 504 になるとき」）
 
 Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の `apt` をまとめてある。
 まず `sudo apt update`。`pipx` / `npm` / `go` を使う個別導入もフェーズ内に記載。
@@ -62,19 +62,19 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 外から見えるサービス・設定・残骸を洗い出す。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y awscli bind9-dnsutils curl dirsearch ffuf gobuster httpx-toolkit jq ncat nikto nmap ripgrep seclists sslyze testssl.sh wget whatweb`
+- apt: `sudo apt install -y awscli bind9-dnsutils curl dirsearch ffuf gobuster httpx-toolkit jq ncat nikto ripgrep seclists sslyze testssl.sh wget whatweb`
 - 個別: `sudo apt install -y npm && sudo npm install -g retire`
 - Kali 同梱 / Burp 内（導入不要）: Burp Repeater, Burp Suite
 
 ### 2. `fingerprint-stack` — サーバ・フレームワークのフィンガープリント
 
-ポート/サービス/ヘッダ/既知の指紋から、OS・Web サーバ・ミドルウェア・アプリ基盤を特定する。
+応答ヘッダ/既知の指紋から、OS・Web サーバ・ミドルウェア・アプリ基盤を特定する。
 
 - 影響度: 低 / 前提: `recon-osint`
 - カード: [WSTG-INFO-02](playbooks/WSTG-INFO-02.md), [WSTG-INFO-08](playbooks/WSTG-INFO-08.md), [WSTG-CONF-01](playbooks/WSTG-CONF-01.md), [WSTG-CONF-02](playbooks/WSTG-CONF-02.md)
 
 - [ ] `uv run scripts/new_activity.py fingerprint-stack` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/fingerprint-stack-<yyyymmdd>` でコマンド手順（4 項目・nmap -sV, whatweb, Wappalyzer, httpx-toolkit）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/run_activity.py evidence/fingerprint-stack-<yyyymmdd>` でコマンド手順（4 項目・curl, whatweb, Wappalyzer, httpx-toolkit）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/fingerprint-stack-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
@@ -88,7 +88,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 - カード: [WSTG-CRYP-01](playbooks/WSTG-CRYP-01.md), [WSTG-CONF-07](playbooks/WSTG-CONF-07.md), [WSTG-CONF-01](playbooks/WSTG-CONF-01.md)
 
 - [ ] `uv run scripts/new_activity.py tls-scan` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/tls-scan-<yyyymmdd>` でコマンド手順（3 項目・testssl.sh, sslyze, nmap --script ssl-enum-ciphers）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/run_activity.py evidence/tls-scan-<yyyymmdd>` でコマンド手順（3 項目・testssl.sh, sslyze, curl --tls-max）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/tls-scan-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
@@ -102,7 +102,7 @@ OPTIONS 応答を鵜呑みにせず、実際に各メソッドを投げて許可
 - カード: [WSTG-CONF-06](playbooks/WSTG-CONF-06.md), [WSTG-INPV-03](playbooks/WSTG-INPV-03.md)
 
 - [ ] `uv run scripts/new_activity.py http-methods` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/http-methods-<yyyymmdd>` でコマンド手順（2 項目・curl, nmap http-methods NSE, ncat, Burp Repeater）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/run_activity.py evidence/http-methods-<yyyymmdd>` でコマンド手順（2 項目・curl, ncat, Burp Repeater）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/http-methods-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
@@ -130,7 +130,7 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 - カード: [WSTG-INFO-04](playbooks/WSTG-INFO-04.md), [WSTG-INFO-06](playbooks/WSTG-INFO-06.md)
 
 - [ ] `uv run scripts/new_activity.py enum-apps` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/enum-apps-<yyyymmdd>` でコマンド手順（2 項目・ffuf, dirsearch, gobuster, nmap -p-）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/run_activity.py evidence/enum-apps-<yyyymmdd>` でコマンド手順（2 項目・ffuf, dirsearch, gobuster, curl（ポート確認）, nmap -p-（社外から手動））を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
       - 単発の直接実行は `uv run scripts/run_cmd.py evidence/enum-apps-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）

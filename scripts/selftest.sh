@@ -580,6 +580,17 @@ bad = sorted({(s["wid"], s["idx"]) for a in cov["activities"]
               or re.search(r"&&\s*(echo|printf)\b[^;|&]*$", r["cmd"].strip())})
 assert not bad, bad
 GREP
+# nmap はプロキシを通らず、プロキシ配下では全ポート filtered のまま exit 0 で終わる（何も取れていないのに
+# 成功扱いになる）。コマンド手順では nmap を使わず curl 等のプロキシを通るツールで代替する（README 参照）
+"${PY[@]}" - <<'NMAP' || ng "コマンド手順に nmap がある（プロキシを通らず、filtered でも成功扱いになる）"
+import re, sys; sys.path.insert(0, "scripts")
+from new_activity import COVERAGE_YAML, CRITERIA_YAML, load_yaml, iter_steps
+cov, cr = load_yaml(COVERAGE_YAML), load_yaml(CRITERIA_YAML)
+bad = sorted({(s["wid"], s["idx"]) for a in cov["activities"]
+              for s in iter_steps(a, cr, "t.test", "X") if s["kind"] == "cmd"
+              for r in s["runs"] if re.search(r"(^|[;&|{]\s*)(sudo\s+(-E\s+)?)?nmap\b", r["cmd"])})
+assert not bad, bad
+NMAP
 # 人が artifacts/ に置く入力（それより前のコマンドが書かないファイル）を読むコマンドは、
 # `test -s OUTDIR/<入力> || exit 75` で「入力待ち」を返すこと（無いまま走ると一括が止まるか、
 # 空の入力で成功扱いになって入力を置いた後もスキップされる）。入力待ちのコマンドが参照する
@@ -630,9 +641,9 @@ def batch_mains():
                     yield a["id"], r["cmd"]
 mains = list(batch_mains())
 # 重い/冗長なコマンドは一括で1回だけ:
-# 全ポート走査（nmap -p-）は enum-apps、whatweb は fingerprint-stack、
+# ポート確認（ports-http.txt を作る curl ループ）は enum-apps、whatweb は fingerprint-stack、
 # 全JSクロール（app-js.txt を作る curl ループ）は metafiles-crawl でだけ走る
-full = [aid for aid, c in mains if c.startswith("nmap") and " -p- " in c]
+full = [aid for aid, c in mains if "tee X/artifacts/ports-http.txt" in c]
 assert full == ["enum-apps"], full
 ww = [aid for aid, c in mains if c.startswith("whatweb")]
 assert ww == ["fingerprint-stack"], ww

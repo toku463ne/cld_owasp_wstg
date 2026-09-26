@@ -19,14 +19,14 @@ tools:
   - name: Burp Suite
     version: "2025.x"
     type: gui                 # cli | gui
-  - name: nmap
-    version: "7.9x"
+  - name: curl
+    version: "8.x"
     type: cli
 
 # CLI：scripts/run_activity.py（手順を実行）/ run_cmd.py（単発）が自動追記（コマンド行＋出力先）
 commands:
-  - cmd: "nmap -sV -p- <target>"
-    output: cmd/nmap-full.txt
+  - cmd: "curl -sI https://<target>/"
+    output: cmd/curl-head.txt
     started_at: "2026-09-08T10:12:03+09:00"
     exit_code: 0
 

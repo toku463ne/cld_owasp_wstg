@@ -63,9 +63,9 @@ activities:
     order: 2
     depends_on: [recon-osint]
     impact: low
-    summary: ポート/サービス/ヘッダ/既知の指紋から、OS・Web サーバ・ミドルウェア・アプリ基盤を特定する。
-    tools: ["nmap -sV", whatweb, Wappalyzer, httpx-toolkit]
-    outputs: [cmd/nmap-sv.txt, cmd/whatweb.txt, artifacts/stack-summary.md]
+    summary: 応答ヘッダ/既知の指紋から、OS・Web サーバ・ミドルウェア・アプリ基盤を特定する。
+    tools: [curl, whatweb, Wappalyzer, httpx-toolkit]
+    outputs: [artifacts/headers-http.txt, artifacts/headers-https.txt, artifacts/whatweb.json, artifacts/stack-summary.md]
     covers:
       - {id: WSTG-INFO-02, role: primary}
       - {id: WSTG-INFO-08, role: primary}
@@ -79,7 +79,7 @@ activities:
     depends_on: [fingerprint-stack]
     impact: low
     summary: 対象の全 TLS ポートに対して暗号スイート・プロトコル・証明書・HSTS を一括検査する。
-    tools: ["testssl.sh", sslyze, "nmap --script ssl-enum-ciphers"]
+    tools: ["testssl.sh", sslyze, "curl --tls-max"]
     outputs: [cmd/testssl.txt, artifacts/tls-summary.md]
     covers:
       - {id: WSTG-CRYP-01, role: primary}
@@ -93,8 +93,8 @@ activities:
     depends_on: [fingerprint-stack]
     impact: medium
     summary: OPTIONS 応答を鵜呑みにせず、実際に各メソッドを投げて許可状況と挙動差を確認する。
-    tools: [curl, "nmap http-methods NSE", ncat, Burp Repeater]
-    outputs: [cmd/curl-options.txt, cmd/nmap-http-methods.txt]
+    tools: [curl, ncat, Burp Repeater]
+    outputs: [cmd/curl-options.txt, artifacts/http-methods.txt]
     covers:
       - {id: WSTG-CONF-06, role: primary}
       - {id: WSTG-INPV-03, role: secondary, note: "v4.2 では CONF-06 に統合（HTTP verb tampering）"}
@@ -137,8 +137,8 @@ activities:
     depends_on: [recon-osint, fingerprint-stack]
     impact: medium
     summary: DNS/vhost と URL パスをファジングし、同一ホスト上の別アプリ・別インスタンスを洗い出す。
-    tools: [ffuf, dirsearch, gobuster, "nmap -p-"]
-    outputs: [cmd/ffuf-paths.txt, cmd/ffuf-vhost.txt, artifacts/app-inventory.md]
+    tools: [ffuf, dirsearch, gobuster, "curl（ポート確認）", "nmap -p-（社外から手動）"]
+    outputs: [cmd/ffuf-paths.txt, cmd/ffuf-vhost.txt, artifacts/ports-http.txt, artifacts/nmap-allports.txt, artifacts/app-inventory.md]
     covers:
       - {id: WSTG-INFO-04, role: primary}
       - {id: WSTG-INFO-06, role: secondary, note: "発見したパスがエントリポイント洗い出しの入力"}

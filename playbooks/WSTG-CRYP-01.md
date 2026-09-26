@@ -21,25 +21,23 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. `testssl ${https_proxy:+--proxy=auto} --logfile evidence/<活動フォルダ>/artifacts/testssl.log https://target` または `sslyze ${https_proxy:+--https_tunnel="$https_proxy"} --json_out evidence/<活動フォルダ>/artifacts/sslyze.json target:443 || [ $? -eq 1 ]` で全 TLS ポートを一括検査（sslyze v5 は引数なしで標準スキャン。`--regular` は廃止。sslyze は Mozilla intermediate 設定に不適合だと CI 向けに exit 1 を返すが、これは実行失敗ではなく判定材料（出力末尾の COMPLIANCE 節が不適合の理由）なので `|| [ $? -eq 1 ]` で成功扱いにする。プロキシ経由で対象に出る環境では testssl は `--proxy=auto`＝env の http(s)_proxy を使い、sslyze は `--https_tunnel` で CONNECT する。プロキシ配下では一部の低レベル検査が制限されることがあるので、結果に警告が出たら手順4の nmap で裏取りする）。Kali の apt 版（testssl.sh パッケージ）のコマンド名は `.sh` なしの testssl。git clone 版で testssl.sh しか無いときは `sudo ln -s "$(command -v testssl.sh)" /usr/local/bin/testssl` で揃える
+1. `testssl ${https_proxy:+--proxy=auto} --logfile evidence/<活動フォルダ>/artifacts/testssl.log https://target` または `sslyze ${https_proxy:+--https_tunnel="$https_proxy"} --json_out evidence/<活動フォルダ>/artifacts/sslyze.json target:443 || [ $? -eq 1 ]` で全 TLS ポートを一括検査（sslyze v5 は引数なしで標準スキャン。`--regular` は廃止。sslyze は Mozilla intermediate 設定に不適合だと CI 向けに exit 1 を返すが、これは実行失敗ではなく判定材料（出力末尾の COMPLIANCE 節が不適合の理由）なので `|| [ $? -eq 1 ]` で成功扱いにする。プロキシ経由で対象に出る環境では testssl は `--proxy=auto`＝env の http(s)_proxy を使い、sslyze は `--https_tunnel` で CONNECT する。プロキシ配下では一部の低レベル検査が制限されることがあるので、結果に警告が出たら手順4 の curl で裏取りする）。Kali の apt 版（testssl.sh パッケージ）のコマンド名は `.sh` なしの testssl。git clone 版で testssl.sh しか無いときは `sudo ln -s "$(command -v testssl.sh)" /usr/local/bin/testssl` で揃える
    > ⚠️ **負荷注意（手順1）**: testssl / sslyze は多数の TLS ハンドシェイクを張る。低スペックな終端やロードバランサに負荷がかかることがある。
 2. SSLv3/TLS1.0/1.1・弱い暗号スイート（RC4/3DES/EXPORT）・弱い鍵長が有効でないか確認
 3. 証明書の有効期限・発行者・ホスト名一致、既知脆弱性（Heartbleed/ROBOT 等）を確認
-4. `nmap --script ssl-enum-ciphers -p443 -oN evidence/<活動フォルダ>/artifacts/nmap-ssl-ciphers.txt target` で裏取り。結果は artifacts/tls-summary.md に
-   > ⚠️ **負荷注意（手順4）**: `nmap --script ssl-enum-ciphers` も多数のハンドシェイクを試みる。手順1と重ねて連続実行しない。
+4. TLS のバージョンごとに受け付けるかを curl で裏取りする（ポートスキャナはプロキシを通らないため curl で取る）: `for v in 1.0 1.1 1.2 1.3; do curl -sk -o /dev/null -m 10 --tlsv$v --tls-max $v --ciphers 'DEFAULT@SECLEVEL=0' https://target/; rc=$?; case $rc in 0) echo "TLS$v: 受理";; 35) echo "TLS$v: 拒否（ハンドシェイク失敗 curl=35）";; *) echo "TLS$v: 不明（curl=$rc）";; esac; done | tee evidence/<活動フォルダ>/artifacts/tls-versions.txt; grep -q '受理' evidence/<活動フォルダ>/artifacts/tls-versions.txt || { echo "どの TLS バージョンでも接続できない＝対象に届いていない。プロキシ配下なら https_proxy が設定されているか確認する（curl -sI https://target/ で疎通確認）" >&2; exit 3; }`。TLS1.0/1.1 が「受理」なら fail 材料。「拒否」は手元の OpenSSL が古い版を無効にしている場合もあるので、手順1 の testssl/sslyze の結果を正とする。社内プロキシが TLS インスペクションをしているとプロキシの TLS を見てしまうので、手順3 で証明書の発行者が対象のものか確かめる。結果は artifacts/tls-summary.md に
 
 ## ⚠️ 負荷・レート制限・想定外への注意
 
 本調査は社内のプライベートネットワークで行う前提だが、想定外（古い機器・共有アカウント・外部 API 依存）は起こりうる。次の手順は**対象や外部サービスに負荷をかける／レート制限・アカウントロック・DoS を誘発しうる**。実施前に時間帯・範囲の合意を確認し、少量から段階的に。
 
 - **手順1**: testssl / sslyze は多数の TLS ハンドシェイクを張る。低スペックな終端やロードバランサに負荷がかかることがある。
-- **手順4**: `nmap --script ssl-enum-ciphers` も多数のハンドシェイクを試みる。手順1と重ねて連続実行しない。
 
 ## 使用ツール
 
 - testssl.sh
 - sslyze
-- nmap
+- curl
 
 ## 判定基準（pass / fail の見分け）
 

@@ -41,7 +41,7 @@ WSTG の Test Objectives:
 
 - `commands:` — `scripts/run_activity.py`（手順を実行）/ `run_cmd.py`（単発）が自動で残す
 - 手動手順（GUI・Burp 等）の観察は `artifacts/manual-*.txt` に書く
-- `artifacts:` — `cmd/curl-options.txt`, `cmd/nmap-http-methods.txt`
+- `artifacts:` — `cmd/curl-options.txt`, `artifacts/http-methods.txt`
 - `covers:` — `{id: WSTG-CONF-06, verdict: pass|fail|info|na, finding: 要約, evidence: パス}`
 
 ## カバーするアクティビティ
