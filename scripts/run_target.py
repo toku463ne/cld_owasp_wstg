@@ -50,6 +50,7 @@ from run_activity import (  # noqa: E402
     select_steps, execute_steps, manual_run_steps, manual_not_done,
 )
 from new_activity import manual_run_hint, load_overrides  # noqa: E402
+import sites  # noqa: E402
 
 # primary_owners / split_delegated は new_activity に移動（run_activity 単体実行でも同じ委譲を
 # 使えるようにするため）。ここでは import して従来どおりの名前で使う。
@@ -60,7 +61,7 @@ def main() -> int:
     ap.add_argument("--target", required=True, help="対象サイト（1つ固定。フォルダ名・コマンドの target 置換に使う）")
     ap.add_argument("--date", default=None, help="yyyymmdd（既定: 今日）")
     ap.add_argument("--tester", default="TOKU")
-    ap.add_argument("--root", default=None, help="出力先ルート（既定: evidence/）")
+    sites.add_site_args(ap)
     ap.add_argument("--only", help="アクティビティ ID をカンマ区切りで指定（既定: 全部）")
     ap.add_argument("--timeout", type=int, help="1コマンドあたりの秒。超えたら中断して記録")
     ap.add_argument("--list", action="store_true", help="実施予定（作成/実行対象）を出して終了")
@@ -76,7 +77,12 @@ def main() -> int:
 
     import datetime as _dt
     date = args.date or _dt.date.today().strftime("%Y%m%d")
-    root = args.root or str((Path(__file__).resolve().parent.parent) / "evidence")
+    try:
+        root = sites.resolve_root(args.root, args.site, create=True)
+    except sites.SiteError as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    root = str(root)
     skip_done = not args.rerun_all
     stop_on_error = not args.keep_going
 

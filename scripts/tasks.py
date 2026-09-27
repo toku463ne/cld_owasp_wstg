@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """実施タスクリストの生成と、進捗の表示。
 
-    uv run scripts/tasks.py            # 今の進捗と「次にやること」を表示
+    uv run scripts/tasks.py [--site <サイト>]  # 今の進捗と「次にやること」を表示
     uv run scripts/tasks.py --write    # TASKS.md を再生成（順序・フェーズの変更後）
     uv run scripts/tasks.py --check    # TASKS.md が最新か確認（selftest 用）
 
 順序の元データは matrix/coverage.yaml の phases: と各アクティビティの
-phase / order / depends_on / impact。進捗は evidence/*/run.yaml の verdict から判定する
+phase / order / depends_on / impact。進捗は evidence/<サイト>/*/run.yaml の verdict から判定する
 （要約フィールドのみを読み、cmd/ や artifacts/ の中身は開かない）。
 """
 
@@ -19,6 +19,9 @@ from pathlib import Path
 
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import sites  # noqa: E402
+
 try:  # 手順からコマンド（＝必要ツール）を拾うため new_activity と共有する
     from new_activity import extract_commands
 except ImportError:
@@ -30,7 +33,6 @@ COVERAGE_YAML = REPO_ROOT / "matrix" / "coverage.yaml"
 WSTG_TESTS = REPO_ROOT / "matrix" / "wstg_tests.yaml"
 CRITERIA_YAML = REPO_ROOT / "matrix" / "criteria.yaml"
 TASKS_MD = REPO_ROOT / "TASKS.md"
-DEFAULT_EVIDENCE = REPO_ROOT / "evidence"
 
 IMPACT_LABEL = {"low": "低", "medium": "中", "high": "高（要事前合意）"}
 DONE, DOING, TODO = "完了", "実施中", "未着手"
@@ -250,7 +252,7 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
     w("- チームで共有する: `uv run scripts/serve_record.py --behind-proxy` を nginx（TLS＋認証）の後ろで動かす")
     w("  （設定例は `templates/nginx/wstg.conf`。編集者名は nginx の認証ユーザで残る）")
     w("- 各アクティビティの `record.html`（WSTG-ID ごとのタブ）で、出力・スクショの『📎 所見に添付』から所見を作れる。")
-    w("  1つの WSTG に複数の所見、1つの所見に複数の WSTG・エビデンスを紐づけられる（`evidence/_findings/F-*.md`）")
+    w("  1つの WSTG に複数の所見、1つの所見に複数の WSTG・エビデンスを紐づけられる（`evidence/<サイト>/_findings/F-*.md`）")
     w("- 所見の深刻度は選ばない。CVSS v3.1 の設問（起こりやすさ4問＋影響4問）に答えると自動で決まる")
     w("- ファイルだけで見るなら `record.html` をダブルクリック（`file://`。編集・添付はできない）")
     w("")
@@ -278,12 +280,12 @@ def render_tasks_md(coverage: dict, tests: dict, criteria: dict) -> str:
         w(f"- カード: {', '.join(f'[{c}](playbooks/{c}.md)' for c in covers)}")
         w("")
         tools = ", ".join(a.get("tools", []))
-        w(f"- [ ] `uv run scripts/new_activity.py {a['id']}` でフォルダ一式を作る"
-          "（複数サイトは `--target <site>`）")
-        w(f"- [ ] `uv run scripts/run_activity.py evidence/{a['id']}-<yyyymmdd>` で"
+        w(f"- [ ] `uv run scripts/new_activity.py {a['id']} --site <サイト>` でフォルダ一式を作る"
+          "（対象は `--target <対象>`）")
+        w(f"- [ ] `uv run scripts/run_activity.py evidence/<サイト>/{a['id']}-<yyyymmdd>` で"
           f"コマンド手順（{len(covers)} 項目・{tools}）を実行 ← `cmd/` に純粋なエビデンスが残る")
         w("      - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く")
-        w(f"      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/{a['id']}-<yyyymmdd> -- <コマンド>`")
+        w(f"      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/{a['id']}-<yyyymmdd> -- <コマンド>`")
         w("- [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入"
           "（`run.yaml` の covers を直接編集してもよい）")
         w("- [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）")
@@ -332,9 +334,9 @@ def show_progress(coverage: dict, evidence_root: Path) -> int:
         print(f"次にやること: {nxt['order']}. {nxt['id']} — {nxt.get('title','')}")
         state = progress[nxt["id"]]["state"]
         if state == TODO:
-            print(f"  uv run scripts/new_activity.py {nxt['id']}")
+            print(f"  uv run scripts/new_activity.py {nxt['id']} --site {evidence_root.name}")
         else:
-            print(f"  run.yaml の covers を埋める: evidence/{progress[nxt['id']]['dirs'][0]}/run.yaml")
+            print(f"  run.yaml の covers を埋める: {evidence_root / progress[nxt['id']]['dirs'][0] / 'run.yaml'}")
         if len(ready) > 1:
             print(f"  （並行して着手可: {', '.join(a['id'] for a in ready[1:4])}）")
     else:
@@ -346,7 +348,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--write", action="store_true", help="TASKS.md を生成する")
     ap.add_argument("--check", action="store_true", help="TASKS.md が最新か確認する")
-    ap.add_argument("--root", default=str(DEFAULT_EVIDENCE), help="エビデンスのルート（既定: evidence/）")
+    sites.add_site_args(ap)
     ap.add_argument("--out", default=str(TASKS_MD), help="TASKS.md の出力先")
     args = ap.parse_args()
 
@@ -365,7 +367,12 @@ def main() -> int:
         print(f"{out.name} を生成: {len(coverage['activities'])} アクティビティ")
         return 0
 
-    return show_progress(coverage, Path(args.root))
+    try:
+        root = sites.resolve_root(args.root, args.site)
+    except sites.SiteError as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    return show_progress(coverage, root)
 
 
 if __name__ == "__main__":

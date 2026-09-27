@@ -20,8 +20,8 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. 認証済みの機微画面の URL と Cookie をブラウザで用意する（手動）: ログインしてマイページ・個人情報・決済・設定など機微な画面を開き、アドレスバーの URL を evidence/<活動フォルダ>/artifacts/auth-urls.txt に1行1件で書く → F12 → Network でその画面のリクエストをクリック → 「Request Headers」の `Cookie:` の値（名前=値; …）をコピーし evidence/<活動フォルダ>/artifacts/cookie-header.txt に1行で保存
-2. 手順1 の各 URL のキャッシュ抑止ヘッダを一括確認する: `test -s evidence/<活動フォルダ>/artifacts/auth-urls.txt -a -s evidence/<活動フォルダ>/artifacts/cookie-header.txt || exit 75; ck=$(sed -E 's/^cookie: *//I' evidence/<活動フォルダ>/artifacts/cookie-header.txt | tr -d '\r\n'); while read -r u; do echo "== $u =="; curl -sI -b "$ck" "$u" | grep -iE '^(cache-control|pragma|expires):'; done < evidence/<活動フォルダ>/artifacts/auth-urls.txt | tee evidence/<活動フォルダ>/artifacts/cache-headers.txt`。`no-store`（理想）/`no-cache`/`private` が無い・`max-age>0`＝ディスクにキャッシュされ得る
+1. 認証済みの機微画面の URL と Cookie をブラウザで用意する（手動）: ログインしてマイページ・個人情報・決済・設定など機微な画面を開き、アドレスバーの URL を evidence/<サイト>/<活動フォルダ>/artifacts/auth-urls.txt に1行1件で書く → F12 → Network でその画面のリクエストをクリック → 「Request Headers」の `Cookie:` の値（名前=値; …）をコピーし evidence/<サイト>/<活動フォルダ>/artifacts/cookie-header.txt に1行で保存
+2. 手順1 の各 URL のキャッシュ抑止ヘッダを一括確認する: `test -s evidence/<サイト>/<活動フォルダ>/artifacts/auth-urls.txt -a -s evidence/<サイト>/<活動フォルダ>/artifacts/cookie-header.txt || exit 75; ck=$(sed -E 's/^cookie: *//I' evidence/<サイト>/<活動フォルダ>/artifacts/cookie-header.txt | tr -d '\r\n'); while read -r u; do echo "== $u =="; curl -sI -b "$ck" "$u" | grep -iE '^(cache-control|pragma|expires):'; done < evidence/<サイト>/<活動フォルダ>/artifacts/auth-urls.txt | tee evidence/<サイト>/<活動フォルダ>/artifacts/cache-headers.txt`。`no-store`（理想）/`no-cache`/`private` が無い・`max-age>0`＝ディスクにキャッシュされ得る
 3. ログアウト後にブラウザの「戻る」で認証済み画面が再表示されないか確認
 4. 機微画面をディスクキャッシュから復元できないか確認する: 認証済みで機微画面を開いた後、DevTools→Network で当該レスポンスを再読込し `(from disk cache)` と出るか、または about:cache（Firefox）/ ブラウザのキャッシュ保存先に当該 URL のエントリが残るか。残る＝ログアウトや別ユーザでもディスクから中身を復元され得る（共用端末で漏えい）
 5. 機微画面でキャッシュ抑止がない場合、共用端末での漏えいリスクとして finding に

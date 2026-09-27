@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""全 evidence/*/run.yaml と所見を WSTG-ID 主キーで集約し、checklist_export.csv を出力する。
+"""サイト（evidence/<サイト>/）の全 run.yaml と所見を WSTG-ID 主キーで集約し、checklist_export.csv を出力する。
 
     uv run scripts/export_checklist.py
-    uv run scripts/export_checklist.py --root evidence --out checklist_export.csv --summary
+    uv run scripts/export_checklist.py --site example --out checklist_export.csv --summary
 
 日常の確認は Web（serve_record.py の WSTG 索引）で行う。CSV は報告書に添付する等、
 一覧を外に持ち出すときの出力（Web の /export.csv からも同じものが取れる）。
@@ -27,9 +27,11 @@ from pathlib import Path
 
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import sites  # noqa: E402
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WSTG_TESTS = REPO_ROOT / "matrix" / "wstg_tests.yaml"
-DEFAULT_ROOT = REPO_ROOT / "evidence"
 DEFAULT_OUT = REPO_ROOT / "checklist_export.csv"
 
 # 数字が小さいほど「注意すべき」＝集約時に勝つ
@@ -54,7 +56,7 @@ def load_tests() -> dict:
 
 
 def load_findings(root: Path) -> list:
-    """evidence/_findings/ の所見（無ければ空）。"""
+    """evidence/<サイト>/_findings/ の所見（無ければ空）。"""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import findings as _findings
     return _findings.list_all(root) if root.exists() else []
@@ -184,12 +186,16 @@ def print_summary(rows: list[dict]) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--root", default=str(DEFAULT_ROOT), help="エビデンスのルート（既定: evidence/）")
+    sites.add_site_args(ap)
     ap.add_argument("--out", default=str(DEFAULT_OUT), help="出力 CSV（既定: checklist_export.csv）")
     ap.add_argument("--summary", action="store_true", help="ステータス別の件数を表示する")
     args = ap.parse_args()
 
-    root = Path(args.root)
+    try:
+        root = sites.resolve_root(args.root, args.site)
+    except sites.SiteError as exc:
+        print(exc, file=sys.stderr)
+        return 2
     tests = load_tests()
     runs = collect_runs(root) if root.exists() else []
     if not root.exists():

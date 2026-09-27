@@ -6,7 +6,7 @@
     uv run scripts/new_activity.py recon-osint --target example.com   # 複数サイトはこれ
 
 生成物:
-    evidence/<activity_id>[-<target>]-<yyyymmdd>/
+    evidence/<サイト>/<activity_id>[-<target>]-<yyyymmdd>/
       run.yaml       covers: を matrix/coverage.yaml から自動プリフィル（verdict: todo）。
                      判定（verdict / finding=1行見出し）はこの covers に直接書く（唯一の判定置き場。
                      finding は複数行にしたいとき YAML ブロック `finding: |` で書ける）
@@ -22,7 +22,7 @@
     1. uv run scripts/run_activity.py <このフォルダ>       # コマンド手順を実行→cmd/ に純粋なエビデンス
     2. 手動手順は artifacts/manual-*.txt に観察を書く（Burp・ヒアリング等）
     3. run.yaml の covers に verdict / finding（判定理由の1行）を記入（Web の record.html からも書ける）。
-       問題を見つけたら所見（evidence/_findings/F-*.md。scripts/findings.py）を作り、エビデンスを添付する
+       問題を見つけたら所見（evidence/<サイト>/_findings/F-*.md。scripts/findings.py）を作り、エビデンスを添付する
     4. uv run scripts/gen_record.py <このフォルダ>        # record.html を最新化（serve_record 経由なら自動）
     5. uv run scripts/export_checklist.py                 # run.yaml → CSV（目視レビュー後に共有）
 
@@ -169,6 +169,9 @@ RECORD_HTML = r"""<!DOCTYPE html>
   .nav{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:.85rem;margin:0 0 14px;
        padding-bottom:8px;border-bottom:1px solid var(--line);}
   .nav a{color:inherit;} .nav .who{margin-left:auto;color:var(--mut);}
+  .sitebox{font-size:.8rem;color:var(--mut);}
+  .sitebox select{font:inherit;font-size:.85rem;font-weight:700;padding:1px 4px;border:1px solid var(--line);
+                  border-radius:6px;background:var(--bg);color:var(--fg);}
   a.attach{font-size:.78rem;} a.anchor{margin-left:6px;color:var(--mut);text-decoration:none;font-size:.8rem;}
   .step.hl{outline:2px solid #e0a000;outline-offset:6px;border-radius:4px;}
   .drop{margin:8px 0;padding:8px 10px;border:1px dashed var(--line);border-radius:8px;font-size:.8rem;
@@ -217,7 +220,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
   function evPath(rel) { return folder + "/" + rel; }      // evidence ルートからの相対パス
   function q(obj) { return Object.keys(obj).map(function (k) {
     return encodeURIComponent(k) + "=" + encodeURIComponent(obj[k]); }).join("&"); }
-  function findingHref(id) { return served ? "/findings/" + id : "../_findings/" + id + ".md"; }
+  function findingHref(id) { return served ? "../findings/" + id : "../_findings/" + id + ".md"; }
   function post(url, obj) {   // 書き込み API は独自ヘッダ必須（CSRF 対策。serve_record.py が検査）
     return fetch(url, { method: "POST",
       headers: { "Content-Type": "application/json", "X-WSTG-Request": "1" },
@@ -240,7 +243,17 @@ RECORD_HTML = r"""<!DOCTYPE html>
   app.innerHTML = "";
   if (served) {
     var nav = el("nav", "nav");
-    [["/", "ダッシュボード"], ["/tasks", "タスク"], ["/wstg/", "WSTG 索引"], ["/findings/", "所見"]]
+    if ((info.sites || []).length) {   // サイト切替（選ぶとそのサイトのダッシュボードへ）
+      var sw = el("label", "sitebox", "サイト ");
+      var sel = document.createElement("select");
+      info.sites.forEach(function (n) {
+        var o = el("option", null, n); o.value = n; o.selected = n === info.site; sel.appendChild(o);
+      });
+      sel.addEventListener("change", function () { location.href = "/" + encodeURIComponent(sel.value) + "/"; });
+      sw.appendChild(sel); nav.appendChild(sw);
+    }
+    // record.html は /<サイト>/<フォルダ>/record.html にあるので、サイト内のページは ../ から辿る
+    [["../", "ダッシュボード"], ["../tasks", "タスク"], ["../wstg/", "WSTG 索引"], ["../findings/", "所見"]]
       .forEach(function (x) { nav.appendChild(link(x[0], null, x[1])); });
     if (info.user || !canEdit) nav.appendChild(el("span", "who", "👤 " + info.user + (canEdit ? "" : "（閲覧専用）")));
     app.appendChild(nav);
@@ -279,7 +292,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
   }
 
   function attachLink(wid, rel) {   // このエビデンスを所見に添付（新規 or 既存を選ぶページへ）
-    return link("/findings/attach?" + q({ wid: wid, ev: evPath(rel) }), "attach", "📎 所見に添付");
+    return link("../findings/attach?" + q({ wid: wid, ev: evPath(rel) }), "attach", "📎 所見に添付");
   }
 
   function addShots(parent, imgs, wid) {
@@ -505,7 +518,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
     var head = el("div", "cap", "所見（" + (it.findings || []).length + " 件）");
     if (canEdit) {
       head.appendChild(document.createTextNode("  "));
-      head.appendChild(link("/findings/new?" + q({ wid: it.wid, ev: folder + "/" }), "attach", "＋ 所見を作成"));
+      head.appendChild(link("../findings/new?" + q({ wid: it.wid, ev: folder + "/" }), "attach", "＋ 所見を作成"));
     }
     w.appendChild(head);
     (it.findings || []).forEach(function (f) {
@@ -580,7 +593,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
   function renderItem(it) {
     var box = el("div", "item");
     var h = el("h2");
-    h.appendChild(served ? link("/wstg/" + it.wid, null, it.wid) : el("span", null, it.wid));
+    h.appendChild(served ? link("../wstg/" + it.wid, null, it.wid) : el("span", null, it.wid));
     if (it.title) h.appendChild(el("span", "role", it.title));
     h.appendChild(el("span", "badge v-" + (it.verdict || "todo"), (it.verdict || "todo").toUpperCase()));
     h.appendChild(el("span", "role", it.role));
@@ -723,7 +736,7 @@ RECORD_HTML = r"""<!DOCTYPE html>
   }
 
   if (served) {
-    fetch("/api/info").then(function (r) { return r.json(); })
+    fetch("../api/info").then(function (r) { return r.json(); })
       .then(function (x) { info = x || info; }).catch(function () {}).then(start);
   } else {
     start();
@@ -1203,7 +1216,7 @@ def build_evidence(activity: dict, tests: dict, criteria: dict, target,
     """
     run = _load_run_yaml(activity_dir)
     covers = {c["id"]: c for c in (run.get("covers") or [])}
-    # この WSTG-ID に紐づく所見（evidence/_findings/F-*.md）。record.html に一覧とリンクを出す。
+    # この WSTG-ID に紐づく所見（evidence/<サイト>/_findings/F-*.md）。record.html に一覧とリンクを出す。
     linked = _linked_findings(activity_dir.parent)
 
     def has_output(rel: str) -> bool:
@@ -1328,15 +1341,19 @@ def find_activity_dirs(missing: Path) -> list:
     `--target` を付けた活動はフォルダ名に対象が入る（recon-osint-example.com-YYYYMMDD）ので、
     `evidence/recon-osint-YYYYMMDD` のように target 抜きで叩いたときに拾えるようにする。
     """
+    import sites
     parent = missing.parent
-    if str(parent) in ("", ".") or not parent.exists():
-        parent = REPO_ROOT / "evidence"
+    if str(parent) in ("", ".") or not parent.exists() or parent.resolve() == sites.EVIDENCE_BASE.resolve():
+        # evidence/<フォルダ> のようにサイトを抜かして叩いたときは全サイトから探す
+        parents = [sites.EVIDENCE_BASE / n for n in sites.list_sites()] + [sites.EVIDENCE_BASE]
+    else:
+        parents = [parent]
     prefix = re.sub(r"-\d{8}$", "", missing.name)   # 末尾の -YYYYMMDD を落として活動 ID を残す
     out = []
-    if parent.exists():
-        for d in sorted(parent.iterdir()):
-            if d.is_dir() and (d / "run.yaml").exists() and d.name.startswith(prefix):
-                out.append(d)
+    for p in parents:
+        if p.exists():
+            out += [d for d in sorted(p.iterdir())
+                    if d.is_dir() and (d / "run.yaml").exists() and d.name.startswith(prefix)]
     return out
 
 
@@ -1479,7 +1496,7 @@ def render_run_yaml(activity: dict, tests: dict, date: str, tester: str, target:
         f"# {activity['id']} — {activity.get('title', '')}",
         "# finding は CSV に載る1行の見出し（要約のみ。生値は書かず evidence: で参照）。",
         "# 複数行で書きたいときは finding: | にして次行からインデントして書く（CSV では1行に畳まれる）。",
-        "# 問題を見つけたら所見（evidence/_findings/F-*.md）を作る。1つの WSTG に複数の所見を紐づけられる。",
+        "# 問題を見つけたら所見（evidence/<サイト>/_findings/F-*.md）を作る。1つの WSTG に複数の所見を紐づけられる。",
         f"activity_id: {activity['id']}",
         f"title: {_yaml_str(activity.get('title', ''))}",
         f"date: {iso_date(date)}",
@@ -1640,7 +1657,8 @@ def main() -> int:
     ap.add_argument("--date", default=_dt.date.today().strftime("%Y%m%d"), help="yyyymmdd（既定: 今日）")
     ap.add_argument("--tester", default="TOKU")
     ap.add_argument("--target", help="対象サイト（複数サイト時。フォルダ名とコマンドの target 置換に使う）")
-    ap.add_argument("--root", default=str(REPO_ROOT / "evidence"), help="出力先ルート（既定: evidence/）")
+    import sites
+    sites.add_site_args(ap)
     ap.add_argument("--force", action="store_true", help="既存フォルダがあっても run.yaml 以外を作り直す")
     args = ap.parse_args()
 
@@ -1665,8 +1683,14 @@ def main() -> int:
         return 2
 
     activity = activities[args.activity_id]
+    try:
+        root = sites.resolve_root(args.root, args.site, create=True)
+    except sites.SiteError as exc:
+        import sys
+        print(exc, file=sys.stderr)
+        return 2
     result = create_activity(activity, tests, criteria, target=args.target,
-                             date=args.date, tester=args.tester, root=args.root,
+                             date=args.date, tester=args.tester, root=str(root),
                              force=args.force)
     if not result["created"]:
         print(f"既に存在します: {result['target_dir'] / 'run.yaml'}（上書きしません）")
@@ -1688,7 +1712,7 @@ def main() -> int:
           "  でコマンド手順を実行→エビデンスと evidence.js を更新")
     print(f"  判定: {run_yaml} の covers に verdict / finding（1行見出し）を直接記入")
     print("  所見: 問題を見つけたら Web の record.html の『＋ 所見を作成』"
-          "（または uv run scripts/findings.py new）で evidence/_findings/ に作る")
+          f"（または uv run scripts/findings.py new）で {target_dir.parent / '_findings'}/ に作る")
     print(f"  反映: uv run scripts/gen_record.py {target_dir}（serve_record.py 経由なら自動）")
     return 0
 

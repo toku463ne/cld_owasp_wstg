@@ -1,6 +1,6 @@
 # run.yaml — 収集アクティビティ1回分のメタデータ
 #
-# 置き場所: evidence/<activity_id>-<yyyymmdd>/run.yaml
+# 置き場所: evidence/<サイト>/<activity_id>-<yyyymmdd>/run.yaml
 #   cmd/        CLI の生 stdout/stderr（scripts/run_cmd.py が保存）
 #   artifacts/  Burp エクスポート・スクショ・スキャンレポート
 #   notes.md    自由記述

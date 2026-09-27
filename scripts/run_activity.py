@@ -346,7 +346,7 @@ def run_command(run: dict, step: dict, activity_dir: Path, timeout: int | None) 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("activity_dir", help="evidence/<activity_id>[-<target>]-<yyyymmdd>")
+    ap.add_argument("activity_dir", help="evidence/<サイト>/<activity_id>[-<target>]-<yyyymmdd>")
     ap.add_argument("--only", help="WSTG-ID または WSTG-ID:手順番号 に絞る")
     ap.add_argument("--list", action="store_true", help="手順一覧を出して終了（実行しない）")
     ap.add_argument("--dry-run", action="store_true", help="実行せず、走らせるコマンドだけ表示")

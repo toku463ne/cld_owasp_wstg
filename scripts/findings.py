@@ -5,7 +5,7 @@
     uv run scripts/findings.py new --title "…" --wstg WSTG-ATHZ-01 [--evidence <フォルダ>/cmd/x.txt]
     uv run scripts/findings.py migrate              # 旧 findings.md（WSTG ごとの本文）を F ファイルへ移す
 
-所見は 1件 = 1ファイル（evidence/_findings/F-001.md）。WSTG-ID とは多対多で、1つの WSTG に
+所見は 1件 = 1ファイル（evidence/<サイト>/_findings/F-001.md）。WSTG-ID とは多対多で、1つの WSTG に
 複数の所見を、1つの所見に複数の WSTG・複数アクティビティのエビデンスを紐づけられる。
 ファイルは YAML の front matter（メタデータ）＋ Markdown 本文:
 
@@ -47,11 +47,11 @@ import yaml
 
 SCRIPTS = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS.parent
-DEFAULT_ROOT = REPO_ROOT / "evidence"
 WSTG_TESTS = REPO_ROOT / "matrix" / "wstg_tests.yaml"
 
 sys.path.insert(0, str(SCRIPTS))
 import cvss31  # noqa: E402
+import sites  # noqa: E402
 
 FINDINGS_DIRNAME = "_findings"
 ID_RE = re.compile(r"^F-\d{3,}$")
@@ -228,12 +228,15 @@ def _now() -> str:
 def normalize_evidence(root: Path, rel: str) -> str:
     """evidence ルートからの相対パスに正規化し、実在と範囲を確かめる。"""
     rel = str(rel).strip().replace("\\", "/")
+    base = Path(root).resolve()
     if rel.startswith("evidence/"):
         rel = rel[len("evidence/"):]
+        site = base.name + "/"   # evidence/<サイト>/<フォルダ>/... と書かれたらサイトの分も外す
+        if rel.startswith(site) and not (base / base.name / "run.yaml").exists():
+            rel = rel[len(site):]
     rel = rel.lstrip("/")
     if not rel:
         raise FindingError("エビデンスのパスが空です")
-    base = Path(root).resolve()
     target = (base / rel).resolve()
     try:
         parts = target.relative_to(base).parts
@@ -412,7 +415,7 @@ def _load_tests() -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--root", default=str(DEFAULT_ROOT), help="evidence ルート（既定: evidence/）")
+    sites.add_site_args(ap)
     sub = ap.add_subparsers(dest="cmd")
     sub.add_parser("list", help="所見の一覧")
     p_new = sub.add_parser("new", help="所見を作る（本文は Web かエディタで書く）")
@@ -424,7 +427,11 @@ def main() -> int:
     p_mig = sub.add_parser("migrate", help="旧 findings.md を F ファイルへ移行する")
     p_mig.add_argument("--dry-run", action="store_true", help="作る予定だけ表示する")
     args = ap.parse_args()
-    root = Path(args.root)
+    try:
+        root = sites.resolve_root(args.root, args.site)
+    except sites.SiteError as exc:
+        print(exc, file=sys.stderr)
+        return 2
 
     if args.cmd == "new":
         try:

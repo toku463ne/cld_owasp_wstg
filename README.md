@@ -24,14 +24,14 @@ matrix/coverage.yaml（アクティビティ定義・実施順）
    │ tasks.py --write ─▶ TASKS.md（実施順チェックリスト）
    │ new_activity.py
    ▼
-evidence/<activity>[-<target>]-<date>/
+evidence/<サイト>/<activity>[-<target>]-<date>/   （サイト＝対象サイト・案件ごとのフォルダ）
    ├ cmd/ + artifacts/（run_activity.py が手順を実行＝純粋なエビデンス）
    ├ record.html ─(iframe参照)▶ cmd/・artifacts/ の各ファイル（evidence.js はメタデータのみ）
    └ run.yaml（covers に判定＝verdict と判定理由）
-evidence/_findings/F-*.md（所見。WSTG と多対多・CVSS ベクトル・エビデンスへのパス）
-evidence/_state/checks.yaml（タスクの手動チェック）
+evidence/<サイト>/_findings/F-*.md（所見。WSTG と多対多・CVSS ベクトル・エビデンスへのパス）
+evidence/<サイト>/_state/checks.yaml（タスクの手動チェック）
    │
-   ▼ serve_record.py（127.0.0.1）◀── nginx（TLS＋認証）◀── チーム
+   ▼ serve_record.py（127.0.0.1）◀── nginx（TLS＋認証）◀── チーム   URL は /<サイト>/…（上部のリストで切替）
    /           ダッシュボード       /tasks      指示書＋チェックリスト
    /wstg/      WSTG 索引（完了状況）/findings/  所見（深刻度は CVSS から自動）
    /<act>/record.html 実施記録      /export.csv 一覧（外に出すとき）
@@ -175,7 +175,7 @@ CPU 100%・502/503/504 になることがある。**環境変数 `WSTG_PAUSE`（
 
 ```bash
 export WSTG_PAUSE=2          # まず2秒。まだ落ちるなら 3〜5 に上げる
-uv run scripts/run_activity.py evidence/<活動フォルダ> --only WSTG-CONF-01:3   # nikto をゆっくり
+uv run scripts/run_activity.py evidence/<サイト>/<活動フォルダ> --only WSTG-CONF-01:3   # nikto をゆっくり
 ```
 
 | ツール | `WSTG_PAUSE` の効き方（設定時） |
@@ -213,7 +213,7 @@ Burp の起動・内蔵ブラウザでの接続・上流プロキシの設定は
    ```bash
    # 例: ブラウザで手動ログイン（CAPTCHA を解く）→ Cookie をエクスポート（拡張機能や
    #     DevTools→Application→Cookies）→ cookies.txt（Netscape 形式）に保存してから:
-   uv run scripts/run_cmd.py evidence/<活動フォルダ> --slug authed-home \
+   uv run scripts/run_cmd.py evidence/<サイト>/<活動フォルダ> --slug authed-home \
      -- curl -s -b cookies.txt -D - https://target/mypage -o /dev/null
    ```
 
@@ -234,15 +234,40 @@ CAPTCHA そのものの強度・レート制限は別途 `WSTG-ATHN-*` / `WSTG-B
 Web の「タスク」（テキスト版は `TASKS.md`）を上から消化していく。1本のアクティビティで踏むのは 1〜2c、
 区切りのたびに 3〜4 を回す。
 
+### 0. サイトを選ぶ（対象サイト・案件ごとのフォルダ）
+
+エビデンス・所見・タスクの✓・CSV は **サイトごとに独立**している（`evidence/<サイト>/`。所見番号も
+サイトごとに F-001 から）。別のサイトを始めるときは `--site <サイト名>` を付けるだけでフォルダが作られる。
+
+```bash
+uv run scripts/run_target.py --site example --target www.example.com --list
+export WSTG_SITE=example      # 毎回 --site を書かない（サイトが1つだけなら省略可）
+```
+
+`--site` を受け取るのは `new_activity.py`・`run_target.py`・`findings.py`・`tasks.py`・`export_checklist.py`。
+活動フォルダを渡すスクリプト（`run_activity.py`・`gen_record.py`・`save_shot.py`・`run_cmd.py`）は
+フォルダのパス（`evidence/<サイト>/<活動フォルダ>`）がそのままサイトを表すので不要。
+Web は `/<サイト>/…` の URL になり、画面上部の「サイト」リストボックスで切り替える（同じ種類のページのまま移る）。
+
+サイト分け前の構成（`evidence/` 直下に実施フォルダ・`_findings/`）は、一度だけ移行する:
+
+```bash
+uv run scripts/migrate_site.py <サイト名> --dry-run   # 移すものと、書き換える記録済みコマンドの箇所数
+uv run scripts/migrate_site.py <サイト名>
+```
+
+記録済みコマンドのパス（`run.yaml` と `cmd/*.txt` の `$` 行）も新しい場所に書き換えるので、
+`--skip-done` で取り直しにはならない（コマンドの出力・artifacts・所見の本文は触らない）。
+
 ### 1. アクティビティを開始する
 
 ```bash
-uv run scripts/new_activity.py burp-crawl-authn
-# -> evidence/burp-crawl-authn-20260908/{run.yaml,record.html,evidence.js,cmd/,artifacts/,notes.md}
+uv run scripts/new_activity.py burp-crawl-authn --site example
+# -> evidence/example/burp-crawl-authn-20260908/{run.yaml,record.html,evidence.js,cmd/,artifacts/,notes.md}
 
-# 複数サイトは --target で名前空間を分ける（手順のコマンドの target も置換される）
-uv run scripts/new_activity.py recon-osint --target example.com
-# -> evidence/recon-osint-example.com-20260913/
+# --target で対象を入れる（フォルダ名と、手順のコマンドの target が置換される）
+uv run scripts/new_activity.py recon-osint --site example --target example.com
+# -> evidence/example/recon-osint-example.com-20260913/
 ```
 
 `burp-crawl-authn` は `matrix/coverage.yaml` に定義された収集アクティビティ ID の一例
@@ -301,7 +326,8 @@ secondary、server-config-review が primary）、一括ではその ID のコ�
 | `--rerun-all` | 前回成功したコマンドも再実行する（既定は成功分をスキップ） |
 | `--keep-going` | 非0終了が出ても止めず最後まで回す（既定はそこで打ち切り） |
 | `--timeout <秒>` | 1コマンドあたりの上限。超えたら中断して記録 |
-| `--tester` / `--root` | 実施者名（既定 TOKU）/ 出力先ルート（既定 `evidence/`） |
+| `--site <名前>` | サイト（`evidence/<名前>/`。無ければ作る。`WSTG_SITE` でも可。サイトが1つだけなら省略可） |
+| `--tester` / `--root` | 実施者名（既定 TOKU）/ サイトを使わず出力先を直接指定（一時フォルダでの確認用） |
 
 **挙動の要点**:
 
@@ -330,13 +356,13 @@ secondary、server-config-review が primary）、一括ではその ID のコ�
 毎回組み立て、target は `run.yaml` の対象に、出力先はこのフォルダの `artifacts/` に置換される。
 
 ```bash
-uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913            # コマンド手順を全部実行
-uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --list     # 手順一覧（実行しない）
-uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --only WSTG-INFO-02      # ID を絞る
-uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --only WSTG-INFO-02:4    # 手順を絞る
-uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --dry-run  # 実行内容の確認だけ
-uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --skip-done # 前回成功したコマンドは飛ばす（再開。コマンドが変わったものは再実行）
-uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --stop-on-error # 非0終了でそこで打ち切り
+uv run scripts/run_activity.py evidence/example/recon-osint-example.com-20260913            # コマンド手順を全部実行
+uv run scripts/run_activity.py evidence/example/recon-osint-example.com-20260913 --list     # 手順一覧（実行しない）
+uv run scripts/run_activity.py evidence/example/recon-osint-example.com-20260913 --only WSTG-INFO-02      # ID を絞る
+uv run scripts/run_activity.py evidence/example/recon-osint-example.com-20260913 --only WSTG-INFO-02:4    # 手順を絞る
+uv run scripts/run_activity.py evidence/example/recon-osint-example.com-20260913 --dry-run  # 実行内容の確認だけ
+uv run scripts/run_activity.py evidence/example/recon-osint-example.com-20260913 --skip-done # 前回成功したコマンドは飛ばす（再開。コマンドが変わったものは再実行）
+uv run scripts/run_activity.py evidence/example/recon-osint-example.com-20260913 --stop-on-error # 非0終了でそこで打ち切り
 ```
 
 各コマンドは `bash` で1つずつ実行され、その出力が `cmd/<WSTG-ID>-s<n>-c<k>.txt` に残る
@@ -352,9 +378,9 @@ uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --stop-
   そのカードに `<img>` 参照で出る（差し替えはリロードで反映）。
   ```bash
   # 推奨: その場で範囲選択してキャプチャ（クリップボード不要・環境差に強い）
-  uv run scripts/save_shot.py evidence/recon-osint-example.com-20260913 --wid WSTG-INFO-01 --grab
+  uv run scripts/save_shot.py evidence/example/recon-osint-example.com-20260913 --wid WSTG-INFO-01 --grab
   # クリップボードの画像から（X11=xclip / Wayland=wl-paste を自動判定）
-  uv run scripts/save_shot.py evidence/recon-osint-example.com-20260913 --wid WSTG-INFO-01
+  uv run scripts/save_shot.py evidence/example/recon-osint-example.com-20260913 --wid WSTG-INFO-01
   ```
   スクショは WSTG-ID のカード上部に出る。`--step <n>` を付けるとその手順の直下に出る。
   端末が前面でブラウザが隠れるときは `--delay 3` で、待つ間に Alt+Tab で対象を前面へ。
@@ -366,7 +392,7 @@ uv run scripts/run_activity.py evidence/recon-osint-example.com-20260913 --stop-
   `--only` でその手順だけ回す。
 - 単発の CLI を回して `cmd/` に残すだけなら、従来どおりロガーも使える:
   ```bash
-  uv run scripts/run_cmd.py evidence/tls-scan-20260908 -- testssl --quiet target.example
+  uv run scripts/run_cmd.py evidence/example/tls-scan-20260908 -- testssl --quiet target.example
   ```
 
 ### 2b. Web で判定を書き、所見を作る
@@ -401,7 +427,7 @@ uv run scripts/serve_record.py --open        # http://127.0.0.1:8765/（127.0.0.
 
 ### 2c. 所見（Finding）と深刻度（CVSS v3.1）
 
-所見は **1件 = 1ファイル**（`evidence/_findings/F-001.md`）。WSTG-ID とは**多対多**で、
+所見は **1件 = 1ファイル**（`evidence/<サイト>/_findings/F-001.md`）。WSTG-ID とは**多対多**で、
 1つの WSTG に複数の所見を、1つの所見に複数の WSTG・複数アクティビティのエビデンスを紐づけられる。
 中身は front matter（タイトル・状態・CVSS ベクトル・指標ごとの判断理由・WSTG・エビデンスのパス）＋本文
 （概要・再現手順・影響・対策案）。
@@ -436,12 +462,12 @@ uv run scripts/tasks.py
 #   次にやること: 2. fingerprint-stack — …
 ```
 
-`evidence/*/run.yaml` の `verdict` を見て、アクティビティ単位の進捗と「次にやること」
+`evidence/<サイト>/*/run.yaml` の `verdict` を見て、アクティビティ単位の進捗と「次にやること」
 （前提が終わっていて着手できるもの）を出す。
 
 Web の「タスク」ページでも同じ進捗が見られる。各アクティビティの✓は実施状況から自動で付く
 （フォルダ・コマンド出力・手動観察・判定・所見）。「合意した」「リーダー確認済み」などは人が押し、
-誰がいつ押したかが `evidence/_state/checks.yaml` に残る。
+誰がいつ押したかが `evidence/<サイト>/_state/checks.yaml` に残る。
 
 ### 4. 一覧（CSV）を取り出す
 
@@ -509,7 +535,7 @@ sudo nginx -t && sudo systemctl reload nginx
 | `pyproject.toml` / `uv.lock` / `.python-version` | uv による環境定義 | ✅ |
 | `docs/burp-setup.md` | Burp Suite の準備手順（初めての人向け・**手編集**） | ✅ |
 | `docs/owasp/` | WSTG 原文（`FETCH.md` 以外は追跡しない） | ❌ |
-| `evidence/` | 生エビデンス（共用 Kali のみ）。`_findings/` に所見、`_state/` に手動チェック | ❌ |
+| `evidence/` | 生エビデンス（共用 Kali のみ）。`<サイト>/` ごとに実施フォルダ・`_findings/`（所見）・`_state/`（手動チェック） | ❌ |
 | `checklist_export.csv` | 集約 CSV（レビュー用の一時物） | ❌ |
 
 ## 生成物を作り直すとき

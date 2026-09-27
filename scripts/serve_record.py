@@ -3,16 +3,19 @@
 
     uv run scripts/serve_record.py                 # evidence/ を配信（http://127.0.0.1:8765/）
     uv run scripts/serve_record.py --open          # ダッシュボードをブラウザで開く
-    uv run scripts/serve_record.py evidence/<act>  # そのアクティビティの record.html を開く
+    uv run scripts/serve_record.py evidence/<サイト>/<act>  # そのアクティビティの record.html を開く
     uv run scripts/serve_record.py --behind-proxy  # チーム共有（nginx の後ろ。templates/nginx/ 参照）
 
-ページ（描画は scripts/web_pages.py）:
+evidence/ はサイト（対象サイト＝案件）ごとのフォルダに分かれる（scripts/sites.py）。URL は
+/<サイト>/... で、画面上部のリストボックスで切り替える。/ は前回のサイト（無ければ一覧）へ飛ぶ。
+
+ページ（描画は scripts/web_pages.py。以下はすべて /<サイト> の下）:
     /  /tasks  /wstg/  /wstg/<ID>  /findings/  /findings/<F-ID>  /playbooks/<ID>  /export.csv
     /<フォルダ>/record.html   各アクティビティの実施記録（撮影・画像追加・判定の編集・所見への添付）
 
-書き込み API（POST。すべて独自ヘッダ X-WSTG-Request: 1 が必須＝CSRF 対策）:
-    /api/check                    タスクの手動チェック（evidence/_state/checks.yaml）
-    /api/finding/save, /attach    所見の作成・更新・エビデンス添付（evidence/_findings/）
+書き込み API（POST。すべて独自ヘッダ X-WSTG-Request: 1 が必須＝CSRF 対策。/<サイト> の下）:
+    /api/check                    タスクの手動チェック（evidence/<サイト>/_state/checks.yaml）
+    /api/finding/save, /attach    所見の作成・更新・エビデンス添付（evidence/<サイト>/_findings/）
     /<フォルダ>/api/save           run.yaml の verdict / finding（判定理由）をテキスト部分置換
     /<フォルダ>/api/save_output    cmd/・artifacts/ 直下の .txt に貼る（別環境で取った結果）
     /<フォルダ>/api/edit_cmd       手順のコマンドを編集（run.yaml の cmd_overrides。空で既定に戻す）
@@ -48,7 +51,7 @@ from datetime import datetime
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 import yaml
 
@@ -60,6 +63,7 @@ CHECK_KEY_RE = re.compile(r"^[A-Za-z0-9:._-]{1,160}$")
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 MAX_BODY = 20 * 1024 * 1024
 WRITE_LOCK = threading.RLock()   # 書き込み（と record の再生成）を直列化する
+SITE_COOKIE = "wstg_site"
 READONLY_MSG = ("nginx 経由のアクセスは閲覧専用なので編集できません。編集はサーバ機で "
                 "http://127.0.0.1:<port>/ を直接開くか、ssh -L 8765:127.0.0.1:8765 <サーバ> で"
                 "ポート転送して http://127.0.0.1:8765/ から行ってください。")
@@ -67,6 +71,7 @@ READONLY_MSG = ("nginx 経由のアクセスは閲覧専用なので編集でき
 sys.path.insert(0, str(SCRIPTS))
 import cvss31  # noqa: E402
 import findings as fnd  # noqa: E402
+import sites  # noqa: E402
 import web_pages  # noqa: E402
 from export_checklist import build_rows, collect_runs, to_csv  # noqa: E402
 from new_activity import (  # noqa: E402
@@ -76,7 +81,9 @@ from save_shot import make_name  # noqa: E402
 
 
 class RecordHandler(SimpleHTTPRequestHandler):
-    root: Path = Path(".")        # build_server が差し替える（配信ルート＝evidence 相当）
+    base: Path = Path(".")        # build_server が差し替える（配信ルート＝evidence/。サイトのフォルダが並ぶ）
+    root: Path = Path(".")        # リクエストごとに選ばれたサイトのフォルダ（_enter_site が設定）
+    site_name: str = ""
     behind_proxy: bool = False    # nginx 経由（X-Remote-User を信用・capture 無効）
 
     # --- 共通 ---
@@ -96,7 +103,10 @@ class RecordHandler(SimpleHTTPRequestHandler):
         if text is None:
             self._html_error(404, "見つかりません")
             return
-        self._send(200, text.encode("utf-8"), "text/html; charset=utf-8")
+        extra = {}
+        if self.site_name:   # / を開いたときに前回のサイトへ戻すため
+            extra["Set-Cookie"] = f"{SITE_COOKIE}={quote(self.site_name)}; Path=/; SameSite=Lax"
+        self._send(200, text.encode("utf-8"), "text/html; charset=utf-8", extra)
 
     def _html_error(self, code: int, msg: str) -> None:
         body = (f'<!DOCTYPE html><meta charset="utf-8"><title>{code}</title>'
@@ -142,7 +152,36 @@ class RecordHandler(SimpleHTTPRequestHandler):
 
     def site(self) -> web_pages.Site:
         return web_pages.Site(self.root, self.user() if self.behind_proxy else "", self.capture_enabled(),
-                              self.can_edit())
+                              self.can_edit(), self.site_name, sites.list_sites(self.base))
+
+    def _enter_site(self, route: str):
+        """/<サイト>/... ならそのサイトを選び、サイト内のルート（/...）を返す。サイトでなければ None。"""
+        self.site_name, self.root = "", self.base
+        seg, _, rest = route.lstrip("/").partition("/")
+        if not sites.SITE_RE.match(seg) or not sites.is_site_dir(self.base / seg):
+            return None
+        self.site_name, self.root = seg, (self.base / seg).resolve()
+        return "/" + rest
+
+    def _home(self) -> None:
+        """/ : 前回のサイト（Cookie）かサイトが1つならそこへ飛ぶ。ほかはサイト一覧。"""
+        self.site_name = ""
+        names = sites.list_sites(self.base)
+        legacy = sites.legacy_items(self.base)
+        last = unquote(self._cookie(SITE_COOKIE))
+        go = last if last in names else (names[0] if len(names) == 1 else "")
+        if go and not legacy:
+            self._send(302, b"", "text/plain", {"Location": f"/{quote(go)}/"})
+            return
+        self._html(web_pages.page_sites(names, sites.migrate_hint(self.base) if legacy else "",
+                                        self.user() if self.behind_proxy else "", self.can_edit()))
+
+    def _cookie(self, name: str) -> str:
+        for part in (self.headers.get("Cookie") or "").split(";"):
+            k, _, v = part.strip().partition("=")
+            if k == name:
+                return v
+        return ""
 
     def capture_enabled(self) -> bool:
         return not self.behind_proxy
@@ -160,8 +199,18 @@ class RecordHandler(SimpleHTTPRequestHandler):
     # --- GET ---
     def do_GET(self) -> None:  # noqa: N802
         url = urlparse(self.path)
-        route = unquote(url.path)
+        full = unquote(url.path)
         qs = {k: v[0] for k, v in parse_qs(url.query).items()}
+        if full in ("/", "/index.html"):
+            self._home()
+            return
+        if full == "/favicon.ico":
+            self._send(204, b"", "image/x-icon")
+            return
+        route = self._enter_site(full)
+        if route is None:
+            self._html_error(404, "見つかりません（URL は /<サイト名>/... の形です）")
+            return
         try:
             if self._get_page(route, qs):
                 return
@@ -203,14 +252,13 @@ class RecordHandler(SimpleHTTPRequestHandler):
             return self._get_form(route, qs)
         elif m := re.match(r"^/findings/(F-\d{3,})$", route):
             self._html(web_pages.page_finding(self.site(), m.group(1)))
-        elif route == "/favicon.ico":
-            self._send(204, b"", "image/x-icon")
         elif route == "/export.csv":
             self._export_csv()
         elif route == "/api/info":
             self._json(200, {"capture": self.capture_enabled(),
                              "user": self.user() if self.behind_proxy else "",
-                             "editable": self.can_edit()})
+                             "editable": self.can_edit(),
+                             "site": self.site_name, "sites": sites.list_sites(self.base)})
         elif route == "/api/cvss":
             try:
                 self._json(200, {"ok": True, "score": cvss31.score(qs.get("vector", "")),
@@ -235,7 +283,7 @@ class RecordHandler(SimpleHTTPRequestHandler):
         tests = {t["id"]: t for t in yaml.safe_load(web_pages.WSTG_TESTS.read_text(encoding="utf-8"))["tests"]}
         rows, _ = build_rows(tests, collect_runs(self.root), self.root, fnd.list_all(self.root))
         body = to_csv(rows).encode("utf-8-sig")
-        name = f"checklist_export-{datetime.now():%Y%m%d}.csv"
+        name = f"checklist_export-{self.site_name}-{datetime.now():%Y%m%d}.csv"
         self._send(200, body, "text/csv; charset=utf-8",
                    {"Content-Disposition": f'attachment; filename="{name}"'})
 
@@ -250,7 +298,10 @@ class RecordHandler(SimpleHTTPRequestHandler):
         return True
 
     def do_POST(self) -> None:  # noqa: N802
-        route = unquote(urlparse(self.path).path)
+        route = self._enter_site(unquote(urlparse(self.path).path))
+        if route is None:
+            self._json(404, {"ok": False, "error": "サイトが見つかりません（URL は /<サイト名>/api/... の形です）"})
+            return
         if not self._csrf_ok():
             self._json(403, {"ok": False, "error": "不正なリクエストです（X-WSTG-Request ヘッダ / Origin）"})
             return
@@ -490,11 +541,11 @@ def clean_user(name: str) -> str:
     return re.sub(r"[^\w.@-]", "", name.strip())[:64]
 
 
-def build_server(root: Path, host: str = "127.0.0.1", port: int = 8765, behind_proxy: bool = False):
-    """root（evidence 相当）を配信する httpd を返す（serve は呼び側）。テスト・本体共用。"""
-    RecordHandler.root = root.resolve()
+def build_server(base: Path, host: str = "127.0.0.1", port: int = 8765, behind_proxy: bool = False):
+    """base（evidence/。サイトのフォルダが並ぶ）を配信する httpd を返す（serve は呼び側）。テスト・本体共用。"""
+    RecordHandler.base = RecordHandler.root = base.resolve()
     RecordHandler.behind_proxy = behind_proxy
-    handler = partial(RecordHandler, directory=str(root))
+    handler = partial(RecordHandler, directory=str(base))
     return ThreadingHTTPServer((host, port), handler)
 
 
@@ -508,7 +559,8 @@ def _is_loopback(host: str) -> bool:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("path", nargs="?", default=str(SCRIPTS.parent / "evidence"),
-                    help="配信する evidence ルート、または単一の活動フォルダ（既定: evidence/）")
+                    help="配信する evidence ルート（既定: evidence/）。サイトのフォルダ・活動フォルダを"
+                         "渡すと evidence/ 全体を配信してそこを開く")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--host", default="127.0.0.1",
                     help="待受アドレス。既定 127.0.0.1 のまま使い、共有は nginx 経由にする")
@@ -531,14 +583,24 @@ def main() -> int:
 
     given = Path(args.path)
     open_path = "/"
-    if (given / "run.yaml").exists():          # 活動フォルダを渡された → 親を配信し、それを開く
-        root, open_path = given.parent, f"/{given.name}/record.html"
+    if (given / "run.yaml").exists():          # 活動フォルダ → evidence/ を配信し、その record.html を開く
+        root = given.parent.parent
+        open_path = f"/{quote(given.parent.name)}/{quote(given.name)}/record.html"
+        if not sites.is_site_dir(given.parent) or given.parent.resolve() == sites.EVIDENCE_BASE.resolve():
+            print(sites.migrate_hint(given.parent), file=sys.stderr)
+            return 2
+    elif given.resolve() != sites.EVIDENCE_BASE.resolve() and (
+            any(given.glob("*/run.yaml")) or (given / "_findings").exists()):
+        root, open_path = given.parent, f"/{quote(given.name)}/"   # サイトのフォルダ
     else:
         root = given
     if not root.exists():
         print(f"配信フォルダがありません: {root}", file=sys.stderr)
-        print("  uv run scripts/new_activity.py <activity_id> で先に作成してください。", file=sys.stderr)
+        print("  uv run scripts/run_target.py --site <サイト名> --target <対象> で先に作成してください。",
+              file=sys.stderr)
         return 2
+    if sites.legacy_items(root):
+        print("[注意] " + sites.migrate_hint(root), file=sys.stderr)
 
     try:
         httpd = build_server(root, args.host, args.port, args.behind_proxy)
@@ -549,7 +611,7 @@ def main() -> int:
 
     base = f"http://{args.host}:{args.port}"
     print(f"[serve_record] 配信中: {base}/   （ダッシュボード）")
-    print(f"  ルート: {root}")
+    print(f"  ルート: {root}（サイト: {'、'.join(sites.list_sites(root)) or 'まだありません'}）")
     if args.behind_proxy:
         print("  共有モード: nginx 経由でアクセスする（表示名は X-Remote-User。サーバ画面の撮影は無効）。")
         print("  nginx 経由は全員が閲覧専用です。")

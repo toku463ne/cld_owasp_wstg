@@ -21,11 +21,11 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. 全 TLS ポートを testssl（`testssl ${https_proxy:+--proxy=auto} --logfile evidence/<活動フォルダ>/artifacts/testssl.log https://target`）か sslyze（`sslyze ${https_proxy:+--https_tunnel="$https_proxy"} --json_out evidence/<活動フォルダ>/artifacts/sslyze.json target:443 || [ $? -eq 1 ]`）で一括検査する
+1. 全 TLS ポートを testssl（`testssl ${https_proxy:+--proxy=auto} --logfile evidence/<サイト>/<活動フォルダ>/artifacts/testssl.log https://target`）か sslyze（`sslyze ${https_proxy:+--https_tunnel="$https_proxy"} --json_out evidence/<サイト>/<活動フォルダ>/artifacts/sslyze.json target:443 || [ $? -eq 1 ]`）で一括検査する
    > ⚠️ **負荷注意（手順1）**: testssl / sslyze は多数の TLS ハンドシェイクを張る。低スペックな終端やロードバランサに負荷がかかることがある。
 2. SSLv3/TLS1.0/1.1・弱い暗号スイート（RC4/3DES/EXPORT）・弱い鍵長が有効でないか確認
 3. 証明書の有効期限・発行者・ホスト名一致、既知脆弱性（Heartbleed/ROBOT 等）を確認
-4. TLS のバージョンごとの受理/拒否を curl で裏取りする: `for v in 1.0 1.1 1.2 1.3; do curl -sk -o /dev/null -m 10 --tlsv$v --tls-max $v --ciphers 'DEFAULT@SECLEVEL=0' https://target/; rc=$?; case $rc in 0) echo "TLS$v: 受理";; 35) echo "TLS$v: 拒否（ハンドシェイク失敗 curl=35）";; *) echo "TLS$v: 不明（curl=$rc）";; esac; done | tee evidence/<活動フォルダ>/artifacts/tls-versions.txt; grep -q '受理' evidence/<活動フォルダ>/artifacts/tls-versions.txt || { echo "どの TLS バージョンでも接続できない＝対象に届いていない。プロキシ配下なら https_proxy が設定されているか確認する（curl -sI https://target/ で疎通確認）" >&2; exit 3; }`。TLS1.0/1.1 が「受理」なら fail 材料
+4. TLS のバージョンごとの受理/拒否を curl で裏取りする: `for v in 1.0 1.1 1.2 1.3; do curl -sk -o /dev/null -m 10 --tlsv$v --tls-max $v --ciphers 'DEFAULT@SECLEVEL=0' https://target/; rc=$?; case $rc in 0) echo "TLS$v: 受理";; 35) echo "TLS$v: 拒否（ハンドシェイク失敗 curl=35）";; *) echo "TLS$v: 不明（curl=$rc）";; esac; done | tee evidence/<サイト>/<活動フォルダ>/artifacts/tls-versions.txt; grep -q '受理' evidence/<サイト>/<活動フォルダ>/artifacts/tls-versions.txt || { echo "どの TLS バージョンでも接続できない＝対象に届いていない。プロキシ配下なら https_proxy が設定されているか確認する（curl -sI https://target/ で疎通確認）" >&2; exit 3; }`。TLS1.0/1.1 が「受理」なら fail 材料
 
 ## ⚠️ 負荷・レート制限・想定外への注意
 

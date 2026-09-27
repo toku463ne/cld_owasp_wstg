@@ -32,7 +32,7 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 - チームで共有する: `uv run scripts/serve_record.py --behind-proxy` を nginx（TLS＋認証）の後ろで動かす
   （設定例は `templates/nginx/wstg.conf`。編集者名は nginx の認証ユーザで残る）
 - 各アクティビティの `record.html`（WSTG-ID ごとのタブ）で、出力・スクショの『📎 所見に添付』から所見を作れる。
-  1つの WSTG に複数の所見、1つの所見に複数の WSTG・エビデンスを紐づけられる（`evidence/_findings/F-*.md`）
+  1つの WSTG に複数の所見、1つの所見に複数の WSTG・エビデンスを紐づけられる（`evidence/<サイト>/_findings/F-*.md`）
 - 所見の深刻度は選ばない。CVSS v3.1 の設問（起こりやすさ4問＋影響4問）に答えると自動で決まる
 - ファイルだけで見るなら `record.html` をダブルクリック（`file://`。編集・添付はできない）
 
@@ -50,10 +50,10 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 - 影響度: 低 / 前提: なし
 - カード: [WSTG-INFO-01](playbooks/WSTG-INFO-01.md), [WSTG-CONF-10](playbooks/WSTG-CONF-10.md)
 
-- [ ] `uv run scripts/new_activity.py recon-osint` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/recon-osint-<yyyymmdd>` でコマンド手順（2 項目・theHarvester, crt.sh, whois, Google/Bing dorking, subfinder）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py recon-osint --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/recon-osint-<yyyymmdd>` でコマンド手順（2 項目・theHarvester, crt.sh, whois, Google/Bing dorking, subfinder）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/recon-osint-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/recon-osint-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -73,10 +73,10 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 - 影響度: 低 / 前提: `recon-osint`
 - カード: [WSTG-INFO-02](playbooks/WSTG-INFO-02.md), [WSTG-INFO-08](playbooks/WSTG-INFO-08.md), [WSTG-CONF-01](playbooks/WSTG-CONF-01.md), [WSTG-CONF-02](playbooks/WSTG-CONF-02.md)
 
-- [ ] `uv run scripts/new_activity.py fingerprint-stack` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/fingerprint-stack-<yyyymmdd>` でコマンド手順（4 項目・curl, whatweb, Wappalyzer, httpx-toolkit）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py fingerprint-stack --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/fingerprint-stack-<yyyymmdd>` でコマンド手順（4 項目・curl, whatweb, Wappalyzer, httpx-toolkit）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/fingerprint-stack-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/fingerprint-stack-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -87,10 +87,10 @@ Kali のツール準備は各フェーズ冒頭の「準備」に未導入分の
 - 影響度: 低 / 前提: `fingerprint-stack`
 - カード: [WSTG-CRYP-01](playbooks/WSTG-CRYP-01.md), [WSTG-CONF-07](playbooks/WSTG-CONF-07.md), [WSTG-CONF-01](playbooks/WSTG-CONF-01.md)
 
-- [ ] `uv run scripts/new_activity.py tls-scan` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/tls-scan-<yyyymmdd>` でコマンド手順（3 項目・testssl.sh, sslyze, curl --tls-max）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py tls-scan --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/tls-scan-<yyyymmdd>` でコマンド手順（3 項目・testssl.sh, sslyze, curl --tls-max）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/tls-scan-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/tls-scan-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -101,10 +101,10 @@ OPTIONS 応答を鵜呑みにせず、実際に各メソッドを投げて許可
 - 影響度: 中 / 前提: `fingerprint-stack`
 - カード: [WSTG-CONF-06](playbooks/WSTG-CONF-06.md), [WSTG-INPV-03](playbooks/WSTG-INPV-03.md)
 
-- [ ] `uv run scripts/new_activity.py http-methods` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/http-methods-<yyyymmdd>` でコマンド手順（2 項目・curl, ncat, Burp Repeater）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py http-methods --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/http-methods-<yyyymmdd>` でコマンド手順（2 項目・curl, ncat, Burp Repeater）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/http-methods-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/http-methods-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -115,10 +115,10 @@ robots.txt・sitemap・.well-known・security.txt・HTML コメント・JS ソ�
 - 影響度: 低 / 前提: なし
 - カード: [WSTG-INFO-03](playbooks/WSTG-INFO-03.md), [WSTG-INFO-05](playbooks/WSTG-INFO-05.md), [WSTG-CONF-05](playbooks/WSTG-CONF-05.md)
 
-- [ ] `uv run scripts/new_activity.py metafiles-crawl` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/metafiles-crawl-<yyyymmdd>` でコマンド手順（3 項目・curl, wget, grep/ripgrep, Burp Suite）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py metafiles-crawl --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/metafiles-crawl-<yyyymmdd>` でコマンド手順（3 項目・curl, wget, grep/ripgrep, Burp Suite）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/metafiles-crawl-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/metafiles-crawl-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -129,10 +129,10 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 - 影響度: 中 / 前提: `recon-osint`, `fingerprint-stack`
 - カード: [WSTG-INFO-04](playbooks/WSTG-INFO-04.md), [WSTG-INFO-06](playbooks/WSTG-INFO-06.md)
 
-- [ ] `uv run scripts/new_activity.py enum-apps` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/enum-apps-<yyyymmdd>` でコマンド手順（2 項目・ffuf, dirsearch, gobuster, curl（ポート確認）, nmap -p-（社外から手動））を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py enum-apps --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/enum-apps-<yyyymmdd>` でコマンド手順（2 項目・ffuf, dirsearch, gobuster, curl（ポート確認）, nmap -p-（社外から手動））を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/enum-apps-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/enum-apps-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -143,10 +143,10 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 - 影響度: 中 / 前提: `enum-apps`
 - カード: [WSTG-CONF-03](playbooks/WSTG-CONF-03.md), [WSTG-CONF-04](playbooks/WSTG-CONF-04.md)
 
-- [ ] `uv run scripts/new_activity.py backup-unref` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/backup-unref-<yyyymmdd>` でコマンド手順（2 項目・ffuf, dirsearch, nikto）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py backup-unref --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/backup-unref-<yyyymmdd>` でコマンド手順（2 項目・ffuf, dirsearch, nikto）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/backup-unref-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/backup-unref-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -157,10 +157,10 @@ DNS/vhost と URL パスをファジングし、同一ホスト上の別アプ�
 - 影響度: 中 / 前提: `recon-osint`, `metafiles-crawl`
 - カード: [WSTG-CONF-11](playbooks/WSTG-CONF-11.md), [WSTG-CONF-10](playbooks/WSTG-CONF-10.md)
 
-- [ ] `uv run scripts/new_activity.py cloud-and-takeover` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/cloud-and-takeover-<yyyymmdd>` でコマンド手順（2 項目・dig, curl, grep, aws cli）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py cloud-and-takeover --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/cloud-and-takeover-<yyyymmdd>` でコマンド手順（2 項目・dig, curl, grep, aws cli）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/cloud-and-takeover-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/cloud-and-takeover-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -171,10 +171,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 低 / 前提: `metafiles-crawl`
 - カード: [WSTG-CONF-08](playbooks/WSTG-CONF-08.md), [WSTG-CLNT-08](playbooks/WSTG-CLNT-08.md)
 
-- [ ] `uv run scripts/new_activity.py ria-legacy-check` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/ria-legacy-check-<yyyymmdd>` でコマンド手順（2 項目・curl, 手動レビュー）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py ria-legacy-check --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/ria-legacy-check-<yyyymmdd>` でコマンド手順（2 項目・curl, 手動レビュー）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/ria-legacy-check-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/ria-legacy-check-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -185,10 +185,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 低 / 前提: `fingerprint-stack`, `enum-apps`
 - カード: [WSTG-CONF-01](playbooks/WSTG-CONF-01.md), [WSTG-CONF-02](playbooks/WSTG-CONF-02.md), [WSTG-CONF-09](playbooks/WSTG-CONF-09.md)
 
-- [ ] `uv run scripts/new_activity.py server-config-review` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/server-config-review-<yyyymmdd>` でコマンド手順（3 項目・手動レビュー, ls -l / icacls, nikto, CIS Benchmark チェックリスト）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py server-config-review --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/server-config-review-<yyyymmdd>` でコマンド手順（3 項目・手動レビュー, ls -l / icacls, nikto, CIS Benchmark チェックリスト）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/server-config-review-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/server-config-review-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -207,10 +207,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `enum-apps`
 - カード: [WSTG-INFO-06](playbooks/WSTG-INFO-06.md), [WSTG-INFO-07](playbooks/WSTG-INFO-07.md), [WSTG-INFO-10](playbooks/WSTG-INFO-10.md), [WSTG-CONF-05](playbooks/WSTG-CONF-05.md)
 
-- [ ] `uv run scripts/new_activity.py burp-crawl-authn` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/burp-crawl-authn-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, OWASP ZAP）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py burp-crawl-authn --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/burp-crawl-authn-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, OWASP ZAP）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/burp-crawl-authn-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/burp-crawl-authn-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -221,10 +221,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 低 / 前提: `burp-crawl-authn`
 - カード: [WSTG-SESS-02](playbooks/WSTG-SESS-02.md), [WSTG-CONF-07](playbooks/WSTG-CONF-07.md), [WSTG-CLNT-09](playbooks/WSTG-CLNT-09.md), [WSTG-ATHN-06](playbooks/WSTG-ATHN-06.md), [WSTG-CLNT-07](playbooks/WSTG-CLNT-07.md), [WSTG-CRYP-03](playbooks/WSTG-CRYP-03.md)
 
-- [ ] `uv run scripts/new_activity.py headers-review` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/headers-review-<yyyymmdd>` でコマンド手順（6 項目・curl, Burp Suite, securityheaders.io 相当の手動チェック）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py headers-review --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/headers-review-<yyyymmdd>` でコマンド手順（6 項目・curl, Burp Suite, securityheaders.io 相当の手動チェック）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/headers-review-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/headers-review-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -235,10 +235,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 低 / 前提: `burp-crawl-authn`
 - カード: [WSTG-ERRH-01](playbooks/WSTG-ERRH-01.md), [WSTG-ERRH-02](playbooks/WSTG-ERRH-02.md), [WSTG-INFO-05](playbooks/WSTG-INFO-05.md)
 
-- [ ] `uv run scripts/new_activity.py error-handling-review` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/error-handling-review-<yyyymmdd>` でコマンド手順（3 項目・Burp Suite, curl, 手動）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py error-handling-review --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/error-handling-review-<yyyymmdd>` でコマンド手順（3 項目・Burp Suite, curl, 手動）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/error-handling-review-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/error-handling-review-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -249,10 +249,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 低 / 前提: なし
 - カード: [WSTG-IDNT-01](playbooks/WSTG-IDNT-01.md), [WSTG-IDNT-02](playbooks/WSTG-IDNT-02.md), [WSTG-IDNT-03](playbooks/WSTG-IDNT-03.md), [WSTG-IDNT-05](playbooks/WSTG-IDNT-05.md)
 
-- [ ] `uv run scripts/new_activity.py identity-model-review` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/identity-model-review-<yyyymmdd>` でコマンド手順（4 項目・手動レビュー, ヒアリング, Burp Suite）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py identity-model-review --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/identity-model-review-<yyyymmdd>` でコマンド手順（4 項目・手動レビュー, ヒアリング, Burp Suite）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/identity-model-review-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/identity-model-review-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -271,10 +271,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `burp-crawl-authn`, `identity-model-review`
 - カード: [WSTG-ATHN-01](playbooks/WSTG-ATHN-01.md), [WSTG-ATHN-02](playbooks/WSTG-ATHN-02.md), [WSTG-ATHN-04](playbooks/WSTG-ATHN-04.md), [WSTG-ATHN-05](playbooks/WSTG-ATHN-05.md), [WSTG-ATHN-06](playbooks/WSTG-ATHN-06.md), [WSTG-ATHN-07](playbooks/WSTG-ATHN-07.md), [WSTG-ATHN-10](playbooks/WSTG-ATHN-10.md), [WSTG-CRYP-03](playbooks/WSTG-CRYP-03.md)
 
-- [ ] `uv run scripts/new_activity.py authn-flow-review` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/authn-flow-review-<yyyymmdd>` でコマンド手順（8 項目・Burp Suite, curl, ブラウザ開発者ツール）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py authn-flow-review --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/authn-flow-review-<yyyymmdd>` でコマンド手順（8 項目・Burp Suite, curl, ブラウザ開発者ツール）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/authn-flow-review-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/authn-flow-review-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -285,10 +285,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 高（要事前合意） / 前提: `authn-flow-review`
 - カード: [WSTG-IDNT-04](playbooks/WSTG-IDNT-04.md), [WSTG-ATHN-03](playbooks/WSTG-ATHN-03.md), [WSTG-IDNT-05](playbooks/WSTG-IDNT-05.md)
 
-- [ ] `uv run scripts/new_activity.py account-enum-probe` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/account-enum-probe-<yyyymmdd>` でコマンド手順（3 項目・Burp Intruder, ffuf, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py account-enum-probe --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/account-enum-probe-<yyyymmdd>` でコマンド手順（3 項目・Burp Intruder, ffuf, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/account-enum-probe-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/account-enum-probe-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -299,10 +299,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `authn-flow-review`
 - カード: [WSTG-ATHN-08](playbooks/WSTG-ATHN-08.md), [WSTG-ATHN-09](playbooks/WSTG-ATHN-09.md)
 
-- [ ] `uv run scripts/new_activity.py password-reset-review` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/password-reset-review-<yyyymmdd>` でコマンド手順（2 項目・Burp Suite, メールクライアント, 手動レビュー）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py password-reset-review --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/password-reset-review-<yyyymmdd>` でコマンド手順（2 項目・Burp Suite, メールクライアント, 手動レビュー）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/password-reset-review-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/password-reset-review-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -313,10 +313,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 低 / 前提: `authn-flow-review`
 - カード: [WSTG-SESS-01](playbooks/WSTG-SESS-01.md), [WSTG-SESS-02](playbooks/WSTG-SESS-02.md), [WSTG-SESS-03](playbooks/WSTG-SESS-03.md), [WSTG-SESS-06](playbooks/WSTG-SESS-06.md), [WSTG-SESS-07](playbooks/WSTG-SESS-07.md), [WSTG-SESS-09](playbooks/WSTG-SESS-09.md)
 
-- [ ] `uv run scripts/new_activity.py session-capture` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/session-capture-<yyyymmdd>` でコマンド手順（6 項目・Burp Suite, Burp Sequencer, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py session-capture --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/session-capture-<yyyymmdd>` でコマンド手順（6 項目・Burp Suite, Burp Sequencer, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/session-capture-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/session-capture-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -327,10 +327,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `session-capture`
 - カード: [WSTG-SESS-04](playbooks/WSTG-SESS-04.md), [WSTG-SESS-05](playbooks/WSTG-SESS-05.md), [WSTG-SESS-08](playbooks/WSTG-SESS-08.md), [WSTG-SESS-09](playbooks/WSTG-SESS-09.md)
 
-- [ ] `uv run scripts/new_activity.py session-abuse-tests` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/session-abuse-tests-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, curl, ブラウザ2枚）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py session-abuse-tests --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/session-abuse-tests-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, curl, ブラウザ2枚）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/session-abuse-tests-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/session-abuse-tests-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -349,10 +349,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `session-capture`, `identity-model-review`
 - カード: [WSTG-ATHZ-02](playbooks/WSTG-ATHZ-02.md), [WSTG-ATHZ-03](playbooks/WSTG-ATHZ-03.md), [WSTG-ATHZ-04](playbooks/WSTG-ATHZ-04.md), [WSTG-SESS-08](playbooks/WSTG-SESS-08.md)
 
-- [ ] `uv run scripts/new_activity.py authz-matrix` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/authz-matrix-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, Autorize / AuthMatrix, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py authz-matrix --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/authz-matrix-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, Autorize / AuthMatrix, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/authz-matrix-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/authz-matrix-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -363,10 +363,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `burp-crawl-authn`
 - カード: [WSTG-ATHZ-01](playbooks/WSTG-ATHZ-01.md), [WSTG-CONF-03](playbooks/WSTG-CONF-03.md)
 
-- [ ] `uv run scripts/new_activity.py traversal-probe` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/traversal-probe-<yyyymmdd>` でコマンド手順（2 項目・Burp Suite, ffuf, 手動 payload）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py traversal-probe --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/traversal-probe-<yyyymmdd>` でコマンド手順（2 項目・Burp Suite, ffuf, 手動 payload）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/traversal-probe-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/traversal-probe-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -388,10 +388,10 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 - 影響度: 中 / 前提: `burp-crawl-authn`
 - カード: [WSTG-INPV-01](playbooks/WSTG-INPV-01.md), [WSTG-INPV-02](playbooks/WSTG-INPV-02.md), [WSTG-CLNT-01](playbooks/WSTG-CLNT-01.md), [WSTG-CLNT-03](playbooks/WSTG-CLNT-03.md)
 
-- [ ] `uv run scripts/new_activity.py xss-probe` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/xss-probe-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, DOM Invader, 手動 payload）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py xss-probe --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/xss-probe-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, DOM Invader, 手動 payload）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/xss-probe-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/xss-probe-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -402,10 +402,10 @@ JS のソース/シンクを追い、URL リダイレクト・CSS/リソース�
 - 影響度: 低 / 前提: `burp-crawl-authn`
 - カード: [WSTG-CLNT-02](playbooks/WSTG-CLNT-02.md), [WSTG-CLNT-04](playbooks/WSTG-CLNT-04.md), [WSTG-CLNT-05](playbooks/WSTG-CLNT-05.md), [WSTG-CLNT-06](playbooks/WSTG-CLNT-06.md), [WSTG-CLNT-11](playbooks/WSTG-CLNT-11.md), [WSTG-CLNT-12](playbooks/WSTG-CLNT-12.md), [WSTG-CLNT-13](playbooks/WSTG-CLNT-13.md)
 
-- [ ] `uv run scripts/new_activity.py clientside-js-review` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/clientside-js-review-<yyyymmdd>` でコマンド手順（7 項目・ブラウザ開発者ツール, DOM Invader, Retire.js, Burp Suite）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py clientside-js-review --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/clientside-js-review-<yyyymmdd>` でコマンド手順（7 項目・ブラウザ開発者ツール, DOM Invader, Retire.js, Burp Suite）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/clientside-js-review-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/clientside-js-review-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -416,10 +416,10 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
 - 影響度: 低 / 前提: `burp-crawl-authn`
 - カード: [WSTG-CLNT-07](playbooks/WSTG-CLNT-07.md), [WSTG-CLNT-10](playbooks/WSTG-CLNT-10.md)
 
-- [ ] `uv run scripts/new_activity.py cors-websocket-check` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/cors-websocket-check-<yyyymmdd>` でコマンド手順（2 項目・curl, Burp Suite, wscat）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py cors-websocket-check --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/cors-websocket-check-<yyyymmdd>` でコマンド手順（2 項目・curl, Burp Suite, wscat）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/cors-websocket-check-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/cors-websocket-check-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -430,10 +430,10 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
 - 影響度: 高（要事前合意） / 前提: `burp-crawl-authn`
 - カード: [WSTG-INPV-05](playbooks/WSTG-INPV-05.md), [WSTG-INPV-06](playbooks/WSTG-INPV-06.md), [WSTG-INPV-07](playbooks/WSTG-INPV-07.md), [WSTG-INPV-08](playbooks/WSTG-INPV-08.md), [WSTG-INPV-09](playbooks/WSTG-INPV-09.md), [WSTG-INPV-10](playbooks/WSTG-INPV-10.md), [WSTG-INPV-11](playbooks/WSTG-INPV-11.md), [WSTG-INPV-12](playbooks/WSTG-INPV-12.md), [WSTG-INPV-13](playbooks/WSTG-INPV-13.md), [WSTG-INPV-18](playbooks/WSTG-INPV-18.md), [WSTG-ERRH-01](playbooks/WSTG-ERRH-01.md)
 
-- [ ] `uv run scripts/new_activity.py injection-fuzz-server` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/injection-fuzz-server-<yyyymmdd>` でコマンド手順（11 項目・Burp Intruder, sqlmap, 手動 payload）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py injection-fuzz-server --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/injection-fuzz-server-<yyyymmdd>` でコマンド手順（11 項目・Burp Intruder, sqlmap, 手動 payload）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/injection-fuzz-server-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/injection-fuzz-server-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -444,10 +444,10 @@ Origin を差し替えた応答差と、WebSocket ハンドシェイク・認可
 - 影響度: 高（要事前合意） / 前提: `burp-crawl-authn`
 - カード: [WSTG-INPV-04](playbooks/WSTG-INPV-04.md), [WSTG-INPV-15](playbooks/WSTG-INPV-15.md), [WSTG-INPV-16](playbooks/WSTG-INPV-16.md), [WSTG-INPV-17](playbooks/WSTG-INPV-17.md)
 
-- [ ] `uv run scripts/new_activity.py http-request-tamper` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/http-request-tamper-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, Burp HTTP Request Smuggler, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py http-request-tamper --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/http-request-tamper-<yyyymmdd>` でコマンド手順（4 項目・Burp Suite, Burp HTTP Request Smuggler, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/http-request-tamper-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/http-request-tamper-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -458,10 +458,10 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - 影響度: 中 / 前提: `burp-crawl-authn`
 - カード: [WSTG-INPV-19](playbooks/WSTG-INPV-19.md)
 
-- [ ] `uv run scripts/new_activity.py ssrf-probe` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/ssrf-probe-<yyyymmdd>` でコマンド手順（1 項目・curl, interactsh-client, Burp Collaborator）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py ssrf-probe --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/ssrf-probe-<yyyymmdd>` でコマンド手順（1 項目・curl, interactsh-client, Burp Collaborator）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/ssrf-probe-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/ssrf-probe-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -472,10 +472,10 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - 影響度: 中 / 前提: `burp-crawl-authn`
 - カード: [WSTG-BUSL-08](playbooks/WSTG-BUSL-08.md), [WSTG-BUSL-09](playbooks/WSTG-BUSL-09.md), [WSTG-CONF-03](playbooks/WSTG-CONF-03.md)
 
-- [ ] `uv run scripts/new_activity.py file-upload-tests` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/file-upload-tests-<yyyymmdd>` でコマンド手順（3 項目・Burp Suite, EICAR テストファイル, 手動）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py file-upload-tests --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/file-upload-tests-<yyyymmdd>` でコマンド手順（3 項目・Burp Suite, EICAR テストファイル, 手動）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/file-upload-tests-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/file-upload-tests-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -486,10 +486,10 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - 影響度: 高（要事前合意） / 前提: `tls-scan`, `session-capture`
 - カード: [WSTG-CRYP-02](playbooks/WSTG-CRYP-02.md), [WSTG-CRYP-03](playbooks/WSTG-CRYP-03.md), [WSTG-CRYP-04](playbooks/WSTG-CRYP-04.md)
 
-- [ ] `uv run scripts/new_activity.py crypto-review` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/crypto-review-<yyyymmdd>` でコマンド手順（3 項目・padbuster, testssl.sh, Burp Suite, 手動レビュー）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py crypto-review --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/crypto-review-<yyyymmdd>` でコマンド手順（3 項目・padbuster, testssl.sh, Burp Suite, 手動レビュー）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/crypto-review-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/crypto-review-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -500,10 +500,10 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - 影響度: 中 / 前提: `burp-crawl-authn`
 - カード: [WSTG-APIT-01](playbooks/WSTG-APIT-01.md), [WSTG-ATHZ-02](playbooks/WSTG-ATHZ-02.md)
 
-- [ ] `uv run scripts/new_activity.py api-graphql-test` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/api-graphql-test-<yyyymmdd>` でコマンド手順（2 項目・Burp Suite, GraphQL Voyager, InQL, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py api-graphql-test --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/api-graphql-test-<yyyymmdd>` でコマンド手順（2 項目・Burp Suite, GraphQL Voyager, InQL, curl）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/api-graphql-test-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/api-graphql-test-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 
@@ -521,10 +521,10 @@ URL・ホスト名・ファイル参照を受けるパラメータを列挙し�
 - 影響度: 高（要事前合意） / 前提: `authz-matrix`
 - カード: [WSTG-BUSL-01](playbooks/WSTG-BUSL-01.md), [WSTG-BUSL-02](playbooks/WSTG-BUSL-02.md), [WSTG-BUSL-03](playbooks/WSTG-BUSL-03.md), [WSTG-BUSL-04](playbooks/WSTG-BUSL-04.md), [WSTG-BUSL-05](playbooks/WSTG-BUSL-05.md), [WSTG-BUSL-06](playbooks/WSTG-BUSL-06.md), [WSTG-BUSL-07](playbooks/WSTG-BUSL-07.md), [WSTG-INPV-14](playbooks/WSTG-INPV-14.md)
 
-- [ ] `uv run scripts/new_activity.py business-logic-walkthrough` でフォルダ一式を作る（複数サイトは `--target <site>`）
-- [ ] `uv run scripts/run_activity.py evidence/business-logic-walkthrough-<yyyymmdd>` でコマンド手順（8 項目・Burp Suite, 手動操作, 業務仕様書）を実行 ← `cmd/` に純粋なエビデンスが残る
+- [ ] `uv run scripts/new_activity.py business-logic-walkthrough --site <サイト>` でフォルダ一式を作る（対象は `--target <対象>`）
+- [ ] `uv run scripts/run_activity.py evidence/<サイト>/business-logic-walkthrough-<yyyymmdd>` でコマンド手順（8 項目・Burp Suite, 手動操作, 業務仕様書）を実行 ← `cmd/` に純粋なエビデンスが残る
       - 手動手順（Burp・ヒアリング等）は `artifacts/manual-*.txt` に観察を書く
-      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/business-logic-walkthrough-<yyyymmdd> -- <コマンド>`
+      - 単発の直接実行は `uv run scripts/run_cmd.py evidence/<サイト>/business-logic-walkthrough-<yyyymmdd> -- <コマンド>`
 - [ ] Web の record.html で WSTG-ID ごとに `verdict`（pass|fail|info|na|todo）と判定理由（1行）を記入（`run.yaml` の covers を直接編集してもよい）
 - [ ] 問題があれば所見を作る（出力・スクショの『📎 所見に添付』→ CVSS の設問に答える）
 

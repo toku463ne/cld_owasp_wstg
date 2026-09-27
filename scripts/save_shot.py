@@ -124,7 +124,7 @@ def make_name(wid, step, explicit) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("activity_dir", help="evidence/<activity_id>[-<target>]-<yyyymmdd>")
+    ap.add_argument("activity_dir", help="evidence/<サイト>/<activity_id>[-<target>]-<yyyymmdd>")
     ap.add_argument("--wid", help="紐づける WSTG-ID（record.html のそのカードに <img> で出る）")
     ap.add_argument("--step", type=int, help="手順番号（ファイル名に付けるだけ）")
     ap.add_argument("--name", help="ファイル名を明示（既定は shot-<WID>-<日時>.png）")

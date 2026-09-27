@@ -30,6 +30,14 @@
   閲覧専用の制限は **サーバ側（`do_POST` の `can_edit` 検査・編集フォームの 403）で止める**のが本体で、
   画面から編集ボタンを隠すのは補助。nginx 経由に書き込みを許す仕組み（利用者名での許可リスト等）を足さない。
 
+- **`evidence/` はサイト（対象サイト＝案件）ごとのフォルダ `evidence/<サイト>/` に分ける**（`scripts/sites.py`）。
+  実施フォルダ・`_findings/`・`_state/` はサイトの中にあり、所見番号・タスクの✓・CSV はサイトごとに独立。
+  サイトを跨いで集計・表示・リンクする機能は足さない（別案件のデータが混ざらないように）。
+  ルートを受け取るスクリプトは `sites.add_site_args`／`sites.resolve_root`（`--site`・`WSTG_SITE`・1つなら省略・
+  `--root` で直接指定）を使う。Web の URL は `/<サイト>/…` で、`web_pages.page()` がサイト内の絶対リンクに
+  `/<サイト>` を付ける（`with_prefix`）。スクリプトは `BASE + "/api/…"`、record.html は `../` で辿る。
+  旧構成（`evidence/` 直下）は `scripts/migrate_site.py` で移す（利用者が実行する。Claude は evidence/ に触れない）。
+
 ## 2. どのファイルを直すか（最重要）
 
 **手で編集するのはこの4つだけ**:
@@ -61,7 +69,7 @@ docs/owasp（原文） ─▶ wstg_tests.yaml ─┬─▶ coverage.{yaml,md}（
 coverage.yaml ─┬─▶ TASKS.md（実施順・テキスト版）
                ├─▶ run_target.py ─▶ 対象1つ固定で全 activities を一括: new_activity→run_activity
                │      （既存フォルダ・前回成功コマンドはスキップ／非0終了で停止。中身は下の2つを呼ぶだけ）
-               └─▶ new_activity.py ─▶ evidence/*/{run.yaml, record.html, cmd/, artifacts/}
+               └─▶ new_activity.py ─▶ evidence/<サイト>/*/{run.yaml, record.html, cmd/, artifacts/}
                      run_activity.py ─▶ criteria.yaml の手順を bash 実行
                         （--skip-done で前回成功を飛ばし、--stop-on-error で非0終了時に打ち切る。
                           人の作業で置く入力を読む「手動→コマンド」は一括では走らせず --only で実行。
@@ -71,10 +79,11 @@ coverage.yaml ─┬─▶ TASKS.md（実施順・テキスト版）
                         └─▶ evidence.js（gen_record.py も同じ。所見の要約も載る）
                      save_shot.py / Web の画像貼り付け ─▶ artifacts/shot-<WID>[-s<n>]-*.png
                      record.html（WSTG-ID タブ）◀─(iframe/img 参照)─ cmd/・artifacts/（evidence.js はメタデータ）
-evidence/_findings/F-*.md（所見。findings.py が読み書き）─ WSTG と多対多・cvss ベクトル・evidence パス
+evidence/<サイト>/_findings/F-*.md（所見。findings.py が読み書き）─ WSTG と多対多・cvss ベクトル・evidence パス
    └─ 深刻度は cvss31.py がベクトルから毎回計算（保存しない）
-evidence/_state/checks.yaml（タスクの手動チェック。Web が書く）
+evidence/<サイト>/_state/checks.yaml（タスクの手動チェック。Web が書く）
 serve_record.py（127.0.0.1）＋ web_pages.py（描画）─ nginx の後ろでチーム共有
+   ├─ GET  /（サイト一覧・前回のサイトへ）。以下はすべて /<サイト> の下
    ├─ GET  / /tasks /wstg/ /wstg/<ID> /findings/ /findings/<F> /playbooks/<ID> /export.csv /<act>/record.html
    ├─ POST /<act>/api/save ─▶ update_cover(run.yaml)（verdict / finding=判定理由のテキスト部分置換）
    ├─ POST /<act>/api/{save_output,upload_shot,delete_shot,capture} ─▶ cmd/・artifacts/
@@ -86,7 +95,7 @@ run.yaml ─▶ tasks.py（端末の進捗表示）
 
 `new_activity.py` はフォルダ一式（`run.yaml`・静的ビューア `record.html`・`cmd/`・`artifacts/`・
 手動手順の `manual-*.txt` ひな型）を作る。`run.yaml` の `finding` は**判定理由の1行**（CSV に載る。
-複数行は `finding: |`、CSV では `one_line` で畳む）。問題の中身は**所見**（`evidence/_findings/F-*.md`）に書き、
+複数行は `finding: |`、CSV では `one_line` で畳む）。問題の中身は**所見**（`evidence/<サイト>/_findings/F-*.md`）に書き、
 1つの WSTG に複数の所見を紐づける（旧 `findings.md` は廃止。`findings.py migrate` で移行）。
 `run_activity.py` は `criteria.yaml` の手順のうち「コマンド手順」（`backtick` で target/OUTDIR を参照する
 `$` 実行コマンド）を bash で実行し、出力をコマンドごとに `cmd/<WSTG-ID>-s<n>-c<k>.txt` に残す

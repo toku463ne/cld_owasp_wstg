@@ -31,7 +31,7 @@ CRITERIA_YAML = REPO_ROOT / "matrix" / "criteria.yaml"
 WSTG_BASE = "https://owasp.org/www-project-web-security-testing-guide/stable/4-Web_Application_Security_Testing"
 # criteria.yaml の手順に書く保存先プレースホルダ。カードでは説明的なパスに開く
 # （実施記録では new_activity.py が実フォルダの artifacts/ に置換する）。
-CARD_OUTDIR = "evidence/<活動フォルダ>/artifacts"
+CARD_OUTDIR = "evidence/<サイト>/<活動フォルダ>/artifacts"
 MAX_STEPS = 7
 MAX_STEP_CHARS = 190
 

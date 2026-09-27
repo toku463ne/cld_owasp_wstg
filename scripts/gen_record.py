@@ -25,7 +25,7 @@ from new_activity import refresh_record, print_missing_run_yaml  # noqa: E402
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("activity_dir", help="evidence/<activity_id>[-<target>]-<yyyymmdd>")
+    ap.add_argument("activity_dir", help="evidence/<サイト>/<activity_id>[-<target>]-<yyyymmdd>")
     args = ap.parse_args()
 
     activity_dir = Path(args.activity_dir)

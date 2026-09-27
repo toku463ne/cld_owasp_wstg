@@ -4,8 +4,8 @@
     uv run scripts/run_cmd.py <activity_dir> -- <command...>
 
 例:
-    uv run scripts/run_cmd.py evidence/tls-scan-20260908 -- testssl --quiet example.test
-    uv run scripts/run_cmd.py evidence/http-methods-20260908 --slug options -- curl -sSI -X OPTIONS https://example.test/
+    uv run scripts/run_cmd.py evidence/example/tls-scan-20260908 -- testssl --quiet example.test
+    uv run scripts/run_cmd.py evidence/example/http-methods-20260908 --slug options -- curl -sSI -X OPTIONS https://example.test/
 
 やること:
   1. コマンドを実行し、stdout/stderr を <activity_dir>/cmd/<slug>.txt に保存（画面にもそのまま流す）
@@ -110,7 +110,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter, usage="%(prog)s <activity_dir> [options] -- <command...>"
     )
-    ap.add_argument("activity_dir", help="evidence/<activity_id>-<yyyymmdd>")
+    ap.add_argument("activity_dir", help="evidence/<サイト>/<activity_id>-<yyyymmdd>")
     ap.add_argument("--slug", help="出力ファイル名（既定はコマンドから自動生成）")
     ap.add_argument("--note", help="この実行の目的を1行で run.yaml に残す")
     ap.add_argument("--timeout", type=int, help="秒。超えたら中断して記録する")

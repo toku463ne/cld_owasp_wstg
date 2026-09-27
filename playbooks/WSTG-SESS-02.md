@@ -19,9 +19,9 @@ WSTG の Test Objectives:
 
 ## 手順
 
-1. ログイン応答のヘッダをブラウザで保存する（手動）: F12 で開発者ツールを開く → Network タブの「Preserve log」に✓ → ログインする → 一覧からログイン送信のリクエスト（多くは POST。応答に set-cookie があるもの）をクリック → Headers タブの「Response Headers」で「Raw」をオン → 全選択してコピー → evidence/<活動フォルダ>/artifacts/login-headers.txt に貼って保存
-2. 手順1 のヘッダから発行 Cookie を抽出する: `test -s evidence/<活動フォルダ>/artifacts/login-headers.txt || exit 75; grep -iE '^set-cookie:' evidence/<活動フォルダ>/artifacts/login-headers.txt || [ $? -eq 1 ]`。出てきた Set-Cookie 行を1つずつ下の属性で確認する
-3. 手順1で保存した Set-Cookie の属性欠落を自動抽出する: `grep -iE '^set-cookie:' evidence/<活動フォルダ>/artifacts/login-headers.txt | while read -r c; do for a in Secure HttpOnly SameSite; do echo "$c" | grep -qi "$a" || echo "[要確認] $a なし: $(echo "$c" | cut -c1-70)"; done; done | tee evidence/<活動フォルダ>/artifacts/cookie-attrs.txt`。出力が空＝全 Cookie に3属性あり。行が出たセッション/認証系 Cookie は `Secure`（HTTPS 限定）・`HttpOnly`（JS 遮断）・`SameSite`（Lax/Strict）のいずれかが欠けている（CSRF/その他の非機微 Cookie は SameSite 無しでも許容の場合があるので finding では Cookie 名で区別する）
+1. ログイン応答のヘッダをブラウザで保存する（手動）: F12 で開発者ツールを開く → Network タブの「Preserve log」に✓ → ログインする → 一覧からログイン送信のリクエスト（多くは POST。応答に set-cookie があるもの）をクリック → Headers タブの「Response Headers」で「Raw」をオン → 全選択してコピー → evidence/<サイト>/<活動フォルダ>/artifacts/login-headers.txt に貼って保存
+2. 手順1 のヘッダから発行 Cookie を抽出する: `test -s evidence/<サイト>/<活動フォルダ>/artifacts/login-headers.txt || exit 75; grep -iE '^set-cookie:' evidence/<サイト>/<活動フォルダ>/artifacts/login-headers.txt || [ $? -eq 1 ]`。出てきた Set-Cookie 行を1つずつ下の属性で確認する
+3. 手順1で保存した Set-Cookie の属性欠落を自動抽出する: `grep -iE '^set-cookie:' evidence/<サイト>/<活動フォルダ>/artifacts/login-headers.txt | while read -r c; do for a in Secure HttpOnly SameSite; do echo "$c" | grep -qi "$a" || echo "[要確認] $a なし: $(echo "$c" | cut -c1-70)"; done; done | tee evidence/<サイト>/<活動フォルダ>/artifacts/cookie-attrs.txt`。出力が空＝全 Cookie に3属性あり。行が出たセッション/認証系 Cookie は `Secure`（HTTPS 限定）・`HttpOnly`（JS 遮断）・`SameSite`（Lax/Strict）のいずれかが欠けている（CSRF/その他の非機微 Cookie は SameSite 無しでも許容の場合があるので finding では Cookie 名で区別する）
 4. `Domain`/`Path` が過度に広くないか、`__Host-`/`__Secure-` prefix の適否を確認
 5. セッション Cookie と CSRF/その他 Cookie で属性が適切に分かれているか確認
 

@@ -4,6 +4,7 @@
     uv run scripts/web_pages.py --root <evidence> --out-dir <tmp>   # 静的に書き出して確認する（任意）
 
 ページ:
+    （以下はすべて /<サイト名> の下。/ はサイト一覧＝page_sites）
     /                    ダッシュボード（WSTG の完了数・所見の深刻度・次にやること・アクティビティ一覧）
     /tasks               指示書＋チェックリスト（自動チェック＋手動チェック）＋エビデンスへのリンク
     /wstg/               WSTG 索引（カテゴリ別・完了状況・実施記録と所見へのリンク）
@@ -14,8 +15,11 @@
     /findings/attach     エビデンスを所見に添付（新規 or 既存を選ぶ）
     /playbooks/<WSTG-ID> カード（playbooks/*.md）を HTML にしたもの
 
-データの置き場は変えない: 判定は run.yaml、所見は evidence/_findings/、手動チェックは
-evidence/_state/checks.yaml、エビデンス本体は cmd/・artifacts/。ここは読むだけ（書くのはサーバ）。
+データの置き場は変えない: 判定は run.yaml、所見は evidence/<サイト>/_findings/、手動チェックは
+evidence/<サイト>/_state/checks.yaml、エビデンス本体は cmd/・artifacts/。ここは読むだけ（書くのはサーバ）。
+
+リンクはサイト内の絶対パス（/tasks 等）で書き、page() が /<サイト名> を前に付ける（with_prefix）。
+スクリプトから URL を組むときは BASE + "/api/..." のようにする。
 """
 
 from __future__ import annotations
@@ -79,11 +83,15 @@ def load_checks(root: Path) -> dict:
 class Site:
     """1リクエスト分のスナップショット（毎回ファイルから読み直す＝手編集も即反映）。"""
 
-    def __init__(self, root: Path, user: str = "", capture: bool = False, editable: bool = True):
+    def __init__(self, root: Path, user: str = "", capture: bool = False, editable: bool = True,
+                 site_name: str = "", site_names=()):
         self.root = Path(root)
         self.user = user
         self.capture = capture
         self.editable = editable   # False = 閲覧専用ユーザ（編集ボタン・チェックを出さない）
+        self.site_name = site_name            # 表示中のサイト（evidence/<サイト名>/）
+        self.site_names = list(site_names)    # 切替リストボックスに出すサイト
+        self.prefix = "/" + quote(site_name) if site_name else ""
         self.coverage = _load_yaml(COVERAGE_YAML)
         self.tests = {t["id"]: t for t in _load_yaml(WSTG_TESTS)["tests"]}
         self.criteria = _load_yaml(CRITERIA_YAML) or {}
@@ -157,6 +165,8 @@ nav.nav{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:.9rem;
  padding-bottom:10px;border-bottom:1px solid var(--line)}
 nav.nav a{color:inherit;text-decoration:none} nav.nav a.on{font-weight:700;border-bottom:2px solid var(--acc)}
 nav.nav .who{margin-left:auto;color:var(--mut);font-size:.8rem}
+.sitebox{font-size:.8rem;color:var(--mut);display:flex;gap:6px;align-items:center}
+.sitebox select{font-size:.85rem;padding:2px 6px;font-weight:700;color:var(--fg)}
 h1{font-size:1.4rem;margin:0 0 4px} h2{font-size:1.1rem;margin:28px 0 8px}
 h3{font-size:1rem;margin:18px 0 6px}
 .meta,.mut{color:var(--mut);font-size:.85rem}
@@ -241,11 +251,16 @@ document.querySelectorAll(".copy").forEach(function (b) {
 document.querySelectorAll("input[data-check]").forEach(function (cb) {
   cb.addEventListener("change", function () {
     cb.disabled = true;
-    wstgPost("/api/check", { key: cb.dataset.check, on: cb.checked }).then(function (res) {
+    wstgPost(BASE + "/api/check", { key: cb.dataset.check, on: cb.checked }).then(function (res) {
       if (!res.ok) { alert("保存できませんでした:\n" + (res.error || "")); cb.checked = !cb.checked; }
       else { var by = cb.parentNode.querySelector(".by"); if (by) by.textContent = res.label || ""; }
       cb.disabled = false;
     }).catch(function () { alert("サーバに接続できません"); cb.checked = !cb.checked; cb.disabled = false; });
+  });
+});
+document.querySelectorAll("select.sitesw").forEach(function (s) {
+  s.addEventListener("change", function () {   // 同じ種類のページのまま別のサイトへ
+    location.href = "/" + encodeURIComponent(s.value) + (s.dataset.section || "/");
   });
 });
 document.querySelectorAll(".filters").forEach(function (f) {
@@ -266,15 +281,58 @@ NAV = [("/", "ダッシュボード", "home"), ("/tasks", "タスク", "tasks"),
        ("/findings/", "所見", "findings"), ("/export.csv", "CSV", "csv")]
 
 
+PREFIX_RE = re.compile(r"""(\b(?:href|src)=["']?)/(?!/)""")
+
+
+def with_prefix(markup: str, prefix: str) -> str:
+    """サイト内の絶対パスのリンク（href="/tasks" 等）の前に /<サイト名> を付ける。
+
+    利用者の文字列は E() でエスケープ済みなので、ここで一致するのはページが組んだリンクだけ。
+    """
+    return PREFIX_RE.sub(lambda m: m.group(1) + prefix + "/", markup) if prefix else markup
+
+
+def site_switcher(site: Site, active: str) -> str:
+    """サイト切替のリストボックス（選ぶと同じ種類のページのまま別のサイトへ）。"""
+    if not site.site_names:
+        return ""
+    section = next((h for h, _, k in NAV if k == active and k != "csv"), "/")
+    opts = "".join(f'<option value="{E(n)}"{" selected" if n == site.site_name else ""}>{E(n)}</option>'
+                   for n in site.site_names)
+    return (f'<label class="sitebox" title="サイト（evidence/&lt;サイト名&gt;/）を切り替える">サイト '
+            f'<select class="sitesw" data-section="{E(section)}">{opts}</select></label>')
+
+
 def page(site: Site, title: str, body: str, active: str = "", script: str = "") -> str:
     nav = "".join(f'<a href="{h}" class="{"on" if k == active else ""}">{E(t)}</a>' for h, t, k in NAV)
     ro = "（閲覧専用）" if not site.editable else ""
     who = f'<span class="who">👤 {E(site.user)}{ro}</span>' if site.user or ro else ""
+    head = f"{site.site_name} · " if site.site_name else ""
     return (f'<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1">'
-            f'<title>{E(title)}</title><style>{CSS}</style></head><body>'
-            f'<nav class="nav">{nav}{who}</nav>{body}'
-            f'<script>{COMMON_JS}{script}</script></body></html>')
+            f'<title>{E(head + title)}</title><style>{CSS}</style></head><body>'
+            + with_prefix(f'<nav class="nav">{site_switcher(site, active)}{nav}{who}</nav>{body}', site.prefix)
+            + f'<script>var BASE = {json.dumps(site.prefix)};\n{COMMON_JS}{script}</script></body></html>')
+
+
+def page_sites(names: list, hint: str = "", user: str = "", editable: bool = True) -> str:
+    """/ : サイト一覧（前回のサイトが分からず、サイトが複数・0件・旧構成のとき）。"""
+    ro = "（閲覧専用）" if not editable else ""
+    who = f'<span class="who">👤 {E(user)}{ro}</span>' if user or ro else ""
+    cards = "".join(f'<a class="card" href="/{quote(n)}/"><div class="mono">📁 {E(n)}</div>'
+                    f'<div class="mut">evidence/{E(n)}/</div></a>' for n in names)
+    body = ('<h1>サイト</h1><p class="meta">WSTG を実施するサイト（evidence/&lt;サイト名&gt;/）を選ぶ。'
+            '開いたあとは画面上部のリストボックスで切り替えられる。</p>'
+            + (f'<div class="card"><p class="warn">移行が必要です</p><pre>{E(hint)}</pre></div>' if hint else "")
+            + (cards or '<p class="empty">サイトがまだありません。</p>')
+            + '<h2>新しいサイトを始める</h2>'
+            + cmdbox("uv run scripts/run_target.py --site <サイト名> --target <対象>")
+            + '<p class="mut">サイト名は英数字で始め、英数字・. _ - だけ（例: example-2026q3）。</p>')
+    return (f'<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">'
+            f'<meta name="viewport" content="width=device-width, initial-scale=1">'
+            f'<title>サイト一覧</title><style>{CSS}</style></head><body>'
+            f'<nav class="nav">{who}</nav>{body}'
+            f'<script>var BASE = "";\n{COMMON_JS}</script></body></html>')
 
 
 def chip_verdict(v: str) -> str:
@@ -799,8 +857,8 @@ def page_attach(site: Site, wid: str, ev: str) -> str:
             + (f'<details><summary>ほかの所見（{len(other)}）</summary><div class="tbl"><table>{rows(other)}'
                f"</table></div></details>" if other else ""))
     script = ("document.querySelectorAll('[data-attach]').forEach(function(b){b.addEventListener('click',function(){"
-              "b.disabled=true;wstgPost('/api/finding/attach',{id:b.dataset.attach,ev:" + json.dumps(ev_n)
-              + ",wid:" + json.dumps(wid) + "}).then(function(r){if(r.ok){location.href='/findings/'+b.dataset.attach;}"
+              "b.disabled=true;wstgPost(BASE+'/api/finding/attach',{id:b.dataset.attach,ev:" + json.dumps(ev_n)
+              + ",wid:" + json.dumps(wid) + "}).then(function(r){if(r.ok){location.href=BASE+'/findings/'+b.dataset.attach;}"
               "else{alert('追加できませんでした:\\n'+(r.error||''));b.disabled=false;}});});});")
     return page(site, "所見に添付", body, "findings", script)
 
@@ -831,7 +889,7 @@ FORM_JS = r"""
     var missing = keys.filter(function (k) { return !form.querySelector('input[name="m-' + k + '"]:checked'); });
     if (!v) { out.innerHTML = '<span class="warn">未評価 — あと ' + missing.length + ' 問（' + missing.join(", ")
       + '）。深刻度は答えから自動で決まります</span>'; return; }
-    fetch("/api/cvss?vector=" + encodeURIComponent(v)).then(function (r) { return r.json(); }).then(function (r) {
+    fetch(BASE + "/api/cvss?vector=" + encodeURIComponent(v)).then(function (r) { return r.json(); }).then(function (r) {
       if (!r.ok) { out.textContent = r.error; return; }
       var s = r.score;
       function meter(label, val, mx) { return '<div class="meter"><div class="mut">' + label + ' <b>' + val + '</b> / '
@@ -859,13 +917,13 @@ FORM_JS = r"""
     var notes = {};
     keys.forEach(function (k) { var n = form.elements["n-" + k]; if (n && n.value.trim()) notes[k] = n.value.trim(); });
     var btn = form.querySelector("button[type=submit]"); btn.disabled = true;
-    wstgPost("/api/finding/save", {
+    wstgPost(BASE + "/api/finding/save", {
       id: form.dataset.id || null, rev: form.dataset.rev || null,
       title: form.elements.title.value, status: form.elements.status.value,
       cvss: vector(), cvss_notes: notes, wstg: lines("wstg"), evidence: lines("evidence"),
       body: form.elements.body.value
     }).then(function (r) {
-      if (r.ok) { location.href = "/findings/" + r.id; return; }
+      if (r.ok) { location.href = BASE + "/findings/" + r.id; return; }
       alert("保存できませんでした:\n" + (r.error || "")); btn.disabled = false;
     }).catch(function () { alert("サーバに接続できません"); btn.disabled = false; });
   });
@@ -1072,12 +1130,16 @@ def _task_card(site: Site, a: dict, S: dict) -> str:
          f'<div class="mut">WSTG: {cards}</div>']
     runs = site.act_runs.get(aid) or []
     if not runs:
-        h.append('<ul class="check">' + auto_check(False, "フォルダ一式を作る（複数サイトは <code>--target &lt;site&gt;</code>）")
-                 + "</ul>" + cmdbox(f"uv run scripts/new_activity.py {aid}"))
+        opt = f" --site {site.site_name}" if site.site_name else ""
+        h.append('<ul class="check">' + auto_check(False, "フォルダ一式を作る（対象は <code>--target &lt;対象&gt;</code>）")
+                 + "</ul>" + cmdbox(f"uv run scripts/new_activity.py {aid}{opt}"))
         h.append('<p class="mut">作ると、この下に実行コマンドと自動チェックが出る。</p>')
     for d, data in runs:
         st = folder_status(site, d)
-        rel = f"evidence/{d.name}"
+        try:   # 実行コマンドに載せるパス（リポジトリ内なら evidence/<サイト>/<フォルダ>）
+            rel = d.resolve().relative_to(REPO_ROOT).as_posix()
+        except ValueError:
+            rel = d.as_posix()
         h.append(f'<div class="card"><div><a class="mono" href="{record_href(d.name)}">📂 {E(d.name)}</a> '
                  f'<span class="mut">{E(str(data.get("target_scope") or ""))} {E(str(data.get("date") or ""))}'
                  f' {E(str(data.get("tester") or ""))}</span></div>')

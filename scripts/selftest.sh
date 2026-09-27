@@ -266,17 +266,30 @@ printf 'not a png' > "${TMP}/nope.txt"
   && ng "PNG でないデータを保存してしまう" || true
 ok "save_shot: 画像を artifacts/ に保存し record.html に <img> 参照（非PNGは拒否）"
 
-# serve_record.py: evidence ルートを統一配信（ページ群・record・書き込み API・CSRF・共有モード）
+# serve_record.py: evidence ルートを統一配信（ページ群・record・書き込み API・CSRF・共有モード）。
+# ${TMP} を evidence/ に見立て、${TMP}/ev を1つのサイトとして /ev/... で配信する
+mkdir -p "${TMP}/site2"
 "${PY[@]}" - "${TMP}/ev" "recon-osint-ex.test-20260101" "${TMP}/dummy.png" <<'SRV'
 import sys, threading, json, base64, urllib.request, urllib.error
 from pathlib import Path
 sys.path.insert(0, "scripts")
 import serve_record
 root, folder, png = sys.argv[1], sys.argv[2], sys.argv[3]
-httpd = serve_record.build_server(Path(root), "127.0.0.1", 0)
+BASE_DIR = Path(root).parent
+httpd = serve_record.build_server(BASE_DIR, "127.0.0.1", 0)
 port = httpd.server_address[1]
 threading.Thread(target=httpd.serve_forever, daemon=True).start()
-B = f"http://127.0.0.1:{port}"
+H = f"http://127.0.0.1:{port}"
+B = H + "/ev"
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *a, **k):
+        return None
+def raw(path, hdr=None):
+    try:
+        r = urllib.request.build_opener(NoRedirect).open(urllib.request.Request(H + path, headers=hdr or {}), timeout=30)
+        return r.status, dict(r.headers), r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, dict(e.headers), e.read().decode("utf-8", "replace")
 def get(path, hdr=None):
     r = urllib.request.urlopen(urllib.request.Request(B + path, headers=hdr or {}), timeout=30)
     return r.status, r.read().decode("utf-8", "replace")
@@ -295,8 +308,25 @@ try:
     # ページ群（ダッシュボード・タスク・WSTG 索引/詳細・所見・カード・CSV）
     s, idx = get("/")
     assert "WSTG 実施状況" in idx and folder in idx, "ダッシュボードにアクティビティが出ない"
+    # サイト切替: リストボックスに全サイト、リンクはすべて /ev/ の下、/ は前回のサイト（Cookie）か一覧
+    assert 'class="sitesw"' in idx and '<option value="ev" selected>' in idx and 'value="site2"' in idx, \
+        "サイト切替のリストボックスが無い"
+    assert 'href="/tasks"' not in idx and 'href="/ev/tasks"' in idx, "リンクにサイトが付いていない"
+    assert 'var BASE = "/ev"' in idx, "スクリプト用の BASE が無い"
+    st, hd, body = raw("/")
+    assert st == 200 and 'href="/ev/"' in body and 'href="/site2/"' in body, ("サイト一覧が出ない", st)
+    st, hd, body = raw("/", {"Cookie": "wstg_site=ev"})
+    assert st == 302 and hd.get("Location") == "/ev/", ("前回のサイトへ飛ばない", st, hd)
+    assert raw("/", {"Cookie": "wstg_site=nope"})[0] == 200
+    assert "wstg_site=ev" in raw("/ev/tasks")[1].get("Set-Cookie", ""), "表示中のサイトを覚えない"
+    for bad in ("/tasks", "/_findings/F-001.md", f"/{folder}/record.html", "/site2/../ev/tasks"):
+        assert raw(bad)[0] == 404, ("サイト外のパスを配信した", bad)
+    s, other = raw("/site2/")[0], raw("/site2/")[2]
+    assert s == 200 and folder not in other, "サイト2 にサイト1 の実施フォルダが出た"
+    info2 = json.loads(get("/api/info")[1])
+    assert info2["site"] == "ev" and "site2" in info2["sites"], info2
     s, t = get("/tasks")
-    assert f"evidence/{folder}" in t and 'data-check="p0:agree"' in t, "タスクに実行コマンド/手動チェックが出ない"
+    assert f"run_activity.py {(Path(root) / folder).resolve()}" in t and 'data-check="p0:agree"' in t, "タスクに実行コマンド/手動チェックが出ない"
     s, w = get("/wstg/")
     assert f"/{folder}/record.html#WSTG-INFO-01" in w and "F-001" in w, "WSTG 索引から記録・所見へリンクしない"
     s, wd = get("/wstg/WSTG-INFO-01")
@@ -374,9 +404,9 @@ finally:
 # 共有モード（nginx の後ろ）: 表示名は X-Remote-User、サーバ画面の撮影は無効。
 # 権限は 127.0.0.1 への直接アクセス＝owner、nginx 経由（X-Remote-User / X-Forwarded-For 付き）＝閲覧専用
 # （書き込み API は 403・編集フォームは 403・編集ボタンを出さない）
-httpd = serve_record.build_server(Path(root), "127.0.0.1", 0, behind_proxy=True)
+httpd = serve_record.build_server(BASE_DIR, "127.0.0.1", 0, behind_proxy=True)
 port = httpd.server_address[1]
-B = f"http://127.0.0.1:{port}"
+B = f"http://127.0.0.1:{port}/ev"
 threading.Thread(target=httpd.serve_forever, daemon=True).start()
 def status(path, hdr):
     try:
@@ -386,7 +416,7 @@ def status(path, hdr):
 try:
     RO = {"X-Remote-User": "bob", "X-Forwarded-For": "10.0.0.5"}
     info = json.loads(get("/api/info", RO)[1])
-    assert info == {"capture": False, "user": "bob", "editable": False}, info
+    assert {k: info[k] for k in ("capture", "user", "editable")} == {"capture": False, "user": "bob", "editable": False}, info
     assert json.loads(get("/api/info", {"X-Forwarded-For": "10.0.0.5"})[1])["editable"] is False, \
         "nginx 経由で認証ユーザ不明なのに編集可になった"
     # nginx を通らない直接アクセス（同じ機械・ssh -L で 127.0.0.1 を開く）は owner
@@ -412,6 +442,7 @@ try:
     assert "data-check=" in t
     s, rh = get(f"/{folder}/record.html", RO)
     assert "canEdit = served && info.editable" in rh, "record.html が編集可否を見ていない"
+    assert 'fetch("../api/info")' in rh and '"/findings/' not in rh, "record.html がサイト内を相対で辿っていない"
     r = post(f"/{folder}/api/capture", {"wid": "WSTG-INFO-01", "step": 1, "delay": 0})
     assert r["ok"] is False and "共有モード" in r["error"], r
 finally:
@@ -419,9 +450,9 @@ finally:
 
 # ローカルモード（--behind-proxy なし）でも、プロキシのヘッダ付き＝nginx 経由は閲覧専用
 # （--behind-proxy を付け忘れて nginx を前に置いても誰も書けない側に倒す）
-httpd = serve_record.build_server(Path(root), "127.0.0.1", 0)
+httpd = serve_record.build_server(BASE_DIR, "127.0.0.1", 0)
 port = httpd.server_address[1]
-B = f"http://127.0.0.1:{port}"
+B = f"http://127.0.0.1:{port}/ev"
 threading.Thread(target=httpd.serve_forever, daemon=True).start()
 try:
     info = json.loads(get("/api/info", {"X-Remote-User": "bob", "X-Forwarded-For": "10.0.0.5"})[1])
@@ -437,6 +468,62 @@ ok "serve_record: ページ群（索引・WSTG・所見・タスク・CSV）＋�
 timeout 10 "${PY[@]}" scripts/serve_record.py "${TMP}/ev" --host 0.0.0.0 --port 0 >/dev/null 2>&1 \
   && ng "serve_record が 127.0.0.1 以外での待受を許した（共有は nginx 経由だけ）" || true
 ok "serve_record は 127.0.0.1 以外での待受を拒否"
+
+# サイト: --site / WSTG_SITE / サイトが1つなら省略可 / 旧構成は移行を促す
+"${PY[@]}" - "${TMP}/sites" <<'SITES' || ng "sites.resolve_root が想定通りでない"
+import os, sys
+from pathlib import Path
+sys.path.insert(0, "scripts")
+import sites
+b = Path(sys.argv[1]); b.mkdir()
+def err(**kw):
+    try:
+        sites.resolve_root(base=b, **kw); return ""
+    except sites.SiteError as e:
+        return str(e)
+os.environ.pop(sites.SITE_ENV, None)
+assert "まだありません" in err(), "サイト0件で案内が無い"
+assert sites.resolve_root(site="a1", create=True, base=b) == b / "a1", "新しいサイトを作れない"
+assert "がありません" in err(site="a1"), "無いサイトを通した"
+(b / "a1").mkdir()
+assert sites.resolve_root(base=b) == b / "a1", "サイト1つなのに省略できない"
+(b / "b2").mkdir()
+assert "複数" in err(), "サイト複数で選ばせない"
+os.environ[sites.SITE_ENV] = "b2"
+assert sites.resolve_root(base=b) == b / "b2", "WSTG_SITE が効かない"
+os.environ.pop(sites.SITE_ENV)
+assert "不正" in err(site="../x", create=True) and "不正" in err(site="_x", create=True)
+assert sites.resolve_root(root="/tmp/zz", base=b) == Path("/tmp/zz"), "--root が優先されない"
+(b / "act-20260101").mkdir(); (b / "act-20260101" / "run.yaml").write_text("x")
+assert sites.list_sites(b) == ["a1", "b2"], "実施フォルダをサイト扱いした"
+assert "migrate_site.py" in err(site="a1"), "旧構成で移行を促さない"
+SITES
+ok "サイトの選択（--site・WSTG_SITE・1つなら省略・旧構成は移行を促す）"
+
+# migrate_site.py: 旧構成 → evidence/<サイト>/。記録済みコマンドのパスは書き換え、出力は触らない
+MB="${TMP}/mig"
+"${PY[@]}" scripts/new_activity.py recon-osint --target ex.test --root "${MB}" --date 20260101 >/dev/null
+MF="recon-osint-ex.test-20260101"
+mkdir -p "${MB}/_findings" "${MB}/_state"
+echo "id: F-001" > "${MB}/_findings/F-001.md"
+printf '# WSTG-X 手順1 / main\n$ curl -s https://ex.test/ > %s/%s/artifacts/a.txt\n# %s\nOUT %s/%s/artifacts/a.txt\n' \
+  "${MB}" "${MF}" "$(printf -- '-%.0s' $(seq 68))" "${MB}" "${MF}" > "${MB}/${MF}/cmd/x.txt"
+touch -d '2026-01-01 00:00' "${MB}/${MF}/cmd/x.txt"
+printf '\ncommands:\n  - cmd: "curl -s https://ex.test/ > %s/%s/artifacts/a.txt"\n' "${MB}" "${MF}" >> "${MB}/${MF}/run.yaml"
+"${PY[@]}" scripts/migrate_site.py s1 --base "${MB}" --dry-run >/dev/null || ng "migrate_site --dry-run が失敗"
+[ -d "${MB}/${MF}" ] && [ ! -e "${MB}/s1" ] || ng "migrate_site --dry-run が移動した"
+"${PY[@]}" scripts/migrate_site.py s1 --base "${MB}" >/dev/null || ng "migrate_site が失敗"
+[ -f "${MB}/s1/${MF}/run.yaml" ] && [ -f "${MB}/s1/_findings/F-001.md" ] && [ -d "${MB}/s1/_state" ] \
+  && [ ! -e "${MB}/${MF}" ] || ng "migrate_site が実施フォルダ・所見・状態を移していない"
+grep -qF "\$ curl -s https://ex.test/ > ${MB}/s1/${MF}/artifacts/a.txt" "${MB}/s1/${MF}/cmd/x.txt" \
+  || ng "cmd/*.txt の記録済みコマンドのパスが書き換わっていない（--skip-done で再実行される）"
+grep -qF "OUT ${MB}/${MF}/artifacts/a.txt" "${MB}/s1/${MF}/cmd/x.txt" \
+  || ng "cmd/*.txt のコマンド出力（区切り線より後ろ）まで書き換えた"
+[ "$(date -r "${MB}/s1/${MF}/cmd/x.txt" +%Y%m%d)" = "20260101" ] || ng "cmd/*.txt の更新時刻を変えた"
+grep -qF "> ${MB}/s1/${MF}/artifacts/a.txt\"" "${MB}/s1/${MF}/run.yaml" || ng "run.yaml の commands: が書き換わっていない"
+grep -qF "${MB}/s1/${MF}/artifacts" "${MB}/s1/${MF}/evidence.js" || ng "移行後に evidence.js を作り直していない"
+"${PY[@]}" scripts/migrate_site.py s2 --base "${MB}" | grep -q "移行済み" || ng "移行済みで何かした"
+ok "migrate_site: 旧構成をサイトへ移し、記録済みコマンドのパスだけ書き換える"
 
 # fingerprint-stack: NVD 照合が curl/jq、受動観測が curl、確認コマンドは重複しないこと
 "${PY[@]}" scripts/new_activity.py fingerprint-stack --target ex.test --root "${TMP}/ev" --date 20260101 >/dev/null
