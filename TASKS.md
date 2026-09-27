@@ -261,7 +261,7 @@ crossdomain.xml / clientaccesspolicy.xml と、残存する Flash/Silverlight �
 認証まわりとセッションの生成・維持・破棄を検証する。
 
 **準備（このフェーズで使う Kali ツール。未導入のものだけ）**
-- apt: `sudo apt install -y burpsuite curl ffuf`
+- apt: `sudo apt install -y burpsuite curl ffuf jq`
 - Kali 同梱 / Burp を入れれば使える機能・拡張（個別導入は不要）: Burp Intruder, Burp Sequencer
 
 ### 15. `authn-flow-review` — 認証フロー一括レビュー

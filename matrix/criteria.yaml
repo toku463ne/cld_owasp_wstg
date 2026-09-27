@@ -342,13 +342,13 @@ WSTG-ATHN-01:
   purpose: "資格情報が暗号化された経路でのみ送信されているかを確認する。"
   pass: "ログイン画面と送信先の両方が HTTPS で、HTTP へのフォールバックがない。"
   fail: "資格情報が HTTP で送信される、HTTPS 画面から HTTP へ POST している、または GET のクエリに載っている。"
-  note: "ログイン URL（`/login`）は対象に合わせて record.html のコマンド編集（run.yaml の cmd_overrides）で直す。手順1 が空（80 番が閉じていて接続できない）は平文で入力させようがないので pass 側。手順2 の「Save item」は URL・protocol（http/https）・method とリクエスト全体を XML で残すので、Raw のコピーより判定に向く（Raw には https かどうかが出ない）。XML には入力したパスワードも入るため evidence の外に出さず、テスト用アカウントを使う。スクリーンショットはパスワードを塗りつぶす。Burp の起動・接続は docs/burp-setup.md、内蔵ブラウザが reCAPTCHA で弾かれるときは同 3 章（普段の Firefox を Burp に通す）。リダイレクト前の最初のリクエストが平文になっていないかは手順1、HTTPS 画面から HTTP への送信は手順3・4 で見る。"
+  note: "ログイン URL（`/login`）は対象に合わせて record.html のコマンド編集（run.yaml の cmd_overrides）で直す。手順1 が空（80 番が閉じていて接続できない）は平文で入力させようがないので pass 側。手順2 は Burp を使わず検査用ブラウザの F12（Network → Save all as HAR）で撮る。Burp をプロキシに挟むと reCAPTCHA/ボット検知に弾かれてログインできない対象があるため（Burp を使うなら内蔵ブラウザの F12 でも同じ HAR が撮れる）。HAR には URL・method・本文がそのまま入るので、手順3 は protocol/method/URL と本文のパラメータ「名」だけを抜き出す（値は出さない）。HAR にはパスワードも入るため evidence の外に出さず、テスト用アカウントを使う。スクリーンショットはパスワードを塗りつぶす。Burp の起動・接続や F12 の詳しい手順は docs/burp-setup.md。リダイレクト前の最初のリクエストが平文かは手順1、HTTPS 画面から HTTP への送信は手順3・4 で見る。"
   steps:
     - "ログイン画面を HTTP で開いたときの応答を保存: `curl -s -m 10 -o /dev/null -D - http://target/login | tee OUTDIR/login-http.txt`。30x で `Location: https://` へ飛ぶ＝HTTPS 強制。200 で画面が返る＝平文で資格情報を入力させうる"
-    - "Burp でログイン送信を保存する（手動）: Proxy → Intercept が「Intercept is off」か確認 →「Open browser」でテスト用アカウントでログイン → Proxy → HTTP history で Method 列を押して並べ替え、ログイン送信の行（多くは POST）を右クリック →「Save item」→ 「Base64-encode requests and responses」は✓のまま → OUTDIR/login-item.xml として保存"
-    - "手順2 の保存から送信先・メソッド・資格情報の位置を抜き出す: `test -s OUTDIR/login-item.xml || exit 75; { grep -oE '<(protocol|method|url)>(<!\\[CDATA\\[)?[^]<]*' OUTDIR/login-item.xml | sed -E 's/<!\\[CDATA\\[//; s/^<([a-z]+)>/\\1: /'; echo \"URL 中の資格情報らしき名前: $(grep -oE '<url>[^>]*>' OUTDIR/login-item.xml | grep -oiE '[?&][^=&]*(user|login|mail|pass|pwd)[^=&]*=' | tr '\\n' ' ')\"; echo \"本文のパラメータ名: $(sed -nE 's/.*<request base64=\"true\"><!\\[CDATA\\[([^]]*)\\]\\]>.*/\\1/p' OUTDIR/login-item.xml | base64 -d | sed '1,/^\\r*$/d' | grep -oE '(^|[&{,])[[:space:]]*\"?[A-Za-z0-9_.-]+\"?[[:space:]]*[=:]' | tr -d '\"=:{,&[:blank:]' | sort -u | tr '\\n' ' ')\"; } | tee OUTDIR/login-check.txt`。protocol が https・method が POST・URL 中の名前が空・本文のパラメータ名に ID/パスワードがある＝pass"
+    - "ログイン送信を HAR に保存する（手動）: 検査用の Firefox でログイン画面を開く → F12 → Network タブの「Preserve log」に✓（リダイレクトで消えないように）→ テスト用アカウントで（reCAPTCHA は自分で解いて）ログイン → ログイン送信の行（多くは POST）が出たら一覧のどれかを右クリック →「Save all as HAR」（Firefox は「すべてを HAR 形式で保存」）→ OUTDIR/login.har として保存。値も入るので evidence の外に出さない"
+    - "手順2 の HAR からログイン送信の送信先・メソッド・資格情報の位置を抜き出す: `test -s OUTDIR/login.har || exit 75; jq -r '[ .log.entries[] | select(.request.method==\"POST\") | .request | (.postData.params // [] | map(.name)) as $pn | select( (($pn + [(.postData.text // \"\")]) | join(\" \")) | test(\"pass|pwd|login|user|mail\";\"i\")) ] as $c | if ($c|length)==0 then \"ログイン POST が HAR に無い（Preserve log を付けて撮り直す）\" else $c[0] as $r | \"protocol: \" + ($r.url | capture(\"^(?<s>[a-z]+)://\").s), \"method: POST\", \"URL: \" + ($r.url | sub(\"[?].*$\";\"\")), \"URL 中の資格情報らしき名前: \" + (($r.queryString // []) | map(.name) | map(select(test(\"user|login|mail|pass|pwd\";\"i\"))) | join(\" \")), \"本文のパラメータ名: \" + ((($r.postData.params // []) | map(.name)) + (($r.postData.text // \"\") | [scan(\"[\\\"&,{]\\\\s*\\\"?([A-Za-z0-9_.-]+)\\\"?\\\\s*[=:]\")] | flatten) | unique | join(\" \")) end' OUTDIR/login.har | tee OUTDIR/login-check.txt`。protocol が https・method が POST・URL 中の名前が空・本文のパラメータ名に ID/パスワードがある＝pass"
     - "HTTPS のログイン画面のフォーム送信先を確認: `curl -s -m 10 https://target/login | grep -oiE '<form[^>]*action=[^ >]*' | tee OUTDIR/login-form-action.txt`。action が `http://` で始まる＝HTTPS 画面から平文へ送信（fail）。0 件は JS で送る画面なので手順3 で判断"
-    - "ログイン後も平文で資格情報を送っていないか見る（手動）: Burp の Proxy → HTTP history 上部のフィルタ欄に手順3 のパスワードのパラメータ名を入れ、Host 列が `http://` の行が無いか、パスワード変更・再認証など別の送信も https・POST 本文かを確認"
+    - "ログイン後も平文で資格情報を送っていないか見る（手動）: F12 → Network タブのフィルタ欄に手順3 で出たパスワードのパラメータ名を入れ、Domain/URL 列が `http://`（暗号化なし）の行が無いか、パスワード変更・再認証など別の送信も https・POST 本文かを確認する"
 
 WSTG-ATHN-02:
   purpose: "既定の資格情報や推測しやすいアカウントが残っていないかを確認する。"
@@ -369,7 +369,7 @@ WSTG-ATHN-03:
   fail: "失敗回数に制限がなく、高速な総当たりが可能。"
   note: "ロックアウトは DoS にもなる。解除条件（時間経過か管理者解除か）まで記録する。"
   steps:
-    - "同一アカウントに誤ったパスワードで連続ログイン（Burp Intruder / `hydra`）し、ロックされる閾値を確認（少数から）"
+    - "同一アカウントに誤ったパスワードで手で数回ログインし、ロックされる閾値・応答差を確認（少数から）。CAPTCHA があるとログイン POST の自動化（Intruder/hydra/curl）はトークンが1回限りで成立しないので、その事実自体を観察として記録する"
     - "ロック後の解除方法（時間経過・管理者解除）と、ロック中の応答差を確認"
     - "ロックがユーザ名基準か IP 基準か、API/別チャネルで回避できないか確認"
     - "ロックアウトがないか極端に緩い場合は総当りリスクとして finding に。DoS を招く強すぎる設定も併記"
@@ -383,7 +383,7 @@ WSTG-ATHN-04:
   note: "「リダイレクトされるが本文も返ってきている」パターンを見落とさない。本文の中身を確認する。"
   steps:
     - "認証必須ページに直 URL でアクセス（force browsing）し、未認証で開けないか確認"
-    - "ログイン後にセットされる Cookie/パラメータ（`isAuth=false`→`true` 等）を Burp で改変して迂回を試す"
+    - "ログイン後にセットされる Cookie/パラメータ（`isAuth=false`→`true` 等）を F12 の Storage タブ（Cookie・Local Storage）で書き換えて迂回できないか試す"
     - "SQL インジェクション（`' or '1'='1`）・パラメータ改変・レスポンス改変（302→200）で認証を飛ばせるか試す"
     - "多段認証の途中ステップを飛ばして最終ページに到達できないか確認"
 
@@ -394,7 +394,7 @@ WSTG-ATHN-05:
   note: "ログアウト後・パスワード変更後にトークンが無効になるかを必ず試す。"
   steps:
     - "「パスワードを記憶」利用時に、資格情報が Cookie/localStorage に平文/可逆で保存されないかブラウザ開発者ツールで確認"
-    - "記憶トークンを Burp で確認し、推測可能・無期限・失効しない（ログアウト後も有効）でないか確認"
+    - "記憶トークンを F12 の Storage タブ（Cookie）で確認し、推測可能・無期限・失効しない（ログアウト後も有効）でないか確認"
     - "ブラウザのオートコンプリート（フォームの `autocomplete` 属性）で機微入力が保存されないか確認"
     - "記憶用トークンから元パスワードやセッションが復元できないか検証"
 
@@ -416,7 +416,7 @@ WSTG-ATHN-07:
   fail: "4〜6文字や辞書語が通る、最大長が短すぎる、文字種強制のみで長さを要求していない。"
   note: "現行 NIST SP 800-63B は「長さ重視・複雑さ強制は不要・漏えいリスト照合」を推奨。"
   steps:
-    - "パスワード変更/登録で短い・単純な値（`1234`・`password`・辞書語）が通るか Burp Repeater で試す"
+    - "パスワード変更/登録で短い・単純な値（`1234`・`password`・辞書語）が通るか、F12 の Network でその送信を右クリック →「Edit and Resend」で値を変えて試す"
     - "最小長・文字種・使い回し/過去パスワード禁止・よくあるパスワード拒否の有無を確認"
     - "最大長制限が短すぎ（例: 16 未満）でパスフレーズが使えないか確認"
     - "強度要件を満たさない値が実際に登録できた場合は finding に（画面表記でなく実挙動で判定）"
@@ -428,7 +428,7 @@ WSTG-ATHN-08:
   note: "質問の変更・回答の使い回し可否も確認する。"
   steps:
     - "秘密の質問の選択肢が、SNS 等から推測/調査可能な内容（出身地・母の旧姓）でないか確認"
-    - "質問への回答試行を Burp Intruder で繰り返し、レート制限・ロックがあるか確認"
+    - "質問への回答試行を F12 の「Edit and Resend」で少数回繰り返し、レート制限・ロックがあるか確認（テストアカウントで少数から）"
     - "質問だけでパスワードリセットまで到達できる（多要素でない）弱いフローでないか確認"
     - "自由記述質問で任意の弱い質問を設定できないか確認"
   load_notes:   # 負荷・レート制限・ロック・DoS を招きうる手順への強調注釈（record.html/カードに出す）
@@ -442,7 +442,7 @@ WSTG-ATHN-09:
   steps:
     - "パスワード変更に現行パスワードが必要か確認（不要なら CSRF/セッション奪取で悪用可）"
     - "リセットのトークンが推測可能・長期有効・使い回し可能でないか確認"
-    - "リセットリンクの送信先を Burp で `email` パラメータ差し替えして他人宛に送れないか試す"
+    - "リセットリンクの送信先を F12 の「Edit and Resend」で `email` パラメータを差し替え、他人宛に送れないか試す"
     - "変更/リセット後に既存セッションが無効化されるか確認"
 
 WSTG-ATHN-10:

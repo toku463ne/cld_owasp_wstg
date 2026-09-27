@@ -20,13 +20,15 @@ WSTG の Test Objectives:
 ## 手順
 
 1. 認証必須ページに直 URL でアクセス（force browsing）し、未認証で開けないか確認
-2. ログイン後にセットされる Cookie/パラメータ（`isAuth=false`→`true` 等）を Burp で改変して迂回を試す
+2. ログイン後にセットされる Cookie/パラメータ（`isAuth=false`→`true` 等）を F12 の Storage タブ（Cookie・Local Storage）で書き換えて迂回できないか試す
 3. SQL インジェクション（`' or '1'='1`）・パラメータ改変・レスポンス改変（302→200）で認証を飛ばせるか試す
 4. 多段認証の途中ステップを飛ばして最終ページに到達できないか確認
 
 ## 使用ツール
 
 - Burp Suite
+- curl
+- ブラウザ開発者ツール
 
 ## 判定基準（pass / fail の見分け）
 

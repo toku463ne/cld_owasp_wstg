@@ -6,7 +6,8 @@
 - [1. Burp を起動して対象に届くか確かめる](#1-burp-を起動して対象に届くか確かめる)
 - [2. 内蔵ブラウザで使う（まずこれ）](#2-内蔵ブラウザで使うまずこれ)
 - [3. 普段のブラウザを Burp に通す（reCAPTCHA / ボット検知で弾かれるとき）](#3-普段のブラウザを-burp-に通すrecaptcha--ボット検知で弾かれるとき)
-- [4. 例: WSTG-ATHN-01 の「認証情報送信リクエストを捕捉」](#4-例-wstg-athn-01-の認証情報送信リクエストを捕捉)
+- [4. Burp なしで ATHN を回す（Firefox の F12 だけ）](#4-burp-なしで-athn-を回すfirefox-の-f12-だけ)
+- [5. 例: WSTG-ATHN-01 をブラウザだけで捕捉](#5-例-wstg-athn-01-をブラウザだけで捕捉)
 - [困ったとき](#困ったとき)
 
 仕組み: ブラウザの通信を Burp（`127.0.0.1:8080`）に通し、Burp が中継しながら全部を
@@ -145,28 +146,64 @@ Burp を介さず curl で回したいときは、README「Burp のブラウザ�
 これは**人が正規に取得したセッションをツールに渡し直すだけ**で、reCAPTCHA を突破しているわけではない。
 CAPTCHA そのものの強度・レート制限は `WSTG-ATHN-*` / `WSTG-BUSL-07` の観点で別に評価する。
 
-## 4. 例: WSTG-ATHN-01 の「認証情報送信リクエストを捕捉」
+## 4. Burp なしで ATHN を回す（Firefox の F12 だけ）
 
-1. 2 または 3 のブラウザで、**テスト用アカウント**でログインする。
-2. **Proxy → HTTP history** で **Method** 列の見出しを押して並べ替え、ログイン直後の `POST`
-   （`/login`・`/api/auth` など）を選ぶ。見つけにくければ上部の Filter 欄に `password` 等の
-   パラメータ名を入れて絞り込む。
-3. 下の **Request** ペインを **Raw** 表示にして確認する:
+**WSTG-ATHN の大半は Burp を使わずにできる。** むしろ Burp をプロキシに挟むと、reCAPTCHA や
+ボット検知（Cloudflare 等）に弾かれてログインできない対象がある（3 章の対処をしても通らないことがある）。
+Firefox の開発者ツール（**F12**）なら「本物のブラウザがそのまま通信する」ので、その弾きが起きない。
+CAPTCHA は人が解き、F12 は同じ通信を**見る・作り直す**だけ。
+
+Burp の機能は F12 で次のように置き換わる:
+
+| Burp の機能 | Firefox の F12（開発者ツール） |
+|---|---|
+| Proxy → HTTP history で送信を見る | **Network** タブ。「**Preserve log**」に✓（リダイレクトで消えないように） |
+| Save item（URL・protocol・本文の保存） | Network の行を右クリック →「**Save all as HAR**」／「**Copy** → **Copy as cURL**」 |
+| Repeater で再送・値を変えて試す | Network の行を右クリック →「**Edit and Resend**」 |
+| Cookie / トークンの確認・改変 | **Storage** タブ（Cookie・Local Storage を直接見て編集） |
+
+各テストの回し方:
+
+| テスト | F12 での回し方 | Burp |
+|---|---|---|
+| ATHN-01（送信の暗号化） | Network → **Save all as HAR**（下の 5） | 不要 |
+| ATHN-02（既定資格情報） | ブラウザでログインを試すだけ | 不要 |
+| ATHN-04（認証迂回） | 直 URL はブラウザ、Cookie/パラメータ改変は **Storage** か **Edit and Resend** | 不要 |
+| ATHN-05（ログイン保持） | **Storage** タブで Cookie・Local Storage を確認 | 不要 |
+| ATHN-06（キャッシュ） | **Network** タブ（元々 F12 + curl） | 不要 |
+| ATHN-07（強度）/ 09（変更・リセット） | ログイン後の送信なので **Edit and Resend** で値・`email` を変えて試す | 不要 |
+| ATHN-08（秘密の質問） | **Edit and Resend** を少数回 | 不要 |
+| ATHN-10（代替チャネル） | 元々 curl の一括プローブ | 不要 |
+| **ATHN-03（ロックアウト）** | 手で数回失敗させ、閾値・応答差・解除条件を観察 | どちらも自動化不可 |
+
+ATHN-03 だけは注意。ログイン POST の CAPTCHA トークンは**1回限り**なので、Intruder / hydra / curl の
+どれでも連続試行の自動化は成立しない（Burp でも同じ）。「CAPTCHA があるため自動総当りは不可」という
+**事実自体を所見にする**のが正しい記録の仕方。
+
+F12 のプロキシ設定・CA 証明書は不要（Burp を経由しないため）。3 章は「どうしても Burp を通したいとき」だけ。
+
+## 5. 例: WSTG-ATHN-01 をブラウザだけで捕捉
+
+1. **検査用の Firefox プロファイル**（3-1）で、対象のログイン画面を開く。
+2. **F12** → **Network** タブ → 「**Preserve log**」に✓。
+3. **テスト用アカウント**で（reCAPTCHA は自分で解いて）ログインする。
+4. ログイン送信の `POST`（`/login`・`/api/auth`・`…LoginAjax…` など）が Network に出る。次を見る:
 
 | 確認項目 | 見る場所 | pass | fail |
 |---|---|---|---|
-| 送信先 | 一覧の **Host** 列 | `https://…` | `http://…` |
-| メソッド | Raw の1行目 | `POST /login HTTP/…` | `GET /login?user=…&password=…` |
-| 資格情報の位置 | Raw の空行より下（本文） | `username=…&password=…` や JSON | URL のクエリに載っている |
+| 送信先 | 行の **Domain / URL** 列 | `https://…` | `http://…` |
+| メソッド | 行の **Method** 列 | `POST` | `GET`（クエリに載る） |
+| 資格情報の位置 | 行をクリック → **Request** の本文 | 本文に `username=…&password=…` や JSON | URL のクエリに載っている |
 
-4. 直前の行も見て、ログイン画面自体が `https` で配信されているか確認する。
-5. 判定の証跡を残す: その行を右クリック →「**Save item**」→「Base64-encode requests and responses」は
-   ✓のまま → 活動フォルダの `artifacts/login-item.xml` として保存する。Raw のコピーには https かどうかが
-   出ないので、URL・protocol まで残る Save item を使う。保存後に
-   `uv run scripts/run_activity.py <フォルダ> --only WSTG-ATHN-01:3` を実行すると、protocol・method・
-   URL と本文のパラメータ名が `artifacts/login-check.txt` に抜き出される（値は出さない）。
-   XML にはパスワードも入るので evidence の外に出さない。スクリーンショットを貼るときは
+5. 証跡を残す: Network の一覧のどれかを右クリック →「**Save all as HAR**」
+   （Firefox は「**すべてを HAR 形式で保存**」）→ 活動フォルダの `artifacts/login.har` として保存。
+   保存後に `uv run scripts/run_activity.py <フォルダ> --only WSTG-ATHN-01:3` を実行すると、
+   protocol・method・URL と本文のパラメータ**名**が `artifacts/login-check.txt` に抜き出される（値は出さない）。
+   HAR にはパスワード・トークンも入るので **evidence の外に出さない**。スクリーンショットを貼るときは
    パスワードを塗りつぶす。`run.yaml` の `finding` には要約だけ書く（例:「ログインは https の POST 本文で送信」）。
+
+Burp をどうしても使うなら、内蔵ブラウザや 3 章の Firefox でも **F12 → Save all as HAR** で同じものが撮れる
+（Burp の Save item でなくてよい）。
 
 ## 困ったとき
 
